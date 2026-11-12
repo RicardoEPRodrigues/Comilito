@@ -1,129 +1,161 @@
 # Scenes
 
-> Status: accepted ([0008](decisions/0008-scenes.md), [0009](decisions/0009-overlay-scenes-and-roles.md)).
+> Status: accepted ([0008](decisions/0008-scenes.md), [0010](decisions/0010-scene-stack.md)).
 
 ## Sounds vs. scenes
 
 - **Sounds** are the project's library: an audio file plus its default settings (volume, loop,
   fades), in one of three categories: Music, Ambience, Effects.
 - **Scenes** are saved mixes that say what plays together:
-  - **Music:** a playlist (one or more tracks, optional shuffle).
-  - **Ambience:** a set of layers, each with its own volume in this scene.
+  - **Music:** an optional playlist (one or more tracks, optional shuffle).
+  - **Ambience:** an optional set of layers, each with its own volume and optional role in this scene.
   - **Effects:** the sounds shown on the quick-access pad for this scene.
 
-The same sound can appear in many scenes at different volumes.
+The same sound can appear in many scenes at different volumes. A scene may contain only music,
+only ambience, or both.
 
-## Switching scenes
+## The scene stack
 
-Switching from scene A to scene B:
+What plays is decided by a **stack of scenes**. Any scene can go anywhere in the stack, and
+there's no limit on its depth.
 
-| Sound is in… | What happens |
-|---|---|
-| A and B | keeps playing, tweens to B's volume (never restarts) |
-| A only | fades out, then stops |
-| B only | starts and fades in |
+```
+  ┌───────────────────┐
+  │ Combat            │  ← top: drums, battle clash, goblin chatter
+  ├───────────────────┤
+  │ Forest            │  ← birds, wind, stream (no music)
+  ├───────────────────┤
+  │ Travelling music  │  ← bottom: music only
+  └───────────────────┘
+```
 
-Music crossfades if B's playlist doesn't contain the current track. Otherwise it continues.
-Effects already playing are left to finish.
+### Music
+
+Only the **top-most scene that has music** plays its music. Music from lower scenes fades out and
+**pauses**, and resumes where it left off when the scenes above it are removed. Music is never ducked.
+
+### Ambience and ducking
+
+Every scene added on top **ducks** the ambience of the scenes below it, lowering it by that scene's
+`duck` amount (default **30%**, so a layer plays at 70% of its volume). Ducking stacks: a layer with
+two ducking scenes above it plays at 0.7 × 0.7 = 49%.
+
+**Roles** let a layer escape ducking. Each ambience layer can have a role: `foreground`,
+`background` or `supporting`. For each scene above a layer:
+
+| Layer below | Scene above… | Effect |
+|---|---|---|
+| no role | (any) | ducked |
+| role R | has a layer with role R | ducked (that role is taken over) |
+| role R | has no layer with role R | not ducked by this scene |
+
+### Effects pad
+
+Shows the effects of every scene in the stack, top scene first.
+
+### Same sound in several scenes
+
+A sound plays only once. If several scenes in the stack contain it, the **highest** scene's
+volume (after its own ducking) is used.
 
 ### Example
 
-| Sound | Wilderness | Goblin ambush |
+| Sound | Stack: Music + Forest | + Combat pushed |
 |---|---|---|
-| 🎵 Peaceful forest | ▶ | — |
-| 🎵 Battle drums | — | ▶ |
-| 🌲 Forest birds | 80% | 20% |
-| 🌲 Wind | 50% | 30% |
-| 🌲 Stream | 40% | — |
-| ⚔️ Battle clash | — | 80% |
-| ⚔️ Goblin chatter | — | 60% |
-| 💥 Effects pad | arrow, twig snap | goblin screech, sword hit, arrow |
+| 🎵 Travelling theme (Music) | ▶ playing | ⏸ paused |
+| 🎵 Battle drums (Combat) | — | ▶ fades in |
+| 🌲 Birds (Forest, background, 80%) | 80% | 80%: Combat has no background layer |
+| 🌲 Wind (Forest, background, 50%) | 50% | 50% |
+| 🌲 Stream (Forest, no role, 40%) | 40% | 28% (ducked by 30%) |
+| ⚔️ Battle clash (Combat, foreground, 80%) | — | 80% |
+| ⚔️ Goblin chatter (Combat, supporting, 60%) | — | 60% |
 
-## Overlay scenes
+Removing Combat restores the left column: drums fade out, the travelling theme resumes and the stream returns to 40%.
 
-See [decision 0009](decisions/0009-overlay-scenes-and-roles.md). An overlay is applied on top of
-whatever scene is playing, and turning it off restores that scene exactly as it was. One "Combat"
-overlay then works in a forest, a cave or a city.
+## Stack operations
 
-### Layer roles
+| Action | How | Result |
+|---|---|---|
+| **Switch** | click a scene / press its hotkey | the stack becomes just this scene |
+| **Push** | Shift+click / Shift+hotkey | the scene is added on top |
+| **Remove** | × on a scene in the stack bar | that scene is removed, wherever it is |
+| **Pop** | Backspace | the top scene is removed |
+| **Stop all** | Space | everything fades out and the stack is cleared |
 
-Each ambience layer in a scene can have a role: `foreground`, `background` or `supporting`.
-The role belongs to the layer in that scene, not to the sound.
+Pushing a scene that's already in the stack moves it to the top.
 
-While an overlay is active, each underlying layer is handled like this:
+### How a change is applied
 
-| Underlying layer | Effect |
-|---|---|
-| no role | ducked to the overlay's `duckLevel` (default 30%) |
-| role R, and the overlay has a layer with role R | ducked (the overlay takes over that role) |
-| role R, and the overlay has no layer with role R | plays unchanged |
+Every operation works the same way:
 
-### Music and effects
+1. Change the stack.
+2. Compute the **target mix** from the stack: for every sound, whether it plays and at what
+   volume, using the rules above.
+3. Move the audio engine from the current mix to the target mix with fades. Sounds already
+   playing never restart; they only change volume, pause or resume.
 
-- If the overlay has music, the underlying music fades out and pauses, then resumes where it left
-  off when the overlay ends. If the overlay has no music, the underlying music continues.
-- The effects pad shows the overlay's effects first, then the scene's.
+The fade time is taken from the scene being pushed or removed (`transitionMs`). For a switch it's
+the new scene's.
 
-### Rules
-
-- One overlay at a time (v1). Triggering another replaces it.
-- Changing the base scene during an overlay crossfades the base underneath, and the overlay stays.
-
-### Example: Combat overlay on Wilderness
-
-| Layer | Wilderness | Combat overlay | Result |
-|---|---|---|---|
-| 🎵 Peaceful forest | music | 🎵 Battle drums | forest pauses, drums fade in |
-| 🌲 Birds | background, 80% | (no background) | unchanged, 80% |
-| 🌲 Wind | background, 50% | (no background) | unchanged, 50% |
-| 🌲 Stream | supporting, 40% | ⚔️ Goblin chatter, supporting | stream ducked to 30% × 40% = 12% |
-| ⚔️ Battle clash | — | foreground, 80% | fades in |
+This is the same smart crossfade as in [0008](decisions/0008-scenes.md), applied to the stack.
 
 ## UI
 
-- **Scene list** (left): grouped (for example "Phandalin", "Session 3"). Click or press 1–9 to switch.
-- **Now playing** (centre): what's playing, with a live slider for each sound.
-- **Effects pad** (right): big buttons for the current scene's effects.
+- **Scene list** (left): grouped (for example "Phandalin", "Session 3").
+- **Stack bar** (top): the current stack as chips, `Travelling music › Forest › Combat ×`.
+- **Now playing** (centre): every playing sound, with its effective volume and a live slider.
+- **Effects pad** (right): buttons for the stack's effects.
 - **Mixer bar** (bottom): master and per-category volumes.
 - **Play / Edit mode:** in Play mode the library and scenes can't be changed by accident.
-- **Space:** stop all (with a quick fade).
-- **Save current mix to scene:** stores the live tweaks.
+- **Save current mix to scene:** stores live tweaks back into a scene.
 
 ## Data (draft, in `comilito.json`)
 
 ```json
 "scenes": [
   {
-    "id": "scn-1",
-    "kind": "scene",
-    "name": "Wilderness",
-    "group": "Wilderness",
+    "id": "scn-music",
+    "name": "Travelling music",
     "hotkey": "1",
-    "music":   { "tracks": ["snd-peaceful-forest"], "shuffle": false },
+    "music": { "tracks": ["snd-travel-1", "snd-travel-2"], "shuffle": true },
+    "ambience": [],
+    "effects": [],
+    "duck": 0.3,
+    "transitionMs": 3000
+  },
+  {
+    "id": "scn-forest",
+    "name": "Forest",
+    "group": "Wilderness",
+    "hotkey": "2",
+    "music": null,
     "ambience": [
       { "sound": "snd-birds",  "volume": 0.8, "role": "background" },
       { "sound": "snd-wind",   "volume": 0.5, "role": "background" },
-      { "sound": "snd-stream", "volume": 0.4, "role": "supporting" }
+      { "sound": "snd-stream", "volume": 0.4 }
     ],
-    "effects": ["snd-twig", "snd-arrow"],
+    "effects": ["snd-twig"],
+    "duck": 0.3,
     "transitionMs": 2500
   },
   {
-    "id": "scn-2",
-    "kind": "overlay",
+    "id": "scn-combat",
     "name": "Combat",
     "hotkey": "F1",
-    "duckLevel": 0.3,
-    "music":   { "tracks": ["snd-battle-drums"], "shuffle": false },
+    "music": { "tracks": ["snd-battle-drums"], "shuffle": false },
     "ambience": [
       { "sound": "snd-clash",   "volume": 0.8, "role": "foreground" },
       { "sound": "snd-goblins", "volume": 0.6, "role": "supporting" }
     ],
-    "effects": ["snd-screech", "snd-sword"],
+    "effects": ["snd-screech", "snd-sword", "snd-arrow"],
+    "duck": 0.3,
     "transitionMs": 1500
   }
 ]
 ```
 
-- `kind`: `scene` or `overlay`. `duckLevel` applies only to overlays.
+- `music`: `null` when the scene has no music, which leaves lower music playing.
+- `duck`: how much this scene lowers the ambience below it (0.3 = by 30%; 0 = no ducking; 1 = silence).
 - `role`: optional; one of `foreground`, `background`, `supporting`.
+
+The current stack is **not** saved in the project. Each session starts with an empty stack.

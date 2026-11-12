@@ -32,7 +32,7 @@ Separate **sounds** (the library) from **scenes** (saved mixes). See [../scenes.
 - Live tweaks are allowed, and "Save current mix to scene" stores them.
 - Play mode and Edit mode are separate.
 
-Overlay scenes are included; see [0009](0009-overlay-scenes-and-roles.md).
+Scenes can be layered; see [0010](0010-scene-stack.md) (which supersedes [0009](0009-overlay-scenes-and-roles.md)).
 
 ## Consequences
 
