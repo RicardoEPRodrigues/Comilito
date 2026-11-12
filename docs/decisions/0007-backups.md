@@ -27,7 +27,8 @@ Backups reuse the export format: a backup is a `.comilito` zip of the project.
 
 ## Consequences
 
-- Removing a sound from a project moves its audio file to the system **trash** instead of deleting
-  it, because a config-only backup couldn't bring it back.
+- Removing a sound asks the user: **Move to trash** (default) or **Delete permanently**. Trash is the
+  default because a config-only backup can't bring the audio back. If any scenes use the sound,
+  the prompt lists them. This uses the `trash` crate (small, maintained, works on Linux, Windows and macOS).
 - Backups run on the same background worker as hashing, so the UI never freezes.
 - Backup settings (interval, count, include audio) are stored per project in `comilito.json`.

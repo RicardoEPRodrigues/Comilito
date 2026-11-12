@@ -100,7 +100,7 @@ See [decision 0007](decisions/0007-backups.md). Backups are `.comilito` zips wri
 - the newest 1 is kept (configurable); the new backup is written before the oldest is deleted
 - audio is not included by default (configurable)
 
-Removed sounds have their audio moved to the system trash, not deleted.
+Removing a sound asks whether to move its audio to the system trash (default) or delete it permanently.
 
 ## Hashing
 

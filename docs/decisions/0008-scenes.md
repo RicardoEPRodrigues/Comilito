@@ -1,6 +1,6 @@
 # 0008. Scenes: saved mixes with smart crossfades
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-11-12
 
 ## Context
@@ -19,7 +19,7 @@ ambush. The DM needs to change music and ambience together with one action, whil
 - **Overlay scenes** (extension): a scene layered on top of the current one, which can be
   removed to restore it.
 
-## Decision (proposed)
+## Decision
 
 Separate **sounds** (the library) from **scenes** (saved mixes). See [../scenes.md](../scenes.md).
 
@@ -32,7 +32,7 @@ Separate **sounds** (the library) from **scenes** (saved mixes). See [../scenes.
 - Live tweaks are allowed, and "Save current mix to scene" stores them.
 - Play mode and Edit mode are separate.
 
-Undecided: whether overlay scenes are included in the first version.
+Overlay scenes are included; see [0009](0009-overlay-scenes-and-roles.md).
 
 ## Consequences
 

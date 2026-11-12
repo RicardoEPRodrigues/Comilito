@@ -1,6 +1,6 @@
 # Scenes
 
-> Status: proposed ([decision 0008](decisions/0008-scenes.md)).
+> Status: accepted ([0008](decisions/0008-scenes.md), [0009](decisions/0009-overlay-scenes-and-roles.md)).
 
 ## Sounds vs. scenes
 
@@ -39,15 +39,45 @@ Effects already playing are left to finish.
 | ⚔️ Goblin chatter | — | 60% |
 | 💥 Effects pad | arrow, twig snap | goblin screech, sword hit, arrow |
 
-## Overlay scenes (undecided)
+## Overlay scenes
 
-An overlay is applied on top of whatever scene is playing:
+See [decision 0009](decisions/0009-overlay-scenes-and-roles.md). An overlay is applied on top of
+whatever scene is playing, and turning it off restores that scene exactly as it was. One "Combat"
+overlay then works in a forest, a cave or a city.
 
-- It may **duck** (lower) the current ambience, for example to 30%, instead of replacing it.
-- It replaces the music and adds its own layers.
-- Turning it off restores the underlying scene exactly as it was.
+### Layer roles
 
-One "Combat" overlay then works in a forest, a cave or a city.
+Each ambience layer in a scene can have a role: `foreground`, `background` or `supporting`.
+The role belongs to the layer in that scene, not to the sound.
+
+While an overlay is active, each underlying layer is handled like this:
+
+| Underlying layer | Effect |
+|---|---|
+| no role | ducked to the overlay's `duckLevel` (default 30%) |
+| role R, and the overlay has a layer with role R | ducked (the overlay takes over that role) |
+| role R, and the overlay has no layer with role R | plays unchanged |
+
+### Music and effects
+
+- If the overlay has music, the underlying music fades out and pauses, then resumes where it left
+  off when the overlay ends. If the overlay has no music, the underlying music continues.
+- The effects pad shows the overlay's effects first, then the scene's.
+
+### Rules
+
+- One overlay at a time (v1). Triggering another replaces it.
+- Changing the base scene during an overlay crossfades the base underneath, and the overlay stays.
+
+### Example: Combat overlay on Wilderness
+
+| Layer | Wilderness | Combat overlay | Result |
+|---|---|---|---|
+| 🎵 Peaceful forest | music | 🎵 Battle drums | forest pauses, drums fade in |
+| 🌲 Birds | background, 80% | (no background) | unchanged, 80% |
+| 🌲 Wind | background, 50% | (no background) | unchanged, 50% |
+| 🌲 Stream | supporting, 40% | ⚔️ Goblin chatter, supporting | stream ducked to 30% × 40% = 12% |
+| ⚔️ Battle clash | — | foreground, 80% | fades in |
 
 ## UI
 
@@ -65,18 +95,35 @@ One "Combat" overlay then works in a forest, a cave or a city.
 "scenes": [
   {
     "id": "scn-1",
-    "name": "Goblin ambush",
+    "kind": "scene",
+    "name": "Wilderness",
     "group": "Wilderness",
-    "hotkey": "2",
+    "hotkey": "1",
+    "music":   { "tracks": ["snd-peaceful-forest"], "shuffle": false },
+    "ambience": [
+      { "sound": "snd-birds",  "volume": 0.8, "role": "background" },
+      { "sound": "snd-wind",   "volume": 0.5, "role": "background" },
+      { "sound": "snd-stream", "volume": 0.4, "role": "supporting" }
+    ],
+    "effects": ["snd-twig", "snd-arrow"],
+    "transitionMs": 2500
+  },
+  {
+    "id": "scn-2",
+    "kind": "overlay",
+    "name": "Combat",
+    "hotkey": "F1",
+    "duckLevel": 0.3,
     "music":   { "tracks": ["snd-battle-drums"], "shuffle": false },
     "ambience": [
-      { "sound": "snd-birds",  "volume": 0.2 },
-      { "sound": "snd-wind",   "volume": 0.3 },
-      { "sound": "snd-clash",  "volume": 0.8 },
-      { "sound": "snd-goblins","volume": 0.6 }
+      { "sound": "snd-clash",   "volume": 0.8, "role": "foreground" },
+      { "sound": "snd-goblins", "volume": 0.6, "role": "supporting" }
     ],
-    "effects": ["snd-screech", "snd-sword", "snd-arrow"],
-    "transitionMs": 2500
+    "effects": ["snd-screech", "snd-sword"],
+    "transitionMs": 1500
   }
 ]
 ```
+
+- `kind`: `scene` or `overlay`. `duckLevel` applies only to overlays.
+- `role`: optional; one of `foreground`, `background`, `supporting`.
