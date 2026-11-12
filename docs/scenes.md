@@ -45,8 +45,16 @@ covering it is disabled. Music is never ducked.
 ### Ambience and ducking
 
 Every enabled scene **ducks** the ambience of the enabled scenes below it to its `duckLevel`
-(default **30%**: a layer plays at 30% of its volume). Ducking multiplies: a layer with two
-ducking scenes above it plays at 0.3 × 0.3 = 9%.
+(default **30%**: a layer plays at 30% of its volume). Ducking multiplies, once per enabled
+scene above that ducks the layer:
+
+| Stream (40%) with… | Effective volume |
+|---|---|
+| nothing above | 40% |
+| 1 scene above | 40% × 30% = 12% |
+| 2 scenes above | 40% × 30% × 30% = 3.6% |
+
+Each scene uses its own `duckLevel`, so a scene with `duckLevel` 0.5 above one with 0.3 gives 40% × 0.3 × 0.5 = 6%.
 
 **Roles** let a layer escape ducking. Each ambience layer can have a role: `foreground`,
 `background` or `supporting`. For each enabled scene above a layer:
