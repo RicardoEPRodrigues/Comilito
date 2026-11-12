@@ -54,9 +54,13 @@ transferred. Avoid having the same project open on two devices at the same time.
       "fadeInMs": 2000,
       "fadeOutMs": 2000
     }
-  ]
+  ],
+  "scenes": [],
+  "backups": { "intervalMinutes": 30, "keep": 1, "includeAudio": false }
 }
 ```
+
+- `scenes`: see [scenes.md](scenes.md).
 
 - `formatVersion`: bumped on breaking changes. Older versions must still load (migrated on load).
 - `path`: relative to the project folder.
@@ -86,6 +90,17 @@ After import (or whenever a project is opened), any sound whose file is missing 
 
 Relinked files are **copied** into the project's `audio/` folder, so the project becomes
 self-contained again.
+
+## Backups
+
+See [decision 0007](decisions/0007-backups.md). Backups are `.comilito` zips written to
+`~/Documents/Comilito/Backups/<Project name>/`:
+
+- every 30 minutes while there are changes, and when the project is closed
+- the newest 1 is kept (configurable); the new backup is written before the oldest is deleted
+- audio is not included by default (configurable)
+
+Removed sounds have their audio moved to the system trash, not deleted.
 
 ## Hashing
 

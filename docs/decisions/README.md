@@ -13,6 +13,8 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0004](0004-save-format.md) | `.comilito` zip bundle with optional audio and relative paths | Superseded by 0006 | 2026-11-12 |
 | [0005](0005-storage-location-and-hashing.md) | Default storage in Documents, zip as the only format, lazy hashing | Partly superseded by 0006 | 2026-11-12 |
 | [0006](0006-project-folders.md) | A project is a folder; zip is only for export/import | Accepted | 2026-11-12 |
+| [0007](0007-backups.md) | Automatic backups using the export zip | Accepted | 2026-11-12 |
+| [0008](0008-scenes.md) | Scenes: saved mixes with smart crossfades | Proposed | 2026-11-12 |
 
 ## Template
 
