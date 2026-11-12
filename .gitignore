@@ -1,0 +1,21 @@
+# Rust / Tauri
+target/
+src-tauri/gen/
+
+# Node / frontend
+node_modules/
+dist/
+build/
+.svelte-kit/
+
+# Editors / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local test data
+*.comilito
+/test-audio/
