@@ -1,6 +1,6 @@
 # 0010. Scene stack instead of a single overlay
 
-- Status: Accepted
+- Status: Accepted, amended by [0011](0011-stack-ui-and-presets.md) (controls, duck level, persistence)
 - Date: 2026-11-12
 - Supersedes: [0009](0009-overlay-scenes-and-roles.md)
 

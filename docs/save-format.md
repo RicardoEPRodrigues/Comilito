@@ -56,11 +56,13 @@ transferred. Avoid having the same project open on two devices at the same time.
     }
   ],
   "scenes": [],
+  "stack": [],
+  "stackPresets": [],
   "backups": { "intervalMinutes": 30, "keep": 1, "includeAudio": false }
 }
 ```
 
-- `scenes`: see [scenes.md](scenes.md).
+- `scenes`, `stack`, `stackPresets`: see [scenes.md](scenes.md).
 
 - `formatVersion`: bumped on breaking changes. Older versions must still load (migrated on load).
 - `path`: relative to the project folder.

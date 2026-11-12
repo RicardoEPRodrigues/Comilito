@@ -16,7 +16,8 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0007](0007-backups.md) | Automatic backups using the export zip | Accepted | 2026-11-12 |
 | [0008](0008-scenes.md) | Scenes: saved mixes with smart crossfades | Accepted | 2026-11-12 |
 | [0009](0009-overlay-scenes-and-roles.md) | Overlay scenes with layer roles | Superseded by 0010 | 2026-11-12 |
-| [0010](0010-scene-stack.md) | Scene stack instead of a single overlay | Accepted | 2026-11-12 |
+| [0010](0010-scene-stack.md) | Scene stack instead of a single overlay | Amended by 0011 | 2026-11-12 |
+| [0011](0011-stack-ui-and-presets.md) | Saved stack, presets, drag-and-drop stack UI | Accepted | 2026-11-12 |
 
 ## Template
 
