@@ -223,6 +223,7 @@ or preset load it's the top scene's.
 
 - `music`: `null` when the scene has no music, which leaves lower music playing.
 - `duckLevel`: the volume this scene leaves the ambience below it at (0.3 = 30%; 1 = no ducking; 0 = silence).
+  Optional: if missing, the project default is used (see [preferences.md](preferences.md)).
 - `role`: optional; one of `foreground`, `background`, `supporting`.
 - `stack`: ordered **bottom to top**. Each entry has its own `id`, so a scene can appear twice.
   It's saved automatically (debounced) whenever it changes.

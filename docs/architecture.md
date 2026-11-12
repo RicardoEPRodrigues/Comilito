@@ -56,6 +56,8 @@ so they start instantly.
 | `list_projects()` / `create_project(name)` / `open_project(folder)` | Project folders under `~/Documents/Comilito/` |
 | `export_project(path, include_audio)` / `import_project(path)` | `.comilito` zip for moving projects |
 | `relink_missing(folder)` / `relink_sound(id, path)` | Fix missing audio (files are copied into the project) |
+| `get_preferences()` / `set_preferences(p)` | App preferences ([preferences.md](preferences.md)) |
+| `set_project_defaults(d)` | Project-level default levels |
 
 Events from Rust to UI: `playback-state-changed`, `project-changed`, `missing-files`,
 `hashing-progress`, `project-changed-on-disk` (for example, updated by a sync tool).
