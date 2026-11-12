@@ -1,26 +1,30 @@
 # Save format
 
-> Status: draft. See [decision 0004](decisions/0004-save-format.md).
+> Status: draft. See decisions [0005](decisions/0005-storage-location-and-hashing.md) and
+> [0006](decisions/0006-project-folders.md).
 
-## The `.comilito` bundle
+## Projects are folders
 
-A `.comilito` file is a **zip archive**. Rename it to `.zip` and you can open it with any archive tool.
+Each project is a self-contained folder under `~/Documents/Comilito/` (the OS Documents folder on Windows):
 
 ```
-my-campaign.comilito
-├── comilito.json        # the project config (always present)
-└── audio/               # only when exported "with audio"
-    ├── music/
-    ├── ambience/
-    └── effects/
+~/Documents/Comilito/
+└── Curse of Strahd/
+    ├── comilito.json
+    └── audio/
+        ├── music/
+        ├── ambience/
+        └── effects/
 ```
 
-Export offers one choice: **include audio files** (on/off).
+- Adding a sound **copies** the file into the project's `audio/<category>/` folder.
+- All paths in `comilito.json` are relative to the project folder.
+- Comilito lists projects by scanning `~/Documents/Comilito/` for folders containing `comilito.json`.
+- `comilito.json` is written atomically (temporary file, then rename) so that sync tools never
+  see a half-written file.
 
-- **On:** every referenced file is copied into `audio/`, and paths in `comilito.json` point there.
-  The bundle is self-contained.
-- **Off:** only `comilito.json` is stored. Paths stay relative to where the original project
-  lived, and each sound keeps its file name, size and hash so it can be found again.
+To sync between devices, put the project folders in a synced location. Only changed files are
+transferred. Avoid having the same project open on two devices at the same time.
 
 ## `comilito.json` (draft)
 
@@ -41,8 +45,8 @@ Export offers one choice: **include audio files** (on/off).
       "name": "Castle Ravenloft",
       "file": {
         "path": "audio/music/castle-ravenloft.ogg",
-        "fileName": "castle-ravenloft.ogg",
         "size": 4821330,
+        "modified": "2026-11-12T15:04:00Z",
         "sha256": "9f2c..."
       },
       "volume": 1.0,
@@ -54,31 +58,40 @@ Export offers one choice: **include audio files** (on/off).
 }
 ```
 
-- `formatVersion` — bumped on breaking changes. Older versions must still load (migrated on load).
-- `path` — **relative** to the folder holding the config (or to the bundle root). Absolute paths
-  are only a fallback for files on a different drive.
-- `fileName`, `size`, `sha256` — used to find missing files again.
+- `formatVersion`: bumped on breaking changes. Older versions must still load (migrated on load).
+- `path`: relative to the project folder.
+- `size`, `modified`, `sha256`: used to find missing files. `sha256` may be absent until hashing finishes.
 
-## Importing and missing files
+## Export and import: the `.comilito` zip
 
-On import, Comilito resolves each sound's file in this order:
+To move a project to a computer without a synced folder, export it as a `.comilito` file. This is
+a zip of the project folder with the same layout. Export offers one choice:
 
-1. Inside the bundle (`audio/…`), if present.
-2. The relative `path`, starting from the bundle's folder.
-3. The absolute path, if one was stored.
+- **Include audio:** the whole folder is zipped. Audio is stored without compression, since
+  mp3/ogg/flac are already compressed.
+- **Without audio:** only `comilito.json` is zipped.
 
-Any file still missing goes into a **"Missing audio" dialog**, where the user can:
+Import unpacks the zip into a new folder under `~/Documents/Comilito/` (renamed if that name
+already exists). The zip can then be deleted, so nothing is stored twice.
 
-- **Pick a folder:** Comilito searches it recursively for files matching `fileName`. If several
-  match, `size` and then `sha256` break the tie. One folder can fix many sounds at once.
+### Missing files
+
+After import (or whenever a project is opened), any sound whose file is missing is listed in a
+**"Missing audio" dialog**. The user can:
+
+- **Pick a folder:** searched recursively for files with the same name. If several match, `size`
+  and then `sha256` break the tie. One folder can fix many sounds at once.
 - **Locate a single file:** a file picker for that one sound.
-- **Skip:** the sound stays in the project, marked as missing, and can be fixed later.
+- **Skip:** the sound stays marked as missing and can be fixed later.
 
-Imported bundles with audio are extracted into the app's data folder (or a folder the user
-chooses), so playback never reads straight from the zip.
+Relinked files are **copied** into the project's `audio/` folder, so the project becomes
+self-contained again.
 
-## Open questions
+## Hashing
 
-- Where extracted bundle audio lives by default (app data folder vs. next to the bundle).
-- Whether to also allow saving as a plain `.comilito.json` outside a zip (handy for git or hand-editing).
-- Hashing large libraries is slow: hash lazily or only on export?
+`sha256` is computed lazily on a background thread:
+
+- The app stays usable, and a status indicator shows progress.
+- Results are stored with the file's size and modification time, and recomputed only if the file changes.
+- Quitting during hashing shows a warning. Unfinished work resumes on next launch.
+- An export waits for any hashes it still needs, with progress shown.

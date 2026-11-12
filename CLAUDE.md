@@ -25,7 +25,7 @@ Understanding the code matters more than writing it fast.
   [docs/decisions/0002-audio-in-rust.md](docs/decisions/0002-audio-in-rust.md).
 - The frontend talks to Rust only through Tauri commands and events. Keep the command surface
   small and documented in [docs/architecture.md](docs/architecture.md).
-- File paths in saved configs are **relative** to the config/bundle location wherever possible.
+- A project is a folder (`comilito.json` + `audio/`). File paths in `comilito.json` are **relative** to the project folder.
 - The save format is versioned (`formatVersion`). Any change to it must update
   [docs/save-format.md](docs/save-format.md) and keep older files loadable (or migrate them).
 - Linux is the primary target; don't introduce anything that breaks Windows. Test on Linux first.

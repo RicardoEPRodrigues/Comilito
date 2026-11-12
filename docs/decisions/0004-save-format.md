@@ -1,6 +1,6 @@
 # 0004. `.comilito` zip bundle with optional audio and relative paths
 
-- Status: Accepted
+- Status: Superseded by [0006](0006-project-folders.md) (export options and relinking still apply)
 - Date: 2026-11-12
 
 ## Context

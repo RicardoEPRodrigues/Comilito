@@ -17,7 +17,10 @@ Each category has its own volume, and each sound has its own volume, loop and fa
 
 ## Sharing and saving
 
-A whole setup can be exported as a single `.comilito` bundle and opened on another computer:
+Each project is a plain folder in `~/Documents/Comilito/` with its settings (`comilito.json`)
+and its own audio files. Put those folders in a synced location to use them on several devices.
+
+A project can also be exported as a single `.comilito` file (a zip) and imported elsewhere:
 
 - **With audio included** — one self-contained file, everything works on import.
 - **Without audio** — a small file holding only the configuration. On import, Comilito

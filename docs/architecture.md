@@ -53,11 +53,12 @@ so they start instantly.
 | `set_master_volume(v)` | Master volume |
 | `stop_all()` | Panic button |
 | `add_sounds(category, paths)` / `remove_sound(id)` / `update_sound(id, settings)` | Edit the library |
-| `save_project(path)` / `load_project(path)` | Config file |
-| `export_bundle(path, include_audio)` / `import_bundle(path)` | `.comilito` bundle |
-| `relink_missing(folder)` / `relink_sound(id, path)` | Fix missing audio after import |
+| `list_projects()` / `create_project(name)` / `open_project(folder)` | Project folders under `~/Documents/Comilito/` |
+| `export_project(path, include_audio)` / `import_project(path)` | `.comilito` zip for moving projects |
+| `relink_missing(folder)` / `relink_sound(id, path)` | Fix missing audio (files are copied into the project) |
 
-Events from Rust to UI: `playback-state-changed`, `project-changed`, `missing-files`.
+Events from Rust to UI: `playback-state-changed`, `project-changed`, `missing-files`,
+`hashing-progress`, `project-changed-on-disk` (for example, updated by a sync tool).
 
 ## Source layout (planned)
 
