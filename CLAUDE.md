@@ -56,4 +56,12 @@ it's small, maintained and cross-platform. Prefer the standard library and Tauri
 
 In this project there is a TODO.md where the developer will write things to correct. When asked, look into it and implement the requests therein.
 
-If you find other things left to be done, add them there. You can format the document, but only remove sentences if they are fixed.
+- Do not implement new features without permission.
+- Implement fixes for bugs freely.
+- If you find other things left to be done, add them there.
+- You can format the document, but only remove sentences if they are fixed.
+- Do not remove headers even if they have no content
+
+## Pencil
+
+- When using pencil to generate changes, before creating any code, confirm if the design is correct.
