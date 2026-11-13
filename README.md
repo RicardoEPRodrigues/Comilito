@@ -44,17 +44,38 @@ See [docs/architecture.md](docs/architecture.md) and [docs/decisions/](docs/deci
 
 ## Status
 
-Planning. No code yet.
+Early development: the app skeleton runs, but no audio features yet.
 
 ## Development
 
-> To be filled in once the project is scaffolded.
-
-Prerequisites (planned):
+Prerequisites:
 
 - Rust (via [rustup](https://rustup.rs))
 - Node.js 20+
-- Tauri's [Linux system dependencies](https://tauri.app/start/prerequisites/)
+- Linux system libraries (Debian/Ubuntu/Pop!_OS; other distros: see
+  [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)):
+
+  ```sh
+  sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
+    libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libasound2-dev
+  ```
+
+  `libasound2-dev` (ALSA) is for audio output.
+
+Run:
+
+```sh
+npm install        # once, and after dependencies change
+npm run tauri dev  # starts the app with hot reload for the UI
+```
+
+Other commands:
+
+| Command | What it does |
+|---------|--------------|
+| `npm run check` | Type-check the Svelte/TypeScript code |
+| `npm run tauri build` | Build a release binary and installers into `src-tauri/target/release/` |
+| `cargo test --manifest-path src-tauri/Cargo.toml` | Run the Rust tests |
 
 ## Acknowledgements
 

@@ -19,6 +19,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0010](0010-scene-stack.md) | Scene stack instead of a single overlay | Amended by 0011 | 2026-11-12 |
 | [0011](0011-stack-ui-and-presets.md) | Saved stack, presets, drag-and-drop stack UI | Accepted | 2026-11-12 |
 | [0012](0012-preferences.md) | Preferences window with app and project levels | Accepted | 2026-11-12 |
+| [0013](0013-plain-svelte-not-sveltekit.md) | Plain Svelte with Vite instead of SvelteKit | Accepted | 2026-11-12 |
 
 ## Template
 

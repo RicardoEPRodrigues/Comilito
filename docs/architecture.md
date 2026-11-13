@@ -62,14 +62,24 @@ so they start instantly.
 Events from Rust to UI: `playback-state-changed`, `project-changed`, `missing-files`,
 `hashing-progress`, `project-changed-on-disk` (for example, updated by a sync tool).
 
-## Source layout (planned)
+## Source layout
 
 ```
-src/                 Svelte frontend
-src-tauri/src/
-  main.rs            Tauri setup, command registration
-  audio.rs           kira wrapper: tracks, play/stop/fade
-  project.rs         data model (serde structs)
-  storage.rs         save/load, bundle zip, relinking
+index.html           Webview entry page
+src/                 Svelte frontend (plain Svelte + Vite, see decision 0013)
+  main.ts            Mounts App.svelte
+  App.svelte         Root component
+src-tauri/
+  tauri.conf.json    App name, window, build settings
+  capabilities/      Which Tauri APIs the window may use
+  src/
+    main.rs          Desktop entry point; just calls lib.rs
+    lib.rs           Tauri setup, command registration
+    audio.rs         (planned) kira wrapper: tracks, play/stop/fade
+    project.rs       (planned) data model (serde structs)
+    storage.rs       (planned) save/load, bundle zip, relinking
 docs/
 ```
+
+The Rust code lives in `lib.rs` rather than `main.rs` so that the same code can later be
+built for Android, where Tauri needs it as a library.
