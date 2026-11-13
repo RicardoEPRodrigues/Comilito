@@ -82,7 +82,7 @@
     <h3>Images</h3>
     <ul>
       <li>
-        The app icon, a pale horse in the style of medieval manuscript illumination, is original
+        The app icon, a skeletal pale horse in the style of medieval manuscript illumination, is original
         artwork generated with AI in {@render link("https://pen.dev", "Pencil")}.
       </li>
       <li>Interface symbols are Unicode emoji, drawn by your system's fonts.</li>
