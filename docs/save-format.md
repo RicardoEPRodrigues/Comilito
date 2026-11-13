@@ -98,7 +98,9 @@ On the project:
 - `stackOrigin`: the preset the current stack was loaded from or last saved to, for
   "From … · Modified", Update and Revert.
 
-Library folders aren't stored: they're the subfolders of `audio/<category>/` on disk.
+Library folders aren't stored: they're the subfolders of `audio/<category>/` on disk. Moving a
+folder (dragging it onto another folder or its category in the Library, or *Move to* in its
+menu) moves it on disk within its category and rewrites the `file.path` of every sound inside.
 
 ## Export and import: the `.comilito` zip
 

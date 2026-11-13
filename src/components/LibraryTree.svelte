@@ -1,7 +1,9 @@
 <script lang="ts">
   // Left column of the Library workspace (decision 0018): smart lists, then each category with
   // its folders (real subfolders of audio/<category>/). Drop sounds on a folder to move them
-  // there. The downloads queue sits at the bottom.
+  // there, or drag a folder onto another (or onto its category) to move it inside. The
+  // downloads queue sits at the bottom.
+  import { fitText } from "../lib/fit";
   import {
     AudioLines,
     ChevronDown,
@@ -10,6 +12,7 @@
     FilePlus,
     Folder,
     FolderOpen,
+    FolderInput,
     FolderPlus,
     History,
     Library,
@@ -24,7 +27,7 @@
   } from "@lucide/svelte";
   import type { Component } from "svelte";
   import { api } from "../lib/api";
-  import { addSoundFiles, moveSounds, newFolder } from "../lib/actions";
+  import { addSoundFiles, moveFolder, moveSounds, moveTargets, newFolder } from "../lib/actions";
   import { askText, folderOf, remember, run, ui, type SmartList } from "../lib/store.svelte";
   import { CATEGORIES, type Category } from "../lib/types";
   import { openMenu, type MenuItem } from "./ContextMenu.svelte";
@@ -112,11 +115,27 @@
     if (lib.category === category && lib.folder === folder) lib.folder = null;
   }
 
+  function addFromUrl(category: Category, folder: string) {
+    ui.editing = { kind: "addUrl", target: { category, folder } };
+  }
+
   function folderMenu(category: Category, folder: string): MenuItem[] {
+    const label = CATEGORIES.find((c) => c.id === category)!.label;
+    const targets = moveTargets(category, folder);
     return [
       { label: "Add files here…", icon: FilePlus, action: () => addSoundFiles(category, folder) },
+      { label: "Add from URL here…", icon: Link, action: () => addFromUrl(category, folder) },
       { label: "New folder inside…", icon: FolderPlus, action: () => newFolder(category, folder) },
       { label: "Rename…", icon: Pencil, action: () => renameFolder(category, folder) },
+      {
+        label: "Move to",
+        icon: FolderInput,
+        disabled: targets.length === 0,
+        submenu: targets.map((t) => ({
+          label: t === "" ? `${label} (top level)` : t,
+          action: () => moveFolder(category, folder, t),
+        })),
+      },
       { label: "Show in file manager", icon: FolderOpen, action: () => run(api.openAudioFolder(category, folder)) },
       "separator",
       { label: "Delete (if empty)", icon: Trash2, danger: true, action: () => deleteFolder(category, folder) },
@@ -126,27 +145,46 @@
   function categoryMenu(category: Category): MenuItem[] {
     return [
       { label: "Add files…", icon: FilePlus, action: () => addSoundFiles(category, null) },
+      { label: "Add from URL…", icon: Link, action: () => addFromUrl(category, "") },
       { label: "New folder…", icon: FolderPlus, action: () => newFolder(category) },
       { label: "Show in file manager", icon: FolderOpen, action: () => run(api.openAudioFolder(category, null)) },
     ];
   }
 
-  // Dropping sounds on a folder (or category) moves them there.
+  // Dropping sounds on a folder (or category) moves them there; so does dropping a folder,
+  // within its own category (a folder's sounds can't change category by being dragged).
   let dropTarget = $state<string | null>(null);
-  function dragOver(e: DragEvent, key: string) {
-    if (ui.drag?.kind !== "sound") return;
+  function accepts(category: Category, folder: string): boolean {
+    const d = ui.drag;
+    if (d?.kind === "sound") return true;
+    return d?.kind === "folder" && d.category === category && moveTargets(category, d.folder).includes(folder);
+  }
+  function dragOver(e: DragEvent, category: Category, folder: string) {
+    if (!accepts(category, folder)) return;
     e.preventDefault();
     if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
-    dropTarget = key;
+    dropTarget = `${category}:${folder}`;
+  }
+  function folderDragStart(e: DragEvent, category: Category, folder: string) {
+    ui.drag = { kind: "folder", category, folder };
+    e.dataTransfer?.setData("text/plain", folder);
+    // As for sounds: WebKit refuses a drop unless "move" is allowed.
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = "copyMove";
   }
   async function drop(e: DragEvent, category: Category, folder: string) {
-    if (ui.drag?.kind !== "sound") return;
+    const d = ui.drag;
+    if (!d || !accepts(category, folder)) return;
     e.preventDefault();
-    const dragged = ui.drag.id;
-    // Dragging one of several selected sounds moves the whole selection.
-    const ids = lib.selected.includes(dragged) ? [...lib.selected] : [dragged];
     ui.drag = null;
     dropTarget = null;
+    if (d.kind === "folder") {
+      await moveFolder(category, d.folder, folder);
+      return;
+    }
+    if (d.kind !== "sound") return;
+    const dragged = d.id;
+    // Dragging one of several selected sounds moves the whole selection.
+    const ids = lib.selected.includes(dragged) ? [...lib.selected] : [dragged];
     await moveSounds(ids, category, folder);
   }
 
@@ -157,7 +195,7 @@
 
 <aside>
   <div class="head">
-    <h2 class="display">Library</h2>
+    <h2 class="display" use:fitText>Library</h2>
     <span class="count">{project.sounds.length}</span>
   </div>
   <div class="actions">
@@ -192,7 +230,7 @@
           class:drop={dropTarget === `${c.id}:`}
           onclick={() => selectFolder(c.id, null)}
           oncontextmenu={(e) => openMenu(e, categoryMenu(c.id), c.label)}
-          ondragover={(e) => dragOver(e, `${c.id}:`)}
+          ondragover={(e) => dragOver(e, c.id, "")}
           ondragleave={() => (dropTarget = null)}
           ondrop={(e) => drop(e, c.id, "")}
         >
@@ -212,7 +250,10 @@
               style:padding-left="{1.7 + (parts.length - 1) * 0.9}rem"
               onclick={() => selectFolder(c.id, folder)}
               oncontextmenu={(e) => openMenu(e, folderMenu(c.id, folder), parts[parts.length - 1])}
-              ondragover={(e) => dragOver(e, `${c.id}:${folder}`)}
+              draggable="true"
+              ondragstart={(e) => folderDragStart(e, c.id, folder)}
+              ondragend={() => ((ui.drag = null), (dropTarget = null))}
+              ondragover={(e) => dragOver(e, c.id, folder)}
               ondragleave={() => (dropTarget = null)}
               ondrop={(e) => drop(e, c.id, folder)}
             >

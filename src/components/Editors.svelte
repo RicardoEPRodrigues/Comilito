@@ -17,5 +17,5 @@
 {:else if ui.editing?.kind === "about"}
   <About onclose={close} />
 {:else if ui.editing?.kind === "addUrl" && ui.snapshot?.project}
-  <AddFromUrl onclose={close} prefill={ui.editing.prefill} />
+  <AddFromUrl onclose={close} prefill={ui.editing.prefill} target={ui.editing.target} />
 {/if}

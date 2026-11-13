@@ -31,7 +31,7 @@ export type Editing =
   | { kind: "projectSettings" }
   | { kind: "preferences"; page?: string }
   | { kind: "about" }
-  | { kind: "addUrl"; prefill?: UrlPrefill }
+  | { kind: "addUrl"; prefill?: UrlPrefill; target?: { category: Category; folder: string } }
   | null;
 
 /** "Download again": the URL dialog opens with the original download's settings. */
@@ -61,6 +61,7 @@ export type Drag =
   | { kind: "preset"; id: string }
   | { kind: "entry"; id: string }
   | { kind: "sound"; id: string }
+  | { kind: "folder"; category: Category; folder: string }
   | { kind: "presetEntry"; index: number }
   | null;
 

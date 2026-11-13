@@ -276,6 +276,28 @@ export async function moveSounds(soundIds: string[], category: Category, folder:
   return true;
 }
 
+/** Moves a Library folder (with everything in it) into `parent` ("" = the top of its
+ *  category). The folder keeps its name; Rust refuses a clash or a move into itself. */
+export async function moveFolder(category: Category, folder: string, parent: string) {
+  const name = folder.split("/").pop()!;
+  const to = parent ? `${parent}/${name}` : name;
+  if (to === folder) return;
+  await run(api.renameFolder(category, folder, to));
+  // Keep the moved folder (or a folder inside it) selected at its new place.
+  const lib = ui.library;
+  if (lib.category === category && lib.folder !== null && (lib.folder === folder || lib.folder.startsWith(`${folder}/`))) {
+    lib.folder = to + lib.folder.slice(folder.length);
+  }
+}
+
+/** Where `folder` can move to: the top of its category and every folder that isn't the folder
+ *  itself, inside it, or already its parent. */
+export function moveTargets(category: Category, folder: string): string[] {
+  const parent = folder.split("/").slice(0, -1).join("/");
+  const folders = ui.snapshot?.folders[category] ?? [];
+  return ["", ...folders].filter((f) => f !== parent && f !== folder && !f.startsWith(`${folder}/`));
+}
+
 export async function newFolder(category: Category, parent: string | null = null) {
   const name = await askText("New folder", "Name");
   if (!name) return;

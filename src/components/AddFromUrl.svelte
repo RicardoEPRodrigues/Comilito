@@ -11,7 +11,12 @@
   import TimeInput from "./TimeInput.svelte";
   import ToolsInstall from "./ToolsInstall.svelte";
 
-  let { onclose, prefill }: { onclose: () => void; prefill?: UrlPrefill } = $props();
+  // `target`: the folder right-clicked in the Library ("Add from URL…" there).
+  let {
+    onclose,
+    prefill,
+    target,
+  }: { onclose: () => void; prefill?: UrlPrefill; target?: { category: Category; folder: string } } = $props();
 
   // svelte-ignore state_referenced_locally
   let url = $state(prefill?.url ?? "");
@@ -27,9 +32,9 @@
   let toMs = $state(prefill?.range?.endMs ?? 10 * 60 * 1000);
   let name = $state("");
   // svelte-ignore state_referenced_locally
-  let category = $state<Category>(prefill?.category ?? ui.library.category ?? "ambience");
+  let category = $state<Category>(prefill?.category ?? target?.category ?? ui.library.category ?? "ambience");
   // svelte-ignore state_referenced_locally
-  let folder = $state(prefill?.folder ?? (ui.library.category && ui.library.folder ? ui.library.folder : ""));
+  let folder = $state(prefill?.folder ?? target?.folder ?? (ui.library.category && ui.library.folder ? ui.library.folder : ""));
   let updateAvailable = $state<boolean | null>(null);
 
   onMount(() => {
