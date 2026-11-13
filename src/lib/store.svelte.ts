@@ -17,6 +17,7 @@ export type Editing =
   | { kind: "sound"; id: string }
   | { kind: "projectSettings" }
   | { kind: "preferences" }
+  | { kind: "about" }
   | null;
 
 /** What's being dragged right now. Kept here rather than in the browser's dataTransfer,

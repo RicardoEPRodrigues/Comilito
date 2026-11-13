@@ -53,6 +53,7 @@
       <button onclick={importProject}>Import…</button>
       <button onclick={restoreBackup}>Restore backup…</button>
       <button onclick={() => (ui.editing = { kind: "preferences" })}>Preferences</button>
+      <button onclick={() => (ui.editing = { kind: "about" })}>About</button>
       <button class="icon" onclick={refresh} title="Refresh">⟳</button>
     </div>
     <p class="muted small">Projects folder: {folder}</p>

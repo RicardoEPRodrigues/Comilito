@@ -23,6 +23,8 @@ use tauri::{AppHandle, Emitter, Manager, RunEvent};
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        // Opens web links (About page) in the user's browser instead of inside the app.
+        .plugin(tauri_plugin_opener::init())
         // `setup` runs once the app exists, so we can ask Tauri for OS folders.
         .setup(|app| {
             // Without audio output the app is useless, so refuse to start with a clear message.

@@ -41,6 +41,7 @@
     <button onclick={exportProject}>Export…</button>
     <button onclick={() => (ui.editing = { kind: "projectSettings" })}>Project settings</button>
     <button onclick={() => (ui.editing = { kind: "preferences" })}>Preferences</button>
+    <button onclick={() => (ui.editing = { kind: "about" })}>About</button>
     <button onclick={() => run(api.closeProject())}>Close</button>
   </header>
 

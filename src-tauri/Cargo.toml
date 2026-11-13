@@ -27,6 +27,7 @@ chrono = { version = "0.4.45", default-features = false, features = ["clock", "s
 trash = "5"
 zip = { version = "9", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 sha2 = "0.11"
+tauri-plugin-opener = "2"
 
 # Smaller, faster release builds: https://v2.tauri.app/concept/size/
 [profile.release]
