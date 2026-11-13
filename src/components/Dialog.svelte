@@ -43,7 +43,7 @@
 {#if ui.question}
   <div class="backdrop">
     <div class="dialog" role="dialog" aria-modal="true" aria-label={ui.question.title}>
-      <h3>{ui.question.title}</h3>
+      <h3 class="display">{ui.question.title}</h3>
       {#if ui.question.message}
         <p>{ui.question.message}</p>
       {/if}
@@ -68,34 +68,44 @@
   .backdrop {
     position: fixed;
     inset: 0;
-    background: rgb(0 0 0 / 0.4);
+    background: rgb(0 0 0 / 0.5);
     display: grid;
     place-items: center;
     z-index: 100;
   }
   .dialog {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
     box-shadow: var(--shadow);
-    padding: 1.2rem;
-    width: min(26rem, 90vw);
+    padding: 1.4rem;
+    width: min(32rem, 92vw);
     display: flex;
     flex-direction: column;
-    gap: 0.8rem;
+    gap: 0.9rem;
+  }
+  h3 {
+    font-size: 1.7rem;
   }
   p {
     margin: 0;
     white-space: pre-line;
+    line-height: 1.45;
   }
   label {
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
+    gap: 0.35rem;
   }
   .buttons {
     display: flex;
     justify-content: flex-end;
+    flex-wrap: wrap;
     gap: 0.5rem;
+  }
+  .buttons button:first-child:not(.primary) {
+    margin-right: auto;
+    border-color: transparent;
   }
 </style>

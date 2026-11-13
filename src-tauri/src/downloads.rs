@@ -60,6 +60,9 @@ pub struct DownloadRequest {
     pub folder: String,
     pub name: String,
     pub range: Option<TimeRange>,
+    /// "Download again": put the new file into this existing sound instead of adding one.
+    #[serde(default)]
+    pub replace: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -459,17 +462,28 @@ fn finish(app: &AppHandle, id: &str, request: &DownloadRequest, dir: &Path, resu
         };
         let relative = target.strip_prefix(dir).map_err(|e| e.to_string())?.to_path_buf();
         let info = storage::file_info(dir, &relative)?;
-        let mut sound = Sound::new(request.category, request.name.trim().to_string(), info);
-        sound.source = Some(Source {
+        let source = Source {
             url: request.url.clone(),
             title: Some(request.title.clone()),
             site: Some(request.site.clone()),
             downloaded_at: storage::format_time(std::time::SystemTime::now()),
             range: request.range,
-        });
+        };
+        open.folders = storage::list_folders(dir);
+        // "Download again" refills an existing sound (typically one whose file went missing).
+        if let Some(id) = &request.replace
+            && let Some(existing) = open.project.sound_mut(id)
+        {
+            existing.file = info;
+            existing.source = Some(source);
+            open.missing.retain(|m| m != id);
+            open.analysis_failed.retain(|m| m != id);
+            return Ok(Some(id.clone()));
+        }
+        let mut sound = Sound::new(request.category, request.name.trim().to_string(), info);
+        sound.source = Some(source);
         let sound_id = sound.id.clone();
         open.project.sounds.push(sound);
-        open.folders = storage::list_folders(dir);
         Ok(Some(sound_id))
     });
     let cancelled = matches!(&outcome, Err(e) if e == "CANCELLED");

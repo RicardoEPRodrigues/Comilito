@@ -9,12 +9,21 @@ import { invoke } from "@tauri-apps/api/core";
 import type {
   BackupSettings,
   Category,
+  CutOptions,
+  DesktopAppearance,
+  DownloadJob,
+  DownloadRequest,
   Preferences,
+  PresetEntry,
+  Probe,
   ProjectDefaults,
   ProjectSummary,
   Scene,
   Snapshot,
   Sound,
+  Theme,
+  ToolsStatus,
+  WaveformView,
 } from "./types";
 
 export const api = {
@@ -22,6 +31,14 @@ export const api = {
   getState: () => invoke<Snapshot>("get_state"),
   getPreferences: () => invoke<Preferences>("get_preferences"),
   setPreferences: (prefs: Preferences) => invoke<void>("set_preferences", { prefs }),
+
+  // Appearance
+  desktopAppearance: () => invoke<DesktopAppearance>("desktop_appearance"),
+  listUserThemes: () => invoke<Theme[]>("list_user_themes"),
+  saveUserTheme: (theme: Theme) => invoke<void>("save_user_theme", { theme }),
+  deleteUserTheme: (id: string) => invoke<void>("delete_user_theme", { id }),
+  importTheme: (path: string) => invoke<Theme>("import_theme", { path }),
+  exportTheme: (theme: Theme, dest: string) => invoke<void>("export_theme", { theme, dest }),
 
   // Projects
   listProjects: () => invoke<ProjectSummary[]>("list_projects"),
@@ -54,16 +71,40 @@ export const api = {
   // Sounds
   addSounds: (category: Category, paths: string[], folder: string | null = null) =>
     invoke<void>("add_sounds", { category, folder, paths }),
-  updateSound: (sound: Sound) => invoke<void>("update_sounds", { sounds: [sound] }),
   updateSounds: (sounds: Sound[]) => invoke<void>("update_sounds", { sounds }),
   removeSound: (id: string, permanently: boolean) =>
     invoke<void>("remove_sound", { id, permanently }),
   previewSound: (id: string) => invoke<void>("preview_sound", { id }),
+  previewRange: (id: string, startMs: number, endMs: number, seam: boolean) =>
+    invoke<void>("preview_range", { id, startMs: Math.round(startMs), endMs: Math.round(endMs), seam }),
+  stopPreview: () => invoke<void>("stop_preview"),
   toggleEffect: (id: string) => invoke<void>("toggle_effect", { id }),
-  setSoundCategory: (id: string, category: Category) =>
-    invoke<void>("move_sounds", { ids: [id], category, folder: "" }),
   moveSounds: (ids: string[], category: Category, folder: string) =>
     invoke<void>("move_sounds", { ids, category, folder }),
+  soundWaveform: (id: string, buckets: number, startMs?: number, endMs?: number) =>
+    invoke<WaveformView>("sound_waveform", {
+      id,
+      buckets: Math.max(1, Math.round(buckets)),
+      startMs: startMs === undefined ? null : Math.round(startMs),
+      endMs: endMs === undefined ? null : Math.round(endMs),
+    }),
+  cropSound: (id: string, options: CutOptions, overwrite: boolean) =>
+    invoke<string>("crop_sound", {
+      id,
+      options: { ...options, startMs: Math.round(options.startMs), endMs: Math.round(options.endMs) },
+      overwrite,
+    }),
+  revealSound: (id: string) => invoke<void>("reveal_sound", { id }),
+
+  // Library folders
+  createFolder: (category: Category, folder: string) =>
+    invoke<void>("create_folder", { category, folder }),
+  renameFolder: (category: Category, from: string, to: string) =>
+    invoke<void>("rename_folder", { category, from, to }),
+  deleteFolder: (category: Category, folder: string) =>
+    invoke<void>("delete_folder", { category, folder }),
+  openAudioFolder: (category: Category | null, folder: string | null) =>
+    invoke<void>("open_audio_folder", { category, folder }),
 
   // Scenes
   createScene: (name: string, group: string | null) =>
@@ -87,16 +128,37 @@ export const api = {
   stackSetEnabled: (entryId: string, enabled: boolean) =>
     invoke<void>("stack_set_enabled", { entryId, enabled }),
   stackSwitch: (sceneId: string) => invoke<void>("stack_switch", { sceneId }),
+  stackClear: () => invoke<void>("stack_clear"),
   sceneHotkey: (sceneId: string) => invoke<void>("scene_hotkey", { sceneId }),
 
   // Presets
-  presetSave: (name: string) => invoke<void>("preset_save", { name }),
+  presetSave: (name: string, group: string | null) => invoke<string>("preset_save", { name, group }),
+  presetUpdate: (presetId: string) => invoke<void>("preset_update", { presetId }),
+  presetSetEntries: (presetId: string, entries: PresetEntry[]) =>
+    invoke<void>("preset_set_entries", { presetId, entries }),
   presetLoad: (presetId: string) => invoke<void>("preset_load", { presetId }),
   presetInsert: (presetId: string, index: number) =>
     invoke<void>("preset_insert", { presetId, index }),
   presetRename: (presetId: string, name: string) =>
     invoke<void>("preset_rename", { presetId, name }),
+  presetDuplicate: (presetId: string) => invoke<string>("preset_duplicate", { presetId }),
+  presetSetGroup: (presetId: string, group: string | null) =>
+    invoke<void>("preset_set_group", { presetId, group }),
   presetDelete: (presetId: string) => invoke<void>("preset_delete", { presetId }),
+  presetGroupCreate: (name: string) => invoke<void>("preset_group_create", { name }),
+  presetGroupRename: (from: string, to: string) => invoke<void>("preset_group_rename", { from, to }),
+  presetGroupDelete: (name: string) => invoke<void>("preset_group_delete", { name }),
+
+  // Tools and downloads
+  toolsStatus: () => invoke<ToolsStatus>("tools_status"),
+  installTools: () => invoke<ToolsStatus>("install_tools"),
+  toolsUpdateAvailable: () => invoke<boolean | null>("tools_update_available"),
+  removeTools: () => invoke<void>("remove_tools"),
+  probeUrl: (url: string) => invoke<Probe>("probe_url", { url }),
+  startDownload: (request: DownloadRequest) => invoke<string>("start_download", { request }),
+  cancelDownload: (id: string) => invoke<void>("cancel_download", { id }),
+  clearDownloads: () => invoke<void>("clear_downloads"),
+  listDownloads: () => invoke<DownloadJob[]>("list_downloads"),
 
   // Transport
   togglePlay: () => invoke<void>("toggle_play"),

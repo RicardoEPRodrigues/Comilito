@@ -1,63 +1,80 @@
 <script lang="ts">
-  // The main screen for an open project (layout from docs/scenes.md "UI layout"):
-  //   header / library | stack | effects / mixer bar
+  // The main screen for an open project (designs D–G in pencil/comilito.pen):
+  //
+  //   header
+  //   context bar (breadcrumbs, while editing something or in the Library)
+  //   Scenes/Presets | Tapestry or an in-place editor | Effects     ← "tapestry" view
+  //   …or the full-screen Library workspace                        ← "library" view
+  //   Library drawer (tapestry view only)
+  //   mixer bar
+  import { Download, Info, Library, Settings2, SlidersHorizontal, X } from "@lucide/svelte";
   import { api } from "../lib/api";
   import { exportProject, relinkFromFolder } from "../lib/actions";
-  import { ask, askText, run, ui } from "../lib/store.svelte";
-  import ContextMenu from "./ContextMenu.svelte";
+  import { askText, confirmAction, run, showView, ui } from "../lib/store.svelte";
+  import ContextBar from "./ContextBar.svelte";
   import EffectsPad from "./EffectsPad.svelte";
-  import Library from "./Library.svelte";
+  import LeftPanel from "./LeftPanel.svelte";
+  import LibraryDrawer from "./LibraryDrawer.svelte";
+  import LibraryWorkspace from "./LibraryWorkspace.svelte";
   import MixerBar from "./MixerBar.svelte";
-  import StackPanel from "./StackPanel.svelte";
+  import PresetEditor from "./PresetEditor.svelte";
+  import PresetOutline from "./PresetOutline.svelte";
+  import SceneEditor from "./SceneEditor.svelte";
+  import TapestryPanel from "./TapestryPanel.svelte";
 
-  // `$derived` recomputes when what it reads changes. The `!` tells TypeScript the project
-  // exists: App only shows this component when it does.
-  const project = $derived(ui.snapshot!.project!);
-  const missingCount = $derived(ui.snapshot!.missing.length);
+  const snapshot = $derived(ui.snapshot!);
+  const project = $derived(snapshot.project!);
+  const missingCount = $derived(snapshot.missing.length);
+  const running = $derived(ui.downloads.filter((d) => d.status === "running" || d.status === "queued").length);
 
   async function removeMissing() {
-    const answer = await ask({
-      title: "Remove sounds with missing files?",
-      message: `${missingCount} sound(s) will be removed from the library and from every scene.`,
-      choices: [
-        { label: "Cancel", value: "cancel" },
-        { label: "Remove", value: "remove", danger: true, primary: true },
-      ],
-    });
-    if (answer?.choice === "remove") run(api.removeMissingSounds());
+    const ok = await confirmAction(
+      "Remove sounds with missing files?",
+      `${missingCount} sound(s) will be removed from the library and from every scene.`,
+      "Remove",
+      true,
+    );
+    if (ok) run(api.removeMissingSounds());
   }
 
   async function rename() {
     const name = await askText("Rename project", "Name", project.name);
     if (name) run(api.renameProject(name));
   }
+
+  async function closeProject() {
+    if (ui.view === "library") await showView("tapestry");
+    run(api.closeProject());
+  }
 </script>
 
 <div class="workspace">
   <header>
-    <button class="title" onclick={rename} title="Rename project">
-      <h1>{project.name}</h1>
-    </button>
-
-
-    <div class="spacer"></div>
-    {#if ui.snapshot!.analyzingRemaining > 0}
-      <span class="muted" title="Measuring loudness for normalization">
-        Measuring loudness: {ui.snapshot!.analyzingRemaining} left…
-      </span>
-    {:else if ui.snapshot!.hashingRemaining > 0}
-      <span class="muted" title="Fingerprinting audio files to find them again if they go missing">
-        Hashing {ui.snapshot!.hashingRemaining} file{ui.snapshot!.hashingRemaining === 1 ? "" : "s"}…
+    <button class="title display" onclick={rename} title="Rename project">{project.name}</button>
+    <span class="spacer"></span>
+    {#if running > 0}
+      <span class="status">Downloading {running}…</span>
+    {/if}
+    {#if snapshot.analyzingRemaining > 0}
+      <span class="status" title="Measuring loudness for normalization">Measuring loudness · {snapshot.analyzingRemaining} left</span>
+    {:else if snapshot.hashingRemaining > 0}
+      <span class="status" title="Fingerprinting audio files to find them again if they go missing">
+        Fingerprinting · {snapshot.hashingRemaining} left
       </span>
     {/if}
-    <button onclick={exportProject}>Export…</button>
-    <button onclick={() => (ui.editing = { kind: "projectSettings" })}>Project settings</button>
-    <button onclick={() => (ui.editing = { kind: "preferences" })}>Preferences</button>
-    <button onclick={() => (ui.editing = { kind: "about" })}>About</button>
-    <button onclick={() => run(api.closeProject())}>Close</button>
+    <nav>
+      <button class="icon" class:on={ui.view === "library"} title="Library workspace" onclick={() => showView(ui.view === "library" ? "tapestry" : "library")}>
+        <Library size={18} />
+      </button>
+      <button class="icon" title="Export…" onclick={exportProject}><Download size={18} /></button>
+      <button class="icon" title="Project settings" onclick={() => (ui.editing = { kind: "projectSettings" })}><Settings2 size={18} /></button>
+      <button class="icon" title="Preferences" onclick={() => (ui.editing = { kind: "preferences" })}><SlidersHorizontal size={18} /></button>
+      <button class="icon" title="About" onclick={() => (ui.editing = { kind: "about" })}><Info size={18} /></button>
+      <button class="icon" title="Close project" onclick={closeProject}><X size={18} /></button>
+    </nav>
   </header>
 
-  {#if ui.snapshot!.changedOnDisk}
+  {#if snapshot.changedOnDisk}
     <div class="banner">
       <span>comilito.json was changed by another program (a sync tool?).</span>
       <button onclick={() => run(api.reloadProject())}>Reload from disk</button>
@@ -67,24 +84,45 @@
   {#if missingCount > 0}
     <div class="banner">
       <span>
-        {missingCount} sound{missingCount === 1 ? "" : "s"} can't find {missingCount === 1 ? "its" : "their"}
-        audio file. They're marked ⚠ in the Sounds tab.
+        {missingCount} sound{missingCount === 1 ? "" : "s"} can't find {missingCount === 1 ? "its" : "their"} audio
+        file. They're listed under Missing files in the Library.
       </span>
       <button onclick={relinkFromFolder}>Find in a folder…</button>
-      <button onclick={removeMissing}>Remove them</button>
+      <button class="danger" onclick={removeMissing}>Remove them</button>
     </div>
   {/if}
 
-  <main>
-    <Library />
-    <StackPanel />
-    <EffectsPad />
-  </main>
+  {#if ui.focus || ui.view === "library"}
+    <ContextBar />
+  {/if}
+
+  {#if ui.view === "library"}
+    <main class="library">
+      <LibraryWorkspace />
+    </main>
+  {:else}
+    <main>
+      <LeftPanel />
+      <section class="centre">
+        {#if ui.focus?.kind === "scene"}
+          {#key ui.focus.id}<SceneEditor id={ui.focus.id} />{/key}
+        {:else if ui.focus?.kind === "preset"}
+          {#key ui.focus.id}<PresetEditor id={ui.focus.id} />{/key}
+        {:else}
+          <TapestryPanel />
+        {/if}
+      </section>
+      {#if ui.focus?.kind === "preset" || (ui.focus?.kind === "scene" && ui.focus.from)}
+        <PresetOutline />
+      {:else}
+        <EffectsPad />
+      {/if}
+    </main>
+    <LibraryDrawer />
+  {/if}
 
   <MixerBar />
 </div>
-
-<ContextMenu />
 
 <style>
   .workspace {
@@ -95,34 +133,69 @@
   header {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.5rem 0.8rem;
-    border-bottom: 1px solid var(--border);
-    background: var(--panel);
+    gap: 1rem;
+    padding: 0 1rem 0 1.4rem;
+    height: 3.6rem;
+    flex: none;
+    background: var(--header-bg);
+    color: var(--header-text);
   }
   .title {
-    background: none;
     border: none;
     padding: 0;
+    font-size: 1.9rem;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
   }
-  h1 {
-    font-size: 1.1rem;
+  .title:hover:not(:disabled) {
+    background: none;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
   }
   .spacer {
     flex: 1;
   }
+  .status {
+    font-size: 0.78rem;
+    opacity: 0.8;
+  }
+  nav {
+    display: flex;
+    gap: 0.15rem;
+  }
+  nav .on {
+    background: color-mix(in srgb, currentColor 18%, transparent);
+  }
   .banner {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.4rem 0.8rem;
-    background: color-mix(in srgb, var(--warn) 18%, var(--panel));
-    border-bottom: 1px solid var(--border);
+    gap: 0.7rem;
+    padding: 0.45rem 1rem;
+    background: color-mix(in srgb, var(--warn) 18%, var(--bg));
+    border-bottom: 1px solid var(--rule);
+    font-size: 0.85rem;
+  }
+  .banner span {
+    flex: 1;
+  }
+  .banner button {
+    padding: 0.3rem 0.6rem;
   }
   main {
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: minmax(15rem, 20rem) 1fr minmax(12rem, 16rem);
+    grid-template-columns: minmax(15rem, 19rem) 1fr minmax(13rem, 17rem);
+  }
+  main.library {
+    display: flex;
+  }
+  .centre {
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
   }
 </style>

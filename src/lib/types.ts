@@ -1,15 +1,17 @@
 // TypeScript versions of the Rust structs the UI receives (src-tauri/src/project.rs,
-// mix.rs, audio.rs, state.rs). Field names are camelCase because serde renames them.
+// mix.rs, audio.rs, state.rs, prefs.rs, themes.rs, downloads.rs, tools.rs, waveform.rs).
+// Field names are camelCase because serde renames them.
 // If you change a Rust struct, change it here too.
 
 export type Category = "music" | "ambience" | "effects";
 export type Role = "foreground" | "background" | "supporting";
 export type Transport = "stopped" | "playing" | "paused";
+export type StackStatus = "empty" | "saved" | "modified" | "unsaved";
 
-export const CATEGORIES: { id: Category; label: string; icon: string }[] = [
-  { id: "music", label: "Music", icon: "🎵" },
-  { id: "ambience", label: "Ambience", icon: "🌲" },
-  { id: "effects", label: "Effects", icon: "💥" },
+export const CATEGORIES: { id: Category; label: string }[] = [
+  { id: "music", label: "Music" },
+  { id: "ambience", label: "Ambience" },
+  { id: "effects", label: "Effects" },
 ];
 
 export const ROLES: Role[] = ["foreground", "background", "supporting"];
@@ -42,6 +44,19 @@ export interface Normalization {
   targetLufs: number;
 }
 
+export interface TimeRange {
+  startMs: number;
+  endMs: number;
+}
+
+export interface Source {
+  url: string;
+  title?: string;
+  site?: string;
+  downloadedAt: string;
+  range?: TimeRange;
+}
+
 export interface Sound {
   id: string;
   category: Category;
@@ -52,6 +67,10 @@ export interface Sound {
   loop?: boolean;
   fadeInMs?: number;
   fadeOutMs?: number;
+  tags?: string[];
+  favourite?: boolean;
+  source?: Source;
+  lastUsed?: string;
 }
 
 export interface Playlist {
@@ -85,10 +104,16 @@ export interface StackEntry {
   enabled: boolean;
 }
 
+export interface PresetEntry {
+  scene: string;
+  enabled: boolean;
+}
+
 export interface StackPreset {
   id: string;
   name: string;
-  stack: { scene: string; enabled: boolean }[];
+  group?: string;
+  stack: PresetEntry[];
 }
 
 export interface SoundDefaults {
@@ -122,6 +147,8 @@ export interface Project {
   /** Bottom to top. */
   stack: StackEntry[];
   stackPresets: StackPreset[];
+  presetGroups?: string[];
+  stackOrigin?: string;
   defaults: ProjectDefaults;
   backups: BackupSettings;
 }
@@ -149,11 +176,27 @@ export interface Snapshot {
   changedOnDisk: boolean;
   hashingRemaining: number;
   analyzingRemaining: number;
+  folders: PerCategory<string[]>;
+  stackStatus: StackStatus;
+  presetGroups: string[];
 }
 
 export interface ProjectSummary {
   name: string;
   path: string;
+}
+
+export interface Appearance {
+  mode: "system" | "fixed";
+  theme: string;
+  lightTheme: string;
+  darkTheme: string;
+  accent: "theme" | "desktop" | "custom";
+  customAccent: string;
+  capitals: boolean;
+  watermark: boolean;
+  rules: boolean;
+  blackletter: boolean;
 }
 
 export interface Preferences {
@@ -164,12 +207,90 @@ export interface Preferences {
     duplicateInStack: "ask" | "move" | "duplicate";
     removeSound: "ask" | "trash";
     unsavedChanges: "ask" | "save" | "discard";
+    replaceUnsavedTapestry: "ask" | "replace";
   };
-  appearance: { theme: "system" | "light" | "dark" };
+  appearance: Appearance;
   newProjectDefaults: {
     masterVolume: number;
     categories: PerCategory<{ volume: number }>;
     defaults: ProjectDefaults;
     backups: BackupSettings;
   };
+}
+
+/** A colour theme (built-in ones live in themes.ts; user ones are saved by Rust). */
+export interface Theme {
+  id: string;
+  name: string;
+  dark: boolean;
+  colors: Record<string, string>;
+  fonts: { display: string; body: string };
+}
+
+export interface DesktopAppearance {
+  accent: string | null;
+  dark: boolean | null;
+}
+
+export interface ToolsStatus {
+  ytDlp: string | null;
+  ffmpeg: boolean;
+  size: number;
+}
+
+export interface InstallProgress {
+  step: string;
+  done: number;
+  total: number;
+}
+
+export interface Probe {
+  kind: "direct" | "page";
+  url: string;
+  title: string;
+  site: string;
+  durationMs: number | null;
+  thumbnail: string | null;
+  size: number | null;
+  quality: string | null;
+  ext: string;
+}
+
+export interface DownloadRequest {
+  url: string;
+  kind: string;
+  title: string;
+  site: string;
+  ext: string;
+  category: Category;
+  folder: string;
+  name: string;
+  range: TimeRange | null;
+  /** "Download again" into this existing sound. */
+  replace?: string | null;
+}
+
+export interface DownloadJob {
+  id: string;
+  name: string;
+  url: string;
+  site: string;
+  status: "queued" | "running" | "done" | "failed" | "cancelled";
+  progress: number;
+  message: string | null;
+  soundId: string | null;
+}
+
+export interface WaveformView {
+  durationMs: number;
+  startMs: number;
+  endMs: number;
+  peaks: number[];
+}
+
+export interface CutOptions {
+  startMs: number;
+  endMs: number;
+  fadeEdges: boolean;
+  exact: boolean;
 }
