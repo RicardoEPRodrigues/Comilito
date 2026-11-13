@@ -66,3 +66,16 @@ Proposed (see screens D, D2 and F in `pencil/comilito.pen`):
   - name and group fields
   - buttons: *Cancel* / *Replace without saving* / *Save and load*
   - "Don't ask again", controlled by a Behaviour preference (ask / always replace)
+- **The tapestry remembers its origin.** When it was loaded from a preset, the header shows
+  "From Forest Ambush", plus "Modified" once it differs from that preset. A tapestry that wasn't
+  loaded from a preset and doesn't match one shows "Not saved in a preset".
+- **The Tapestry "⋯" menu** replaces the "Save as preset" button:
+  - **Update "Forest Ambush"** (Ctrl+S, only when loaded from a preset and modified)
+  - **Save as new preset…** (Ctrl+Shift+S)
+  - **Revert to "Forest Ambush"**
+  - **Clear tapestry…**
+- **The save-before-replace dialog** offers *Update "Forest Ambush"* (default, when there's an
+  origin) or *Save as a new preset* (name and group), then *Cancel* / *Replace without saving* /
+  *Save and load*.
+- **Scenes in the Scenes tab use the same card style as presets:** a border, the name, a meta
+  line (for example "Music · 3 tracks") and a "⋯" menu, plus the in-tapestry dot and hotkey.
