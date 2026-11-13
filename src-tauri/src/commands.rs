@@ -569,6 +569,217 @@ pub fn move_sounds(
     Ok(())
 }
 
+// ---- Waveforms, range previews and cropping (decision 0020) ---------------------------------
+
+/// Plays part of a sound (crop editor). `seam` plays across the loop point.
+#[tauri::command]
+pub fn preview_range(
+    id: String,
+    start_ms: u64,
+    end_ms: u64,
+    seam: bool,
+    app: AppHandle,
+    state: AppStateRef,
+) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    let state_ref = &mut *s;
+    let open = state_ref.open.as_ref().ok_or("no project is open")?;
+    let sound = open.project.sound(&id).ok_or("that sound no longer exists")?;
+    state_ref.engine.preview_range(&open.project, &open.dir, sound, start_ms, end_ms, seam)?;
+    emit_state(&app, &s, Vec::new());
+    Ok(())
+}
+
+#[tauri::command]
+pub fn stop_preview(app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    s.engine.stop_preview();
+    emit_state(&app, &s, Vec::new());
+    Ok(())
+}
+
+/// Waveform peaks of a sound between two times, shrunk to `buckets` values.
+/// `async`: decoding a long file takes a while, so Tauri runs this off the main thread,
+/// and the state is only locked briefly before and after.
+#[tauri::command(async)]
+pub fn sound_waveform(
+    id: String,
+    start_ms: Option<u64>,
+    end_ms: Option<u64>,
+    buckets: usize,
+    state: AppStateRef,
+) -> Result<crate::waveform::WaveformView, String> {
+    let (path, key, cached) = {
+        let s = lock(&state)?;
+        let open = s.open_ref()?;
+        let sound = open.project.sound(&id).ok_or("that sound no longer exists")?;
+        let path = storage::absolute_audio_path(&open.dir, &sound.file);
+        let key = format!("{}|{}", path.display(), sound.file.modified);
+        let cached = s.waveforms.iter().find(|(k, _)| *k == key).map(|(_, p)| p.clone());
+        (path, key, cached)
+    };
+    let peaks = match cached {
+        Some(p) => p,
+        None => {
+            let computed = std::sync::Arc::new(crate::waveform::compute(&path)?);
+            let mut s = lock(&state)?;
+            s.waveforms.push((key, computed.clone()));
+            // Keep only the few most recent: each is a few MB for long files.
+            if s.waveforms.len() > 6 {
+                s.waveforms.remove(0);
+            }
+            computed
+        }
+    };
+    Ok(peaks.view(start_ms.unwrap_or(0), end_ms.unwrap_or(u64::MAX), buckets))
+}
+
+/// Crops a sound with ffmpeg, saving a copy (default) or overwriting the original, whose
+/// file then goes to the system trash. Returns the id of the cropped sound.
+#[tauri::command(async)]
+pub fn crop_sound(
+    id: String,
+    options: crate::crop::CutOptions,
+    overwrite: bool,
+    app: AppHandle,
+    state: AppStateRef,
+) -> Result<String, String> {
+    let (ffmpeg, input, sound) = {
+        let s = lock(&state)?;
+        let open = s.open_ref()?;
+        let sound = open.project.sound(&id).ok_or("that sound no longer exists")?.clone();
+        let ffmpeg = crate::tools::ffmpeg_path(&s.tools_dir).ok_or("TOOLS_MISSING")?;
+        (ffmpeg, storage::absolute_audio_path(&open.dir, &sound.file), sound)
+    };
+    let folder = input.parent().ok_or("the sound has no folder")?.to_path_buf();
+    let stem = input.file_stem().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    let ext = input.extension().map(|e| e.to_string_lossy().into_owned()).unwrap_or_default();
+    // Hidden name, so the folder watcher never mistakes the half-written file for a new sound.
+    let tmp = folder.join(format!(".{stem}.crop-tmp.{ext}"));
+    if let Err(e) = crate::crop::cut(&ffmpeg, &input, &tmp, options) {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(e);
+    }
+
+    let mut s = lock(&state)?;
+    s.engine.stop_preview();
+    s.engine.clear_cache();
+    s.waveforms.clear();
+    let open = s.open_mut()?;
+    let result_id = if overwrite {
+        trash::delete(&input).map_err(|e| format!("could not move the original to the trash: {e}"))?;
+        std::fs::rename(&tmp, &input).map_err(|e| format!("could not replace the file: {e}"))?;
+        let relative = input.strip_prefix(&open.dir).map_err(|e| e.to_string())?.to_path_buf();
+        let info = storage::file_info(&open.dir, &relative)?;
+        if let Some(existing) = open.project.sound_mut(&id) {
+            existing.file = info;
+        }
+        open.analysis_failed.retain(|m| m != &id);
+        id
+    } else {
+        let target = storage::unique_path(&folder, std::path::Path::new(&format!("{stem} (cropped).{ext}")));
+        std::fs::rename(&tmp, &target).map_err(|e| format!("could not save the cropped file: {e}"))?;
+        let relative = target.strip_prefix(&open.dir).map_err(|e| e.to_string())?.to_path_buf();
+        let info = storage::file_info(&open.dir, &relative)?;
+        let mut copy = sound.clone();
+        copy.id = new_id("snd");
+        copy.name = format!("{} (cropped)", sound.name);
+        copy.file = info;
+        copy.last_used = None;
+        let new_id = copy.id.clone();
+        let index = open.project.sounds.iter().position(|x| x.id == id).map_or(open.project.sounds.len(), |i| i + 1);
+        open.project.sounds.insert(index, copy);
+        new_id
+    };
+    let problems = s.project_changed(Duration::from_millis(300));
+    emit_state(&app, &s, problems);
+    Ok(result_id)
+}
+
+// ---- Tools and downloads (decision 0019) ----------------------------------------------------
+
+#[tauri::command(async)]
+pub fn tools_status(state: AppStateRef) -> Result<crate::tools::ToolsStatus, String> {
+    let dir = lock(&state)?.tools_dir.clone();
+    Ok(crate::tools::status(&dir))
+}
+
+/// Downloads (or updates) yt-dlp and ffmpeg, reporting `tools-progress` events.
+#[tauri::command(async)]
+pub fn install_tools(app: AppHandle, state: AppStateRef) -> Result<crate::tools::ToolsStatus, String> {
+    let dir = lock(&state)?.tools_dir.clone();
+    let mut report = |p: crate::tools::InstallProgress| {
+        let _ = app.emit("tools-progress", &p);
+    };
+    crate::tools::install_yt_dlp(&dir, &mut report)?;
+    if crate::tools::ffmpeg_path(&dir).is_none() {
+        crate::tools::install_ffmpeg(&dir, &mut report)?;
+    }
+    Ok(crate::tools::status(&dir))
+}
+
+#[tauri::command(async)]
+pub fn tools_update_available(state: AppStateRef) -> Result<Option<bool>, String> {
+    let dir = lock(&state)?.tools_dir.clone();
+    Ok(crate::tools::yt_dlp_update_available(&dir))
+}
+
+#[tauri::command(async)]
+pub fn remove_tools(state: AppStateRef) -> Result<(), String> {
+    let dir = lock(&state)?.tools_dir.clone();
+    crate::tools::remove_all(&dir)
+}
+
+/// Looks at a URL for the "Add audio from a URL" dialog.
+#[tauri::command(async)]
+pub fn probe_url(url: String, state: AppStateRef) -> Result<crate::downloads::Probe, String> {
+    let dir = lock(&state)?.tools_dir.clone();
+    crate::downloads::probe(&dir, &url)
+}
+
+#[tauri::command]
+pub fn start_download(
+    request: crate::downloads::DownloadRequest,
+    app: AppHandle,
+    state: AppStateRef,
+) -> Result<String, String> {
+    if request.name.trim().is_empty() {
+        return Err("the sound needs a name".into());
+    }
+    let mut s = lock(&state)?;
+    let id = crate::downloads::enqueue(&mut s, request)?;
+    crate::downloads::emit_downloads(&app, &s);
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn cancel_download(id: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    use crate::downloads::JobStatus;
+    let mut s = lock(&state)?;
+    if let Some(job) = s.downloads.iter_mut().find(|j| j.id == id)
+        && matches!(job.status, JobStatus::Queued | JobStatus::Running)
+    {
+        job.status = JobStatus::Cancelled;
+    }
+    crate::downloads::emit_downloads(&app, &s);
+    Ok(())
+}
+
+/// Removes finished, failed and cancelled downloads from the list.
+#[tauri::command]
+pub fn clear_downloads(app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    use crate::downloads::JobStatus;
+    let mut s = lock(&state)?;
+    s.downloads.retain(|j| matches!(j.status, JobStatus::Queued | JobStatus::Running));
+    crate::downloads::emit_downloads(&app, &s);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn list_downloads(state: AppStateRef) -> Result<Vec<crate::downloads::DownloadJob>, String> {
+    Ok(lock(&state)?.downloads.clone())
+}
+
 // ---- Library folders ------------------------------------------------------------------------
 
 #[tauri::command]

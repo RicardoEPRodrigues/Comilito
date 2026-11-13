@@ -18,7 +18,7 @@
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use kira::{
@@ -105,6 +105,9 @@ pub struct AudioEngine {
     ambience: HashMap<String, AmbiencePlayer>,
     effects: Vec<(String, StaticSoundHandle)>,
     preview: Option<(String, Stream)>,
+    /// When a range preview should stop by itself (the "loop seam" preview plays across the
+    /// loop point for a few seconds, then stops).
+    preview_stop_at: Option<Instant>,
 
     /// Effects are loaded into memory once so they start instantly. `StaticSoundData` is
     /// reference counted inside, so cloning it to play again doesn't copy the samples.
@@ -142,6 +145,7 @@ impl AudioEngine {
             ambience: HashMap::new(),
             effects: Vec::new(),
             preview: None,
+            preview_stop_at: None,
             effect_cache: HashMap::new(),
         })
     }
@@ -367,6 +371,9 @@ impl AudioEngine {
     pub fn tick(&mut self, project: &Project, dir: &Path, target: &TargetMix) -> Vec<String> {
         let mut errors = Vec::new();
         self.effects.retain(|(_, h)| h.state() != PlaybackState::Stopped);
+        if self.preview_stop_at.is_some_and(|t| Instant::now() >= t) {
+            self.stop_preview();
+        }
         if self
             .preview
             .as_ref()
@@ -525,6 +532,49 @@ impl AudioEngine {
                 let settings = project.resolve_sound(sound);
                 sound_decibels(settings.volume, settings.gain_db)
             });
+        let handle = self
+            .manager
+            .play(data)
+            .map_err(|e| format!("could not play {}: {e}", sound.name))?;
+        self.preview = Some((sound.id.clone(), handle));
+        Ok(())
+    }
+
+    pub fn stop_preview(&mut self) {
+        if let Some((_, mut handle)) = self.preview.take() {
+            handle.stop(tween_of(Duration::from_millis(100)));
+        }
+        self.preview_stop_at = None;
+    }
+
+    /// Plays part of a sound on its own, for the crop editor: the selection from `start_ms`
+    /// to `end_ms`, or with `seam`, the last two seconds of it followed by the first two (as
+    /// a loop would play them), then it stops.
+    pub fn preview_range(
+        &mut self,
+        project: &Project,
+        dir: &Path,
+        sound: &Sound,
+        start_ms: u64,
+        end_ms: u64,
+        seam: bool,
+    ) -> Result<(), String> {
+        self.stop_preview();
+        let start = start_ms as f64 / 1000.0;
+        let end = (end_ms as f64 / 1000.0).max(start + 0.05);
+        let path = storage::absolute_audio_path(dir, &sound.file);
+        let settings = project.resolve_sound(sound);
+        // `slice` makes the sound behave as if the file were only that part.
+        let mut data = StreamingSoundData::from_file(&path)
+            .map_err(|e| format!("could not open {}: {e}", sound.name))?
+            .slice(start..end)
+            .volume(sound_decibels(settings.volume, settings.gain_db));
+        if seam {
+            let length = end - start;
+            let lead = 2.0_f64.min(length / 2.0);
+            data = data.loop_region(..).start_position(length - lead);
+            self.preview_stop_at = Some(Instant::now() + Duration::from_secs_f64(lead * 2.0));
+        }
         let handle = self
             .manager
             .play(data)

@@ -1,7 +1,9 @@
 mod audio;
 mod bundle;
 mod commands;
+mod crop;
 mod desktop;
+mod downloads;
 mod loudness;
 mod mix;
 mod prefs;
@@ -10,10 +12,12 @@ mod sample;
 mod state;
 mod storage;
 mod themes;
+mod tools;
+mod waveform;
 
 use std::{
     path::PathBuf,
-    sync::Mutex,
+    sync::{Mutex, mpsc},
     thread,
     time::{Duration, Instant},
 };
@@ -46,6 +50,9 @@ pub fn run() {
                 .filter(|p| p.is_dir());
 
             // Hands ownership of the state to Tauri, which shares it with every command.
+            let tools_dir = tools::tools_dir(&app.path().app_data_dir()?);
+            // A channel: the sending half wakes the download worker, which owns the other half.
+            let (download_wakeup, download_queue) = mpsc::channel();
             app.manage(Mutex::new(AppState {
                 engine,
                 prefs,
@@ -53,6 +60,10 @@ pub fn run() {
                 default_projects_root,
                 sample_dir,
                 open: None,
+                tools_dir,
+                downloads: Vec::new(),
+                download_wakeup: Some(download_wakeup),
+                waveforms: Vec::new(),
             }));
 
             // `app.handle().clone()` gives the thread its own handle to the app. The thread
@@ -62,6 +73,8 @@ pub fn run() {
             thread::spawn(move || ticker(handle));
             let handle = app.handle().clone();
             thread::spawn(move || desktop::watch(handle));
+            let handle = app.handle().clone();
+            thread::spawn(move || downloads::worker(handle, download_queue));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -98,6 +111,19 @@ pub fn run() {
             commands::update_sounds,
             commands::remove_sound,
             commands::preview_sound,
+            commands::preview_range,
+            commands::stop_preview,
+            commands::sound_waveform,
+            commands::crop_sound,
+            commands::tools_status,
+            commands::install_tools,
+            commands::tools_update_available,
+            commands::remove_tools,
+            commands::probe_url,
+            commands::start_download,
+            commands::cancel_download,
+            commands::clear_downloads,
+            commands::list_downloads,
             commands::toggle_effect,
             commands::move_sounds,
             commands::create_folder,

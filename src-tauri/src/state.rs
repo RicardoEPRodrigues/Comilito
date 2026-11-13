@@ -8,6 +8,7 @@
 use std::{
     collections::{HashMap, HashSet},
     path::{Path, PathBuf},
+    sync::{Arc, mpsc},
     time::{Duration, Instant, SystemTime},
 };
 
@@ -36,6 +37,13 @@ pub struct AppState {
     /// The bundled sample audio, if it was found at startup.
     pub sample_dir: Option<PathBuf>,
     pub open: Option<OpenProject>,
+    /// Where yt-dlp and ffmpeg are installed (tools.rs).
+    pub tools_dir: PathBuf,
+    /// The download queue (downloads.rs), and how to wake its worker thread.
+    pub downloads: Vec<crate::downloads::DownloadJob>,
+    pub download_wakeup: Option<mpsc::Sender<()>>,
+    /// Waveform peaks of recently viewed files, keyed by path and modification time.
+    pub waveforms: Vec<(String, Arc<crate::waveform::Peaks>)>,
 }
 
 pub struct OpenProject {
