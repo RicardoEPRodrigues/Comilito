@@ -26,6 +26,12 @@ pub const PROJECT_FILE: &str = "comilito.json";
 pub struct ProjectSummary {
     pub name: String,
     pub path: PathBuf,
+    /// Counts for the project list; `None` when comilito.json can't be read.
+    pub scenes: Option<usize>,
+    pub presets: Option<usize>,
+    pub sounds: Option<usize>,
+    /// When comilito.json last changed (RFC 3339), shown as "edited 2 days ago".
+    pub modified: Option<String>,
 }
 
 /// Finds every folder directly inside `root` that contains a `comilito.json`.
@@ -42,11 +48,19 @@ pub fn list_projects(root: &Path) -> Vec<ProjectSummary> {
         .map(|entry| entry.path())
         .filter(|path| path.join(PROJECT_FILE).is_file())
         .map(|path| {
+            let modified = project_file_modified(&path).map(|t| DateTime::<Utc>::from(t).to_rfc3339());
             // Show the name stored in the file; fall back to the folder name if it can't be read.
-            let name = load_project(&path)
-                .map(|p| p.name)
-                .unwrap_or_else(|_| folder_name(&path));
-            ProjectSummary { name, path }
+            match load_project(&path) {
+                Ok(p) => ProjectSummary {
+                    name: p.name,
+                    scenes: Some(p.scenes.len()),
+                    presets: Some(p.stack_presets.len()),
+                    sounds: Some(p.sounds.len()),
+                    modified,
+                    path,
+                },
+                Err(_) => ProjectSummary { name: folder_name(&path), scenes: None, presets: None, sounds: None, modified, path },
+            }
         })
         .collect();
 

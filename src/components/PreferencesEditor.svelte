@@ -42,6 +42,28 @@
     if (typeof folder === "string" && draft) draft.projectsFolder = folder;
   }
 
+  /** Moves every project and the backups into another folder, right away (not on Save). */
+  async function moveProjects() {
+    const to = await open({ directory: true, title: "Move the projects to…" });
+    if (typeof to !== "string" || !draft) return;
+    const from = (await run(api.projectsFolder())) ?? "";
+    const ok = await confirmAction(
+      "Move all projects?",
+      `Every project and its backups move from ${from} to ${to}, which becomes the projects ` +
+        "folder. Other files in the old folder stay where they are. An open project is closed and " +
+        "reopened from its new place.",
+      "Move projects",
+    );
+    if (!ok) return;
+    const moved = await run(api.moveProjectsFolder(to));
+    if (moved === undefined) return;
+    notify(`Moved ${moved} folder${moved === 1 ? "" : "s"} to ${to}.`);
+    // Rust saved the new folder (and the recent list); keep both copies in step.
+    const prefs = await api.getPreferences();
+    draft.projectsFolder = prefs.projectsFolder;
+    if (ui.prefs) ui.prefs = { ...ui.prefs, projectsFolder: prefs.projectsFolder, recentProjects: prefs.recentProjects };
+  }
+
   async function save() {
     if (!draft) return;
     const prefs = $state.snapshot(draft);
@@ -129,9 +151,18 @@
             <div class="section-head"><span class="caps">Projects folder</span></div>
             <div class="row">
               <code class="grow">{draft.projectsFolder ?? "Default (Documents/Comilito)"}</code>
-              <button onclick={chooseFolder}>Choose…</button>
+              <button onclick={moveProjects} title="Move every project and the backups to another folder">Move to…</button>
+              <button onclick={chooseFolder} title="Look for projects in another folder, without moving any">Choose…</button>
               {#if draft.projectsFolder}<button onclick={() => (draft!.projectsFolder = null)}>Use default</button>{/if}
             </div>
+            <p class="muted small">
+              <strong>Move to…</strong> moves your projects and backups there. <strong>Choose…</strong>
+              only changes where Comilito looks (for example a folder you synced from another computer).
+            </p>
+            <label class="switch">
+              <input type="checkbox" bind:checked={draft.openLastProject} />
+              <span>Open the last project at start</span>
+            </label>
           </section>
           <section>
             <div class="section-head"><span class="caps">Download tools</span><span class="hint">yt-dlp and ffmpeg, for downloads and cropping</span></div>
@@ -283,5 +314,9 @@
   code {
     font-size: 0.82rem;
     user-select: text;
+  }
+  .small {
+    font-size: 0.78rem;
+    margin: 0.4rem 0 0.6rem;
   }
 </style>

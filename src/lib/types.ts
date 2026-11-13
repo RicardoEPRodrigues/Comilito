@@ -186,6 +186,12 @@ export interface Snapshot {
 export interface ProjectSummary {
   name: string;
   path: string;
+  /** Null when the project file can't be read. */
+  scenes: number | null;
+  presets: number | null;
+  sounds: number | null;
+  /** When comilito.json last changed (ISO 8601). */
+  modified: string | null;
 }
 
 export interface Appearance {
@@ -204,6 +210,9 @@ export interface Appearance {
 export interface Preferences {
   formatVersion: number;
   projectsFolder: string | null;
+  openLastProject: boolean;
+  /** Most recent first. Kept by Rust; changes sent from here are ignored. */
+  recentProjects: string[];
   playback: { pauseFadeMs: number; stopFadeMs: number };
   behaviour: {
     duplicateInStack: "ask" | "move" | "duplicate";

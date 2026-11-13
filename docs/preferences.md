@@ -58,7 +58,8 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 
 | Setting | Default | Level |
 |---|---|---|
-| Projects folder | `~/Documents/Comilito` | this computer |
+| Projects folder | `~/Documents/Comilito`. *Move to…* moves every project and the backups to another folder; *Choose…* only changes where Comilito looks (decision 0023) | this computer |
+| Open the last project at start | off (also a switch on the home screen) | this computer |
 | Backup interval | 30 min | default for new projects |
 | Backups to keep | 1 | default for new projects |
 | Include audio in backups | off | default for new projects |
@@ -92,6 +93,8 @@ App `preferences.json`:
 {
   "formatVersion": 1,
   "projectsFolder": "~/Documents/Comilito",
+  "openLastProject": false,
+  "recentProjects": ["/home/me/Documents/Comilito/Curse of Strahd"],
   "playback": { "outputDevice": null, "pauseFadeMs": 300, "stopFadeMs": 1000, "startPaused": true },
   "behaviour": { "duplicateInStack": "ask", "removeSound": "ask", "unsavedChanges": "ask" },
   "appearance": { "theme": "system" },

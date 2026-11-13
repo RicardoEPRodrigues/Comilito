@@ -9,6 +9,7 @@ mod loudness;
 mod mix;
 mod prefs;
 mod project;
+mod relocate;
 mod sample;
 mod state;
 mod storage;
@@ -93,6 +94,9 @@ pub fn run() {
             commands::export_theme,
             commands::list_projects,
             commands::projects_folder,
+            commands::duplicate_project,
+            commands::show_projects_folder,
+            commands::move_projects_folder,
             commands::create_project,
             commands::open_project,
             commands::close_project,

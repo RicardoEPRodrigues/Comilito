@@ -76,8 +76,10 @@ pub fn get_preferences(state: AppStateRef) -> Result<Preferences, String> {
 }
 
 #[tauri::command]
-pub fn set_preferences(prefs: Preferences, state: AppStateRef) -> Result<(), String> {
+pub fn set_preferences(mut prefs: Preferences, state: AppStateRef) -> Result<(), String> {
     let mut s = lock(&state)?;
+    // Rust keeps the recent list (see Preferences::recent_projects).
+    prefs.recent_projects = std::mem::take(&mut s.prefs.recent_projects);
     s.prefs = prefs;
     s.save_prefs()
 }
@@ -173,6 +175,67 @@ pub fn close_project(app: AppHandle, state: AppStateRef) -> Result<(), String> {
     s.close_project()?;
     emit_state(&app, &s, Vec::new());
     Ok(())
+}
+
+/// Opens the projects folder in the file manager, or with `project`, shows that project's
+/// folder selected in it. Only project folders are accepted, so this can't open anything else.
+#[tauri::command]
+pub fn show_projects_folder(project: Option<PathBuf>, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let root = lock(&state)?.projects_root();
+    let result = match project {
+        Some(dir) if dir.join(storage::PROJECT_FILE).is_file() => app.opener().reveal_item_in_dir(&dir),
+        Some(dir) => return Err(format!("{} is not a Comilito project", dir.display())),
+        None => {
+            std::fs::create_dir_all(&root).map_err(|e| format!("could not create {}: {e}", root.display()))?;
+            app.opener().open_path(root.to_string_lossy(), None::<&str>)
+        }
+    };
+    result.map_err(|e| format!("could not open the file manager: {e}"))
+}
+
+/// Makes a copy of a project folder, named "<name> (copy)", next to it. Returns the new folder.
+#[tauri::command]
+pub fn duplicate_project(path: PathBuf, state: AppStateRef) -> Result<PathBuf, String> {
+    let mut s = lock(&state)?;
+    // Copy what's on screen, not what was last saved.
+    if s.open.as_ref().is_some_and(|o| o.dir == path) {
+        s.save_if_dirty()?;
+    }
+    let copy = crate::relocate::duplicate_project(&path)?;
+    crate::logging::info(&format!("Duplicated {} as {}", path.display(), copy.display()));
+    Ok(copy)
+}
+
+/// Moves every project and the backups into another folder and makes it the projects folder
+/// (Preferences › Projects). An open project is closed first and reopened from its new place.
+/// Returns how many folders moved.
+#[tauri::command]
+pub fn move_projects_folder(to: PathBuf, app: AppHandle, state: AppStateRef) -> Result<usize, String> {
+    let mut s = lock(&state)?;
+    let from = s.projects_root();
+    let reopen = match &s.open {
+        Some(open) if open.dir.starts_with(&from) => Some(open.dir.strip_prefix(&from).expect("checked").to_path_buf()),
+        _ => None,
+    };
+    if reopen.is_some() {
+        s.close_project()?;
+    }
+    let result = crate::relocate::move_projects(&from, &to);
+    if let Ok(moved) = &result {
+        crate::logging::info(&format!("Moved {moved} project folders from {} to {}", from.display(), to.display()));
+        s.prefs.projects_folder = (to != s.default_projects_root).then(|| to.clone());
+        s.prefs.moved_projects(&from, &to);
+        s.save_prefs()?;
+    }
+    // Reopen it wherever it is now (back where it was if the move failed).
+    if let Some(relative) = reopen {
+        let dir = s.projects_root().join(relative);
+        if let Err(e) = s.open_project(dir) {
+            crate::logging::warn(&format!("could not reopen the project after moving: {e}"));
+        }
+    }
+    emit_state(&app, &s, Vec::new());
+    result
 }
 
 /// Deletes a project. With `delete_audio`, the whole folder goes to the system trash; without,

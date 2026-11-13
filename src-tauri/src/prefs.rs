@@ -11,6 +11,25 @@ use crate::{
 };
 
 const PREFS_FILE: &str = "preferences.json";
+const RECENT_PROJECTS: usize = 20;
+
+impl Preferences {
+    /// Puts `dir` first in the recent projects.
+    pub fn note_opened(&mut self, dir: &Path) {
+        self.recent_projects.retain(|p| p != dir);
+        self.recent_projects.insert(0, dir.to_path_buf());
+        self.recent_projects.truncate(RECENT_PROJECTS);
+    }
+
+    /// After project folders moved from `from` to `to`, points the recent list at the new places.
+    pub fn moved_projects(&mut self, from: &Path, to: &Path) {
+        for p in &mut self.recent_projects {
+            if let Ok(rest) = p.strip_prefix(from) {
+                *p = to.join(rest);
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -19,6 +38,14 @@ pub struct Preferences {
     /// Where projects live. `None` means the default, `~/Documents/Comilito`.
     #[serde(default)]
     pub projects_folder: Option<PathBuf>,
+    /// Open the most recently used project when Comilito starts, instead of the project list.
+    #[serde(default)]
+    pub open_last_project: bool,
+    /// Projects opened on this computer, most recent first (at most `RECENT_PROJECTS`).
+    /// Written only by Rust (`AppState::open_project`); `set_preferences` keeps its own copy,
+    /// so a Preferences window opened earlier can't put an old list back.
+    #[serde(default)]
+    pub recent_projects: Vec<PathBuf>,
     #[serde(default)]
     pub playback: Playback,
     #[serde(default)]
@@ -93,6 +120,8 @@ impl Default for Preferences {
         Self {
             format_version: 1,
             projects_folder: None,
+            open_last_project: false,
+            recent_projects: Vec::new(),
             playback: Playback::default(),
             behaviour: Behaviour::default(),
             appearance: Appearance::default(),

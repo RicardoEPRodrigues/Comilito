@@ -163,7 +163,7 @@ impl AppState {
     /// `<projects folder>/Backups` (decision 0007). Outside every project folder, so backups
     /// never end up inside exports.
     pub fn backups_root(&self) -> PathBuf {
-        self.projects_root().join("Backups")
+        self.projects_root().join(crate::relocate::BACKUPS)
     }
 
     /// The open project, or an error for commands that need one.
@@ -198,6 +198,14 @@ impl AppState {
             pending_files: HashMap::new(),
         });
         // The stack is restored but not started: the DM presses Space when ready.
+        if let Some(open) = &self.open {
+            let dir = open.dir.clone();
+            self.prefs.note_opened(&dir);
+            // Not being able to remember it isn't worth failing the open for.
+            if let Err(e) = self.save_prefs() {
+                crate::logging::warn(&format!("could not save the recent projects: {e}"));
+            }
+        }
         Ok(())
     }
 

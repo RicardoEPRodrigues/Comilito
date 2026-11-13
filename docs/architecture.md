@@ -80,7 +80,7 @@ Stack indexes count from the bottom (0 = bottom), like `stack` in `comilito.json
 | Area | Commands |
 |------|----------|
 | General | `app_version`, `get_state`, `get_preferences`, `set_preferences(prefs)` |
-| Projects | `list_projects`, `projects_folder`, `create_project(name, sample)`, `open_project(path)`, `delete_project(path, delete_audio)`, `close_project`, `reload_project`, `keep_my_version`, `rename_project(name)` |
+| Projects | `list_projects` (with counts and last edit), `projects_folder`, `duplicate_project(path)`, `move_projects_folder(to)`, `show_projects_folder(project?)`, `create_project(name, sample)`, `open_project(path)`, `delete_project(path, delete_audio)`, `close_project`, `reload_project`, `keep_my_version`, `rename_project(name)` |
 | Moving projects | `export_project(dest, include_audio)`, `import_project(path)`, `backups_folder`, `relink_from_folder(folder)`, `relink_sound(id, path)` |
 | Project settings | `set_master_volume(volume)`, `set_category_volume(category, volume)`, `set_project_defaults(defaults)`, `set_backup_settings(backups)`, `reset_project_defaults` |
 | Sounds | `add_sounds(category, folder, paths)` → new ids, `import_dropped_file` (raw file bytes; name, category and folder in headers), `update_sound(sound)`, `set_sound_category(id, category)`, `remove_sound(id, permanently)`, `preview_sound(id)`, `toggle_effect(id)` |

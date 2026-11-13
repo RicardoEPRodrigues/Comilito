@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { api } from "./lib/api";
-  import { init, leaveFocus, project, run, ui } from "./lib/store.svelte";
+  import { init, leaveFocus, notify, project, run, ui } from "./lib/store.svelte";
   import { activeTheme, applyTheme } from "./lib/themes";
   import ProjectPicker from "./components/ProjectPicker.svelte";
   import Workspace from "./components/Workspace.svelte";
@@ -17,7 +17,9 @@
   let systemScheme = $state(0);
 
   onMount(() => {
-    init().then(() => (ready = true));
+    init()
+      .then(openLastProject)
+      .then(() => (ready = true));
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => systemScheme++;
     media.addEventListener("change", onChange);
@@ -34,6 +36,18 @@
     const theme = ui.previewTheme ?? activeTheme(appearance, ui.desktop, ui.userThemes);
     applyTheme(theme, appearance, ui.desktop);
   });
+
+  /** "Open the last project at start" (the home screen's switch). If it fails (moved or
+   *  deleted), the home screen shows instead, with the reason. */
+  async function openLastProject() {
+    const last = ui.prefs?.recentProjects[0];
+    if (!ui.prefs?.openLastProject || !last || ui.snapshot?.project) return;
+    try {
+      await api.openProject(last);
+    } catch (e) {
+      notify(`Couldn't open the last project: ${e}`);
+    }
+  }
 
   /** Global shortcuts: Space, Esc, / and scene hotkeys (docs/scenes.md "Controls"). */
   function onKeydown(e: KeyboardEvent) {
