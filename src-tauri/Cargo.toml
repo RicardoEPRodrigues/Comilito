@@ -24,6 +24,7 @@ kira = "0.12.6"
 tauri-plugin-dialog = "2"
 uuid = { version = "1", features = ["v4"] }
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
+trash = "5"
 
 # Smaller, faster release builds: https://v2.tauri.app/concept/size/
 [profile.release]

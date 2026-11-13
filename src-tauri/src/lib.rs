@@ -1,97 +1,160 @@
 mod audio;
+mod commands;
 mod mix;
+mod prefs;
 mod project;
+mod state;
 mod storage;
 
-use std::sync::Mutex;
+use std::{
+    sync::Mutex,
+    thread,
+    time::{Duration, Instant},
+};
 
-use audio::{AudioEngine, Volumes};
-use project::Category;
-use tauri::State;
-
-/// Returns the app version from Cargo.toml.
-///
-/// `#[tauri::command]` makes this callable from the frontend with `invoke("app_version")`.
-/// `env!` reads the value at compile time, so there's no runtime lookup.
-#[tauri::command]
-fn app_version() -> String {
-    env!("CARGO_PKG_VERSION").to_string()
-}
-
-/// Temporary: plays an audio file by absolute path, to test the engine before the
-/// project model exists. Will be replaced by `play_sound(id)`.
-///
-/// `State<Mutex<AudioEngine>>` asks Tauri for the engine registered with `.manage()` below.
-/// Tauri may run commands on several threads at once, so the engine sits behind a `Mutex`.
-/// Unlike C++'s std::mutex, a Rust Mutex *contains* the data: the only way to reach the
-/// engine is through `lock()`, so forgetting to lock is a compile error, not a race.
-#[tauri::command]
-fn play_file(
-    path: String,
-    category: Category,
-    engine: State<Mutex<AudioEngine>>,
-) -> Result<(), String> {
-    // `lock()` fails only if another thread panicked while holding the lock.
-    // The guard it returns unlocks automatically when it goes out of scope (like C++ RAII).
-    let mut engine = engine.lock().map_err(|_| "audio engine lock poisoned")?;
-    engine.play_file(&path, category)
-}
-
-/// Current master and category volumes, so the UI can show them.
-#[tauri::command]
-fn get_volumes(engine: State<Mutex<AudioEngine>>) -> Result<Volumes, String> {
-    let engine = engine.lock().map_err(|_| "audio engine lock poisoned")?;
-    Ok(engine.volumes())
-}
-
-/// Sets the master volume (0.0–1.0).
-#[tauri::command]
-fn set_master_volume(volume: f32, engine: State<Mutex<AudioEngine>>) -> Result<(), String> {
-    let mut engine = engine.lock().map_err(|_| "audio engine lock poisoned")?;
-    engine.set_master_volume(volume);
-    Ok(())
-}
-
-/// Sets one category's volume (0.0–1.0). `category` arrives from JS as "music",
-/// "ambience" or "effects"; Tauri rejects anything else before this function runs.
-#[tauri::command]
-fn set_category_volume(
-    category: Category,
-    volume: f32,
-    engine: State<Mutex<AudioEngine>>,
-) -> Result<(), String> {
-    let mut engine = engine.lock().map_err(|_| "audio engine lock poisoned")?;
-    engine.set_category_volume(category, volume);
-    Ok(())
-}
-
-/// Fades out and stops everything that's playing.
-#[tauri::command]
-fn stop_all(engine: State<Mutex<AudioEngine>>) -> Result<(), String> {
-    let mut engine = engine.lock().map_err(|_| "audio engine lock poisoned")?;
-    engine.stop_all();
-    Ok(())
-}
+use audio::AudioEngine;
+use state::{AppState, SAVE_DELAY, emit_state};
+use tauri::{AppHandle, Manager, RunEvent};
 
 // On Android this function becomes the app's entry point; on desktop main.rs calls it.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Without audio output the app is useless, so fail loudly at startup.
-    // `expect` stops the program with this message if `new()` returned an error.
-    // TODO: show this in the UI instead once there's somewhere to show it.
-    let engine = AudioEngine::new().expect("failed to start audio engine");
+    let app = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        // `setup` runs once the app exists, so we can ask Tauri for OS folders.
+        .setup(|app| {
+            // Without audio output the app is useless, so refuse to start with a clear message.
+            let engine = AudioEngine::new()?;
 
-    tauri::Builder::default()
-        // Hands ownership of the engine to Tauri, which shares it with every command.
-        .manage(Mutex::new(engine))
+            let config_dir = app.path().config_dir()?.join("comilito");
+            let default_projects_root = app.path().document_dir()?.join("Comilito");
+            let prefs = prefs::load(&config_dir);
+
+            // Hands ownership of the state to Tauri, which shares it with every command.
+            app.manage(Mutex::new(AppState {
+                engine,
+                prefs,
+                config_dir,
+                default_projects_root,
+                open: None,
+            }));
+
+            // `app.handle().clone()` gives the thread its own handle to the app. The thread
+            // outlives this function, so it can't borrow anything from here: `move` makes the
+            // closure take ownership of what it uses.
+            let handle = app.handle().clone();
+            thread::spawn(move || ticker(handle));
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
-            app_version,
-            play_file,
-            stop_all,
-            get_volumes,
-            set_master_volume,
-            set_category_volume,
+            commands::app_version,
+            commands::get_state,
+            commands::get_preferences,
+            commands::set_preferences,
+            commands::list_projects,
+            commands::projects_folder,
+            commands::create_project,
+            commands::open_project,
+            commands::close_project,
+            commands::reload_project,
+            commands::keep_my_version,
+            commands::rename_project,
+            commands::set_master_volume,
+            commands::set_category_volume,
+            commands::set_project_defaults,
+            commands::set_backup_settings,
+            commands::reset_project_defaults,
+            commands::add_sounds,
+            commands::update_sound,
+            commands::remove_sound,
+            commands::preview_sound,
+            commands::play_effect,
+            commands::create_scene,
+            commands::update_scene,
+            commands::duplicate_scene,
+            commands::delete_scene,
+            commands::set_layer_volume,
+            commands::stack_insert,
+            commands::stack_move,
+            commands::stack_remove,
+            commands::stack_set_enabled,
+            commands::stack_switch,
+            commands::scene_hotkey,
+            commands::preset_save,
+            commands::preset_load,
+            commands::preset_insert,
+            commands::preset_rename,
+            commands::preset_delete,
+            commands::toggle_play,
+            commands::stop_all,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    // `run` takes a closure that sees every app event. We only care about exiting:
+    // save the project so the last changes aren't lost.
+    app.run(|app, event| {
+        if let RunEvent::Exit = event {
+            let state = app.state::<Mutex<AppState>>();
+            if let Ok(mut s) = state.lock()
+                && let Err(e) = s.close_project()
+            {
+                eprintln!("could not save on exit: {e}");
+            }
+        }
+    });
+}
+
+/// Runs forever on its own thread, a few times per second:
+/// - moves music playlists to the next track when one ends,
+/// - saves the project a moment after the last change,
+/// - notices when comilito.json was changed by another program,
+/// - tells the UI when what's audible changed.
+fn ticker(app: AppHandle) {
+    const TICK: Duration = Duration::from_millis(250);
+    const DISK_CHECK: Duration = Duration::from_secs(2);
+    let mut last_disk_check = Instant::now();
+    let mut last_info = None;
+
+    loop {
+        thread::sleep(TICK);
+        let state = app.state::<Mutex<AppState>>();
+        let Ok(mut s) = state.lock() else {
+            return;
+        };
+        let mut problems = Vec::new();
+        let mut changed = false;
+
+        // Borrow the two fields separately (see `AppState::project_changed`).
+        let s_ref = &mut *s;
+        if let Some(open) = &mut s_ref.open {
+            problems.extend(s_ref.engine.tick(&open.project, &open.dir, &open.mix));
+
+            if open.dirty_since.is_some_and(|t| t.elapsed() >= SAVE_DELAY) {
+                if let Err(e) = storage::save_project(&open.dir, &open.project) {
+                    problems.push(format!("could not save: {e}"));
+                }
+                open.dirty_since = None;
+                open.known_file_time = storage::project_file_modified(&open.dir);
+            }
+
+            if last_disk_check.elapsed() >= DISK_CHECK {
+                last_disk_check = Instant::now();
+                let on_disk = storage::project_file_modified(&open.dir);
+                if on_disk != open.known_file_time && !open.changed_on_disk {
+                    open.changed_on_disk = true;
+                    changed = true;
+                }
+            }
+        }
+
+        let info = s.snapshot().playback;
+        if last_info.as_ref() != Some(&info) {
+            last_info = Some(info);
+            changed = true;
+        }
+        if changed || !problems.is_empty() {
+            emit_state(&app, &s, problems);
+        }
+    }
 }

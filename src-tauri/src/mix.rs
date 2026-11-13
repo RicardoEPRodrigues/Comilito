@@ -37,14 +37,17 @@ pub fn target_mix(project: &Project) -> TargetMix {
         .filter_map(|e| project.scene(&e.scene).map(|s| (e.id.as_str(), s)))
         .collect();
 
-    let mut mix = TargetMix::default();
-
     // Music: walk from the top (`.rev()`) and take the first scene that has any.
-    mix.music_entry = enabled
+    let music_entry = enabled
         .iter()
         .rev()
         .find(|(_, scene)| scene.music.as_ref().is_some_and(|m| !m.tracks.is_empty()))
         .map(|(entry_id, _)| entry_id.to_string());
+
+    let mut mix = TargetMix {
+        music_entry,
+        ..Default::default()
+    };
 
     // Ambience, bottom to top, so a higher entry overwrites a lower one for the same sound.
     for (i, (entry_id, scene)) in enabled.iter().enumerate() {

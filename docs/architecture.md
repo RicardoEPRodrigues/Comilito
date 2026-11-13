@@ -46,28 +46,61 @@ Planned default behaviour per category (each can be overridden per sound):
 Long files (music) are **streamed** from disk; short files (effects) are loaded into memory
 so they start instantly.
 
-## Command surface (draft)
+## How state reaches the UI
 
-| Command | Purpose |
-|---------|---------|
-| `play_sound(id)` / `stop_sound(id)` | Start or stop a sound (with its configured fade) |
-| `set_sound_volume(id, v)` | Per-sound volume |
-| `set_category_volume(category, v)` | Category track volume |
-| `set_master_volume(v)` | Master volume |
-| `get_volumes()` | Current master and category volumes |
-| `stop_all()` | Panic button |
-| `add_sounds(category, paths)` / `remove_sound(id)` / `update_sound(id, settings)` | Edit the library |
-| `list_projects()` / `create_project(name)` / `open_project(folder)` | Project folders under `~/Documents/Comilito/` |
-| `export_project(path, include_audio)` / `import_project(path)` | `.comilito` zip for moving projects |
-| `relink_missing(folder)` / `relink_sound(id, path)` | Fix missing audio (files are copied into the project) |
-| `get_preferences()` / `set_preferences(p)` | App preferences ([preferences.md](preferences.md)) |
-| `set_project_defaults(d)` | Project-level default levels |
+Rust holds everything in one `AppState` behind one `Mutex` (`state.rs`): the audio engine, the
+app preferences and the open project. Every command locks it, makes its change, recomputes the
+**target mix** (`mix.rs`) and fades the engine to it, then emits **`state-changed`** with a full
+`Snapshot` (project, target mix, playback info, missing files). The UI keeps the latest snapshot
+in `src/lib/store.svelte.ts` and renders from it; it never works out changes itself.
 
-Temporary, for testing the engine before the project model exists:
-`play_file(path, category)` plays a file by absolute path into a category's track. It will be removed once `play_sound(id)` works.
+Commands that change something return nothing on success (the new state comes as an event) and
+reject with a message on failure. Problems that aren't a command's direct failure (a missing
+audio file found while fading to a mix) arrive as **`notice`** events.
 
-Events from Rust to UI: `playback-state-changed`, `project-changed`, `missing-files`,
-`hashing-progress`, `project-changed-on-disk` (for example, updated by a sync tool).
+A background thread (`ticker` in `lib.rs`) runs four times a second: it advances music
+playlists, saves `comilito.json` one second after the last change, notices when another program
+changed the file (`changedOnDisk` in the snapshot), and emits `state-changed` when what's audible
+changed.
+
+## Command surface
+
+All in `src-tauri/src/commands.rs`, with a typed wrapper per command in `src/lib/api.ts`.
+Stack indexes count from the bottom (0 = bottom), like `stack` in `comilito.json`.
+
+| Area | Commands |
+|------|----------|
+| General | `app_version`, `get_state`, `get_preferences`, `set_preferences(prefs)` |
+| Projects | `list_projects`, `projects_folder`, `create_project(name)`, `open_project(path)`, `close_project`, `reload_project`, `keep_my_version`, `rename_project(name)` |
+| Project settings | `set_master_volume(volume)`, `set_category_volume(category, volume)`, `set_project_defaults(defaults)`, `set_backup_settings(backups)`, `reset_project_defaults` |
+| Sounds | `add_sounds(category, paths)`, `update_sound(sound)`, `remove_sound(id, permanently)`, `preview_sound(id)`, `play_effect(id)` |
+| Scenes | `create_scene(name, group)`, `update_scene(scene)`, `duplicate_scene(id)`, `delete_scene(id)`, `set_layer_volume(scene_id, layer_index, volume)` |
+| Stack | `stack_insert(scene_id, index, mode)`, `stack_move(entry_id, index)`, `stack_remove(entry_id)`, `stack_set_enabled(entry_id, enabled)`, `stack_switch(scene_id)`, `scene_hotkey(scene_id)` |
+| Presets | `preset_save(name)`, `preset_load(preset_id)`, `preset_insert(preset_id, index)`, `preset_rename(preset_id, name)`, `preset_delete(preset_id)` |
+| Transport | `toggle_play`, `stop_all` |
+
+Events from Rust to UI: `state-changed` (a `Snapshot`), `notice` (a message string).
+
+## Transport
+
+- **Stopped:** nothing from the stack plays. Opening a project starts here, so the saved stack is
+  restored silently; **Space** starts it.
+- **Playing → Paused (Space):** the Music and Ambience tracks are paused (with a short fade).
+  kira stops processing a paused track's sounds, so positions and fades freeze and continue on
+  resume. Stack changes while paused are applied but stay silent until resume.
+- **Esc (stop all):** every sound fades out and positions are forgotten; the stack is kept.
+- Effects and previews ignore pause.
+
+## Playback details
+
+- **Music:** each stack entry with music gets its own player. Covered or disabled music pauses
+  and resumes where it left off; an entry removed from the stack stops its music. A playlist
+  with one track loops it (if the sound loops); a longer playlist plays through and wraps around.
+- **Ambience:** one player per sound. Sounds staying in the mix only change volume.
+- **Effects:** loaded into memory (cached) so they start instantly; one-shots can overlap.
+  An effect set to loop is a toggle on the pad.
+- **Previews** (▶ in the library) play straight into the main track, so they're heard even while paused.
+- Fades on scene changes use the scene's `transitionMs` (or the sound's own fade-in, if longer).
 
 ## Source layout
 
@@ -75,16 +108,24 @@ Events from Rust to UI: `playback-state-changed`, `project-changed`, `missing-fi
 index.html           Webview entry page
 src/                 Svelte frontend (plain Svelte + Vite, see decision 0013)
   main.ts            Mounts App.svelte
-  App.svelte         Root component
+  App.svelte         Root component: project picker or workspace, global shortcuts
+  app.css            Theme colours (light/dark) and base element styles
+  lib/               types.ts (mirrors the Rust structs), api.ts (one function per command),
+                     store.svelte.ts (latest snapshot + UI state), actions.ts (actions that ask first)
+  components/        One Svelte component per panel, editor or dialog
 src-tauri/
   tauri.conf.json    App name, window, build settings
   capabilities/      Which Tauri APIs the window may use
   src/
     main.rs          Desktop entry point; just calls lib.rs
-    lib.rs           Tauri setup, command registration
-    audio.rs         kira wrapper: category tracks, volumes, play/stop
-    project.rs       data model (serde structs); so far only `Category`
-    storage.rs       (planned) save/load, bundle zip, relinking
+    lib.rs           Tauri setup, command registration, background ticker thread
+    commands.rs      Every Tauri command
+    state.rs         AppState (shared behind a Mutex) and the Snapshot sent to the UI
+    audio.rs         kira engine: category tracks, fade to a mix, playlists, effects, transport
+    mix.rs           Pure stack -> target mix calculation (unit tested)
+    project.rs       Data model (serde structs mirroring comilito.json)
+    storage.rs       Project folders: list/create/load/save, copying audio in
+    prefs.rs         App preferences (preferences.json)
 docs/
 ```
 
