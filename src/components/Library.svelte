@@ -127,7 +127,7 @@
               >
                 <span class="name">{scene.name}</span>
                 <span class="badges">
-                  {#if scene.music?.tracks.length}🎵{/if}
+                  {#if scene.music?.tracks.length}🎵{:else if scene.blocksMusic}🔇{/if}
                   {#if scene.ambience.length}🌲{scene.ambience.length}{/if}
                   {#if scene.effects.length}💥{scene.effects.length}{/if}
                 </span>

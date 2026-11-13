@@ -120,6 +120,16 @@
         onchange={(v) => (draft.music!.shuffle = v as boolean | undefined)}
       />
     {/if}
+    {#if !draft.music}
+      <label class="check">
+        <input
+          type="checkbox"
+          checked={draft.blocksMusic ?? false}
+          onchange={(e) => (draft.blocksMusic = e.currentTarget.checked || undefined)}
+        />
+        Silence the music of the scenes below (for example, a tense silence)
+      </label>
+    {/if}
     <select onchange={(e) => { addTrack(e.currentTarget.value); e.currentTarget.value = ""; }}>
       <option value="">+ Add music track…</option>
       {#each soundsOf("music") as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
@@ -218,6 +228,11 @@
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+  }
+  .check {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.4rem;
   }
   .hotkey {
     width: 7rem;

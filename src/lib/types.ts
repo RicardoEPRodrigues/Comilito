@@ -56,6 +56,8 @@ export interface Scene {
   group?: string;
   hotkey?: string;
   music: Playlist | null;
+  /** For a scene without music: silence the music of the scenes below. */
+  blocksMusic?: boolean;
   ambience: Layer[];
   effects: string[];
   duckLevel?: number;
@@ -118,7 +120,7 @@ export interface TargetMix {
 export interface PlaybackInfo {
   transport: Transport;
   musicSound: string | null;
-  loopingEffects: string[];
+  playingEffects: string[];
   preview: string | null;
 }
 

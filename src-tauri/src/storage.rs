@@ -169,6 +169,26 @@ pub fn copy_audio_into_project(
     file_info(dir, relative)
 }
 
+/// Moves a sound's file into `audio/<category>/` (renamed if the name is taken there) and
+/// returns its updated `FileInfo`. The hash is kept: the content doesn't change.
+pub fn move_audio_file(dir: &Path, info: &FileInfo, category: Category) -> Result<FileInfo, String> {
+    let source = absolute_audio_path(dir, info);
+    let file_name = source
+        .file_name()
+        .ok_or_else(|| format!("{} is not a file", source.display()))?;
+    let target_dir = dir.join("audio").join(category.folder_name());
+    fs::create_dir_all(&target_dir)
+        .map_err(|e| format!("could not create {}: {e}", target_dir.display()))?;
+    let target = unique_path(&target_dir, Path::new(file_name));
+    fs::rename(&source, &target)
+        .map_err(|e| format!("could not move {}: {e}", source.display()))?;
+
+    let relative = target.strip_prefix(dir).expect("target was built inside dir");
+    let mut moved = file_info(dir, relative)?;
+    moved.sha256 = info.sha256.clone();
+    Ok(moved)
+}
+
 /// Size and modification time of a file inside the project. `sha256` is filled in later
 /// by the background hasher.
 pub fn file_info(dir: &Path, relative: &Path) -> Result<FileInfo, String> {
@@ -326,6 +346,22 @@ mod tests {
         assert_eq!(second.path, "audio/ambience/rain (2).ogg");
         assert_eq!(first.size, 10);
         assert!(absolute_audio_path(&dir, &second).is_file());
+    }
+
+    #[test]
+    fn moves_audio_between_category_folders() {
+        let root = TempDir::new();
+        let dir = create_project(&root.0, "P", ProjectDefaults::default()).unwrap();
+        let source = root.0.join("bell.ogg");
+        fs::write(&source, b"ding").unwrap();
+        let mut info = copy_audio_into_project(&dir, Category::Music, &source).unwrap();
+        info.sha256 = Some("abc".into());
+
+        let moved = move_audio_file(&dir, &info, Category::Effects).unwrap();
+        assert_eq!(moved.path, "audio/effects/bell.ogg");
+        assert_eq!(moved.sha256.as_deref(), Some("abc"));
+        assert!(absolute_audio_path(&dir, &moved).is_file());
+        assert!(!absolute_audio_path(&dir, &info).exists());
     }
 
     #[test]

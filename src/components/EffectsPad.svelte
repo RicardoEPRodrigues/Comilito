@@ -1,10 +1,11 @@
 <script lang="ts">
   // Right panel: buttons for the effects of every enabled scene, top scene first.
+  // Clicking an effect plays it; clicking it again while it plays stops it.
   import { api } from "../lib/api";
   import { run, soundById, ui } from "../lib/store.svelte";
 
   const snapshot = $derived(ui.snapshot!);
-  const looping = $derived(new Set(snapshot.playback.loopingEffects));
+  const playing = $derived(new Set(snapshot.playback.playingEffects));
   const missing = $derived(new Set(snapshot.missing));
 </script>
 
@@ -18,10 +19,10 @@
       {@const sound = soundById(id)}
       {#if sound}
         <button
-          class:active={looping.has(id)}
+          class:active={playing.has(id)}
           disabled={missing.has(id)}
-          onclick={() => run(api.playEffect(id))}
-          title={sound.loop ? "Looping effect: click again to stop" : "Play"}
+          onclick={() => run(api.toggleEffect(id))}
+          title={playing.has(id) ? "Click to stop" : "Play"}
         >
           {sound.name}
         </button>

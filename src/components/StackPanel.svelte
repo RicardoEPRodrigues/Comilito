@@ -135,12 +135,17 @@
         class:drop-above={dropIndex === n - p}
         class:drop-below={p === n - 1 && dropIndex === 0}
         role="listitem"
-        draggable="true"
-        ondragstart={(e) => onEntryDragStart(e, entry)}
-        ondragend={() => onEntryDragEnd(entry)}
         ondragover={(e) => onItemDragOver(e, p)}
       >
-        <div class="row">
+        <!-- Only the header row is draggable: if the whole entry were, dragging a volume
+             slider in the expanded details would drag the entry instead. -->
+        <div
+          class="row"
+          role="presentation"
+          draggable="true"
+          ondragstart={(e) => onEntryDragStart(e, entry)}
+          ondragend={() => onEntryDragEnd(entry)}
+        >
           <span class="handle" title="Drag to reorder, or out of the stack to remove">⠿</span>
           <input
             type="checkbox"
@@ -156,6 +161,7 @@
               <span class="muted">disabled</span>
             {:else}
               {musicStatus(entry)}
+              {#if scene?.blocksMusic && !scene.music?.tracks.length}<span title="Silences the music below">🔇</span>{/if}
               {#if scene?.ambience.length}🌲×{scene.ambience.length}{/if}
               {#if scene?.effects.length}💥×{scene.effects.length}{/if}
             {/if}

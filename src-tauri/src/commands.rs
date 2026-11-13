@@ -129,6 +129,31 @@ pub fn close_project(app: AppHandle, state: AppStateRef) -> Result<(), String> {
     Ok(())
 }
 
+/// Deletes a project. With `delete_audio`, the whole folder goes to the system trash; without,
+/// only its comilito.json does, leaving the audio files in place (the folder then no longer
+/// counts as a project). Backups are kept either way.
+#[tauri::command]
+pub fn delete_project(
+    path: PathBuf,
+    delete_audio: bool,
+    app: AppHandle,
+    state: AppStateRef,
+) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    // Refuse anything that isn't a project folder, so a wrong path can't trash something else.
+    let project_file = path.join(storage::PROJECT_FILE);
+    if !project_file.is_file() {
+        return Err(format!("{} is not a Comilito project", path.display()));
+    }
+    if s.open.as_ref().is_some_and(|o| o.dir == path) {
+        s.close_project()?;
+    }
+    let target = if delete_audio { &path } else { &project_file };
+    trash::delete(target).map_err(|e| format!("could not move {} to the trash: {e}", target.display()))?;
+    emit_state(&app, &s, Vec::new());
+    Ok(())
+}
+
 /// Reloads comilito.json from disk, dropping unsaved changes (after a sync tool changed it).
 #[tauri::command]
 pub fn reload_project(app: AppHandle, state: AppStateRef) -> Result<(), String> {
@@ -425,13 +450,57 @@ pub fn preview_sound(id: String, app: AppHandle, state: AppStateRef) -> Result<(
 }
 
 #[tauri::command]
-pub fn play_effect(id: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+pub fn toggle_effect(id: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
     let mut s = lock(&state)?;
     let state_ref = &mut *s;
     let open = state_ref.open.as_ref().ok_or("no project is open")?;
     let sound = open.project.sound(&id).ok_or("that sound no longer exists")?;
-    state_ref.engine.play_effect(&open.project, &open.dir, sound)?;
+    state_ref.engine.toggle_effect(&open.project, &open.dir, sound)?;
     emit_state(&app, &s, Vec::new());
+    Ok(())
+}
+
+/// Moves a sound to another category: its file moves to that category's folder, and it's
+/// taken out of scene slots that don't take that category (a music sound turned into an
+/// effect leaves the playlists it was in).
+#[tauri::command]
+pub fn set_sound_category(
+    id: String,
+    category: Category,
+    app: AppHandle,
+    state: AppStateRef,
+) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    let open = s.open_mut()?;
+    let sound = open.project.sound(&id).ok_or("that sound no longer exists")?;
+    if sound.category == category {
+        return Ok(());
+    }
+
+    let mut problems = Vec::new();
+    let new_file = if open.missing.contains(&id) {
+        // No file to move; it will be found again by relinking.
+        None
+    } else {
+        match storage::move_audio_file(&open.dir, &sound.file, category) {
+            Ok(file) => Some(file),
+            Err(e) => {
+                problems.push(e);
+                None
+            }
+        }
+    };
+    if let Some(sound) = open.project.sound_mut(&id) {
+        sound.category = category;
+        if let Some(file) = new_file {
+            sound.file = file;
+        }
+    }
+    open.project.remove_sound_from_other_slots(&id, category);
+    s.engine.clear_cache();
+
+    problems.extend(s.project_changed(Duration::from_millis(500)));
+    emit_state(&app, &s, problems);
     Ok(())
 }
 
@@ -457,6 +526,7 @@ pub fn create_scene(
         effects: Vec::new(),
         duck_level: None,
         transition_ms: None,
+        blocks_music: false,
     });
     s.project_changed(Duration::ZERO);
     emit_state(&app, &s, Vec::new());

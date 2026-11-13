@@ -73,10 +73,10 @@ Stack indexes count from the bottom (0 = bottom), like `stack` in `comilito.json
 | Area | Commands |
 |------|----------|
 | General | `app_version`, `get_state`, `get_preferences`, `set_preferences(prefs)` |
-| Projects | `list_projects`, `projects_folder`, `create_project(name, sample)`, `open_project(path)`, `close_project`, `reload_project`, `keep_my_version`, `rename_project(name)` |
+| Projects | `list_projects`, `projects_folder`, `create_project(name, sample)`, `open_project(path)`, `delete_project(path, delete_audio)`, `close_project`, `reload_project`, `keep_my_version`, `rename_project(name)` |
 | Moving projects | `export_project(dest, include_audio)`, `import_project(path)`, `backups_folder`, `relink_from_folder(folder)`, `relink_sound(id, path)` |
 | Project settings | `set_master_volume(volume)`, `set_category_volume(category, volume)`, `set_project_defaults(defaults)`, `set_backup_settings(backups)`, `reset_project_defaults` |
-| Sounds | `add_sounds(category, paths)`, `update_sound(sound)`, `remove_sound(id, permanently)`, `preview_sound(id)`, `play_effect(id)` |
+| Sounds | `add_sounds(category, paths)`, `update_sound(sound)`, `set_sound_category(id, category)`, `remove_sound(id, permanently)`, `preview_sound(id)`, `toggle_effect(id)` |
 | Scenes | `create_scene(name, group)`, `update_scene(scene)`, `duplicate_scene(id)`, `delete_scene(id)`, `set_layer_volume(scene_id, layer_index, volume)` |
 | Stack | `stack_insert(scene_id, index, mode)`, `stack_move(entry_id, index)`, `stack_remove(entry_id)`, `stack_set_enabled(entry_id, enabled)`, `stack_switch(scene_id)`, `scene_hotkey(scene_id)` |
 | Presets | `preset_save(name)`, `preset_load(preset_id)`, `preset_insert(preset_id, index)`, `preset_rename(preset_id, name)`, `preset_delete(preset_id)` |
@@ -100,8 +100,8 @@ Events from Rust to UI: `state-changed` (a `Snapshot`), `notice` (a message stri
   and resumes where it left off; an entry removed from the stack stops its music. A playlist
   with one track loops it (if the sound loops); a longer playlist plays through and wraps around.
 - **Ambience:** one player per sound. Sounds staying in the mix only change volume.
-- **Effects:** loaded into memory (cached) so they start instantly; one-shots can overlap.
-  An effect set to loop is a toggle on the pad.
+- **Effects:** loaded into memory (cached) so they start instantly. A pad button is a toggle:
+  clicking an effect that's still playing stops it (so a looping effect is an on/off switch).
 - **Previews** (▶ in the library) play straight into the main track, so they're heard even while paused.
 - Fades on scene changes use the scene's `transitionMs` (or the sound's own fade-in, if longer).
 

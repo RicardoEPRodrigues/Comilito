@@ -67,6 +67,8 @@ transferred. Avoid having the same project open on two devices at the same time.
 - `defaults`: project-wide default levels; see [preferences.md](preferences.md). Per-sound `volume`, `loop`, `fadeInMs` and `fadeOutMs` are optional and inherit from it.
 
 - `formatVersion`: bumped on breaking changes. Older versions must still load (migrated on load).
+  Adding an optional field (like a scene's `blocksMusic`) isn't a breaking change: older files
+  simply don't have it, and older versions of the app ignore it.
 - `path`: relative to the project folder.
 - `size`, `modified`, `sha256`: used to find missing files. `sha256` may be absent until hashing finishes.
 

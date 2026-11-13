@@ -30,6 +30,8 @@ export const api = {
   openProject: (path: string) => invoke<void>("open_project", { path }),
   closeProject: () => invoke<void>("close_project"),
   reloadProject: () => invoke<void>("reload_project"),
+  deleteProject: (path: string, deleteAudio: boolean) =>
+    invoke<void>("delete_project", { path, deleteAudio }),
   keepMyVersion: () => invoke<void>("keep_my_version"),
   renameProject: (name: string) => invoke<void>("rename_project", { name }),
   exportProject: (dest: string, includeAudio: boolean) =>
@@ -56,7 +58,9 @@ export const api = {
   removeSound: (id: string, permanently: boolean) =>
     invoke<void>("remove_sound", { id, permanently }),
   previewSound: (id: string) => invoke<void>("preview_sound", { id }),
-  playEffect: (id: string) => invoke<void>("play_effect", { id }),
+  toggleEffect: (id: string) => invoke<void>("toggle_effect", { id }),
+  setSoundCategory: (id: string, category: Category) =>
+    invoke<void>("set_sound_category", { id, category }),
 
   // Scenes
   createScene: (name: string, group: string | null) =>

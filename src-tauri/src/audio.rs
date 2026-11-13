@@ -63,8 +63,8 @@ pub struct PlaybackInfo {
     pub transport: Transport,
     /// The sound id of the music track currently playing, if any.
     pub music_sound: Option<String>,
-    /// Sound ids of looping effects that are currently on.
-    pub looping_effects: Vec<String>,
+    /// Sound ids of effects that are currently playing (shown highlighted on the pad).
+    pub playing_effects: Vec<String>,
     pub preview: Option<String>,
 }
 
@@ -446,22 +446,21 @@ impl AudioEngine {
 
     // ---- Effects and previews -----------------------------------------------------------
 
-    /// Plays an effect from the pad. Effects are one-shots that may overlap; an effect set
-    /// to loop is a toggle instead (press again to stop it).
-    pub fn play_effect(&mut self, project: &Project, dir: &Path, sound: &Sound) -> Result<(), String> {
+    /// The effects pad button: plays the effect, or stops it if it's still playing
+    /// (with the sound's fade-out). Looping effects therefore work as on/off toggles.
+    pub fn toggle_effect(&mut self, project: &Project, dir: &Path, sound: &Sound) -> Result<(), String> {
         let settings = project.resolve_sound(sound);
 
-        if settings.looping {
-            let mut stopped_one = false;
-            for (id, handle) in &mut self.effects {
-                if id == &sound.id && handle.state() != PlaybackState::Stopped {
-                    handle.stop(fade_or_click_guard(settings.fade_out_ms));
-                    stopped_one = true;
-                }
+        let mut stopped_one = false;
+        for (id, handle) in &mut self.effects {
+            let playing = !matches!(handle.state(), PlaybackState::Stopped | PlaybackState::Stopping);
+            if id == &sound.id && playing {
+                handle.stop(fade_or_click_guard(settings.fade_out_ms));
+                stopped_one = true;
             }
-            if stopped_one {
-                return Ok(());
-            }
+        }
+        if stopped_one {
+            return Ok(());
         }
 
         let path = storage::absolute_audio_path(dir, &sound.file);
@@ -529,17 +528,18 @@ impl AudioEngine {
             .and_then(|p| p.current.as_ref())
             .filter(|(_, h)| h.state() != PlaybackState::Stopped)
             .map(|(id, _)| id.clone());
-        let mut looping_effects: Vec<String> = self
+        let mut playing_effects: Vec<String> = self
             .effects
             .iter()
-            .filter(|(_, h)| h.state() != PlaybackState::Stopped)
+            .filter(|(_, h)| !matches!(h.state(), PlaybackState::Stopped | PlaybackState::Stopping))
             .map(|(id, _)| id.clone())
             .collect();
-        looping_effects.dedup();
+        playing_effects.sort();
+        playing_effects.dedup();
         PlaybackInfo {
             transport: self.transport,
             music_sound,
-            looping_effects,
+            playing_effects,
             preview: self.preview.as_ref().map(|(id, _)| id.clone()),
         }
     }

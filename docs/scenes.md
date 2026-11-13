@@ -42,6 +42,10 @@ Only the **top-most enabled scene that has music** plays its music. Music from l
 out and **pauses**, and resumes where it left off when it's uncovered. This includes when the scene
 covering it is disabled. Music is never ducked.
 
+A scene without music normally lets the music below play through. With **`blocksMusic`** set
+("Silence the music of the scenes below" in the editor), it covers the music below like a music
+scene would, so nothing plays (useful for a tense silence). Music in scenes above it still plays.
+
 ### Ambience and ducking
 
 Every enabled scene **ducks** the ambience of the enabled scenes below it to its `duckLevel`
@@ -67,7 +71,8 @@ Each scene uses its own `duckLevel`, so a scene with `duckLevel` 0.5 above one w
 
 ### Effects pad
 
-Shows the effects of every enabled scene in the stack, top scene first.
+Shows the effects of every enabled scene in the stack, top scene first. Clicking an effect plays
+it; clicking it again while it's still playing stops it (with its fade-out).
 
 ### Same sound in several scenes
 
@@ -223,6 +228,8 @@ or preset load it's the top scene's.
 ```
 
 - `music`: `null` when the scene has no music, which leaves lower music playing.
+- `blocksMusic`: optional, only written when `true`. For a scene without music: silence the music
+  of the scenes below while this scene is enabled.
 - `duckLevel`: the volume this scene leaves the ambience below it at (0.3 = 30%; 1 = no ducking; 0 = silence).
   Optional: if missing, the project default is used (see [preferences.md](preferences.md)).
 - `role`: optional; one of `foreground`, `background`, `supporting`.

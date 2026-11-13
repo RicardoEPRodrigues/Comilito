@@ -1,8 +1,8 @@
 <script lang="ts">
   // Edits a sound's name and settings. Changes are kept in a local draft until Save.
   import { api } from "../lib/api";
-  import { project, run } from "../lib/store.svelte";
-  import type { Sound } from "../lib/types";
+  import { ask, project, run } from "../lib/store.svelte";
+  import { CATEGORIES, type Category, type Sound } from "../lib/types";
   import Modal from "./Modal.svelte";
   import OverrideField from "./OverrideField.svelte";
 
@@ -17,9 +17,40 @@
   const defaults = $derived(project()!.defaults);
   const catDefaults = $derived(defaults.categories[draft.category]);
 
+  /** Scenes that use this sound in a slot the new category doesn't fit (it will leave them). */
+  function scenesLosingSound(category: Category): string[] {
+    return project()!
+      .scenes.filter(
+        (s) =>
+          (category !== "music" && s.music?.tracks.includes(draft.id)) ||
+          (category !== "ambience" && s.ambience.some((l) => l.sound === draft.id)) ||
+          (category !== "effects" && s.effects.includes(draft.id)),
+      )
+      .map((s) => s.name);
+  }
+
   async function save() {
     if (!draft.name.trim()) draft.name = original.name;
-    await run(api.updateSound($state.snapshot(draft)));
+    const newCategory = draft.category;
+
+    if (newCategory !== original.category) {
+      const losing = scenesLosingSound(newCategory);
+      if (losing.length > 0) {
+        const answer = await ask({
+          title: "Change category?",
+          message: `"${draft.name}" will be removed from: ${losing.join(", ")}.`,
+          choices: [
+            { label: "Cancel", value: "cancel" },
+            { label: "Change category", value: "ok", primary: true },
+          ],
+        });
+        if (answer?.choice !== "ok") return;
+      }
+    }
+
+    // Settings first (Rust ignores the category there), then the move, which also moves the file.
+    await run(api.updateSound({ ...$state.snapshot(draft), category: original.category }));
+    if (newCategory !== original.category) await run(api.setSoundCategory(draft.id, newCategory));
     onclose();
   }
 </script>
@@ -30,6 +61,14 @@
     <input bind:value={draft.name} />
   </label>
   <p class="muted file">{draft.file.path}</p>
+  <label class="row">
+    <span>Category</span>
+    <select bind:value={draft.category}>
+      {#each CATEGORIES as c (c.id)}
+        <option value={c.id}>{c.icon} {c.label}</option>
+      {/each}
+    </select>
+  </label>
 
   <OverrideField
     label="Volume"
@@ -79,7 +118,8 @@
   .row span {
     width: 8rem;
   }
-  .row input {
+  .row input,
+  .row select {
     flex: 1;
   }
   .file {

@@ -37,11 +37,14 @@ pub fn target_mix(project: &Project) -> TargetMix {
         .filter_map(|e| project.scene(&e.scene).map(|s| (e.id.as_str(), s)))
         .collect();
 
-    // Music: walk from the top (`.rev()`) and take the first scene that has any.
+    // Music: walk from the top (`.rev()`) and stop at the first scene that has music or
+    // blocks it. If that scene blocks music without having any, nothing plays.
+    let has_music = |scene: &Scene| scene.music.as_ref().is_some_and(|m| !m.tracks.is_empty());
     let music_entry = enabled
         .iter()
         .rev()
-        .find(|(_, scene)| scene.music.as_ref().is_some_and(|m| !m.tracks.is_empty()))
+        .find(|(_, scene)| has_music(scene) || scene.blocks_music)
+        .filter(|(_, scene)| has_music(scene))
         .map(|(entry_id, _)| entry_id.to_string());
 
     let mut mix = TargetMix {
@@ -124,6 +127,7 @@ mod tests {
             effects: effects.iter().map(|s| s.to_string()).collect(),
             duck_level: None,
             transition_ms: None,
+        blocks_music: false,
         }
     }
 
@@ -219,6 +223,22 @@ mod tests {
         assert!(approx(mix.ambience["stream"], 0.4));
         assert!(!mix.ambience.contains_key("clash"));
         assert!(!mix.layer_volumes.contains_key("e2"));
+    }
+
+    #[test]
+    fn a_music_blocking_scene_silences_the_music_below() {
+        let mut p = example_project();
+        p.scenes[1].blocks_music = true; // the forest
+        set_stack(&mut p, &[("music", true), ("forest", true)]);
+        assert_eq!(target_mix(&p).music_entry, None);
+
+        // Music above the blocker still plays.
+        set_stack(&mut p, &[("music", true), ("forest", true), ("combat", true)]);
+        assert_eq!(target_mix(&p).music_entry.as_deref(), Some("e2"));
+
+        // A disabled blocker doesn't block.
+        set_stack(&mut p, &[("music", true), ("forest", false)]);
+        assert_eq!(target_mix(&p).music_entry.as_deref(), Some("e0"));
     }
 
     #[test]

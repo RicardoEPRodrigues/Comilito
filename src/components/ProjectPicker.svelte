@@ -20,6 +20,24 @@
     await refresh();
   });
 
+  async function remove(p: ProjectSummary) {
+    const answer = await ask({
+      title: `Delete "${p.name}"?`,
+      message:
+        "Moves it to the system trash (you can restore it from there). Backups are kept.\n\n" +
+        "Keeping the audio deletes only the project's settings and scenes, and leaves its " +
+        "audio files in the folder.",
+      choices: [
+        { label: "Cancel", value: "cancel" },
+        { label: "Delete, keep audio files", value: "keep" },
+        { label: "Delete project and audio", value: "all", danger: true, primary: true },
+      ],
+    });
+    if (!answer || answer.choice === "cancel") return;
+    await run(api.deleteProject(p.path, answer.choice === "all"));
+    await refresh();
+  }
+
   async function create() {
     const answer = await ask({
       title: "New project",
@@ -57,6 +75,7 @@
             <button class="project" onclick={() => run(api.openProject(p.path))}>
               {p.name}
             </button>
+            <button class="icon danger" title="Delete project…" onclick={() => remove(p)}>🗑</button>
           </li>
         {/each}
       </ul>
@@ -105,8 +124,13 @@
     max-height: 50vh;
     overflow: auto;
   }
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
   .project {
-    width: 100%;
+    flex: 1;
     text-align: left;
     padding: 0.6rem 0.8rem;
   }

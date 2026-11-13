@@ -150,9 +150,14 @@ pub struct Scene {
     pub group: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hotkey: Option<String>,
-    /// `None` (JSON `null`) when the scene has no music, which leaves lower music playing.
+    /// `None` (JSON `null`) when the scene has no music, which leaves lower music playing
+    /// (unless `blocks_music` is set).
     #[serde(default)]
     pub music: Option<Playlist>,
+    /// For a scene without music: silence the music of the scenes below it while it's
+    /// enabled, instead of letting it play through. Only written when true.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub blocks_music: bool,
     #[serde(default)]
     pub ambience: Vec<Layer>,
     /// Sound ids shown on the effects pad.
@@ -363,6 +368,24 @@ impl Project {
             .unwrap_or(false)
     }
 
+    /// Takes a sound out of the scene slots that don't hold `category`: music playlists only
+    /// hold music, ambience layers only ambience, effects pads only effects.
+    pub fn remove_sound_from_other_slots(&mut self, id: &str, category: Category) {
+        for scene in &mut self.scenes {
+            if category != Category::Music
+                && let Some(music) = &mut scene.music
+            {
+                music.tracks.retain(|t| t != id);
+            }
+            if category != Category::Ambience {
+                scene.ambience.retain(|l| l.sound != id);
+            }
+            if category != Category::Effects {
+                scene.effects.retain(|e| e != id);
+            }
+        }
+    }
+
     /// Removes every reference to sounds or scenes that don't exist any more, so the rest
     /// of the code can assume ids always point somewhere. Called after loading (the file
     /// may have been edited by hand) and after deleting things.
@@ -487,6 +510,7 @@ mod tests {
             effects: vec!["gone".into()],
             duck_level: None,
             transition_ms: None,
+        blocks_music: false,
         });
         project.stack.push(StackEntry {
             id: "stk-1".into(),
