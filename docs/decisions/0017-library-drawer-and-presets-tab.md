@@ -49,3 +49,20 @@ Proposed (see screens D, D2 and F in `pencil/comilito.pen`):
 - Library folders map to real subfolders of `audio/<category>/`, so moving a sound between folders
   moves its file.
 - Modal editors (SceneEditor, SoundEditor) are replaced by in-place views once the layout is accepted.
+
+## Follow-up (same day, owner feedback on screens D2/D3)
+
+- **Scene groups and preset groups are collapsible.** The "Scenes" subtitle is dropped. Each
+  group heading shows a chevron and a count.
+- **Preset groups are editable.** Each group heading has a menu (rename, delete), and there's a
+  "New group" action. Each preset has a menu: Load, Edit, Rename, Duplicate, **Move to group ▸**
+  (existing groups, Ungrouped, New group…) and Delete. Presets can also be dragged onto a group heading.
+- A preset card's meta text ("5 scenes · 2 disabled") sits under the name and wraps, so it
+  never overflows the card.
+- **Loading a preset over an unsaved tapestry asks first.** The tapestry header shows
+  "Not saved in a preset" when the current tapestry doesn't match any preset. Loading a preset
+  then opens a dialog with:
+  - a preview of the current tapestry
+  - name and group fields
+  - buttons: *Cancel* / *Replace without saving* / *Save and load*
+  - "Don't ask again", controlled by a Behaviour preference (ask / always replace)

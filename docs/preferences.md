@@ -69,6 +69,7 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 |---|---|
 | When adding a scene that's already in the stack | ask (other choices: always move, always duplicate) |
 | When removing a sound | ask (other choices: always move to trash) |
+| When loading a preset over an unsaved tapestry | ask (other choice: always replace without saving) |
 | Closing a window with unsaved changes (✕ or Esc) | ask (other choices: save, discard). The window's Cancel button always discards. |
 | Warn when quitting during hashing or backup | on |
 
