@@ -1,6 +1,7 @@
 <script lang="ts">
   // Right panel: buttons for the effects of every enabled scene, top scene first.
   // Clicking an effect plays it; clicking it again while it plays stops it.
+  import { fitText } from "../lib/fit";
   import { Zap } from "@lucide/svelte";
   import { api } from "../lib/api";
   import { run, sceneById, soundById, ui } from "../lib/store.svelte";
@@ -20,7 +21,7 @@
 </script>
 
 <aside>
-  <h2 class="display">Effects</h2>
+  <h2 class="display" use:fitText>Effects</h2>
   {#if sources.length}<span class="caps source">From {[...new Set(sources)].join(" · ")}</span>{/if}
   {#if snapshot.mix.effects.length === 0}
     <p class="muted">The effects of the scenes in the tapestry appear here.</p>

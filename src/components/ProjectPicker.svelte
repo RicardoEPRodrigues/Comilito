@@ -2,6 +2,7 @@
   // The home screen (design "H · Home — projects" in pencil/comilito.pen): the brand column
   // with New project, the rarer actions under More, and "open the last project at start";
   // on the right, the most recent project as "Continue", then every other project.
+  import { fitText } from "../lib/fit";
   import {
     ArrowRight,
     Copy,
@@ -172,7 +173,7 @@
   <aside>
     <div class="brand">
       <img src={icon} alt="" width="96" height="96" />
-      <h1 class="display">Comilito</h1>
+      <h1 class="display" use:fitText>Comilito</h1>
       <span class="caps tagline">A soundboard for Dungeon Masters</span>
     </div>
     <p class="intro">
@@ -211,7 +212,7 @@
         oncontextmenu={(e) => openMenu(e, projectMenu(last), last.name)}>
         <span class="cap big display">{capital(last.name)}</span>
         <span class="texts">
-          <span class="name display">{last.name}</span>
+          <span class="name display" use:fitText>{last.name}</span>
           <span class="meta">{meta(last)}</span>
         </span>
         <button class="primary" onclick={() => open(last)}>Open<ArrowRight size={15} /></button>

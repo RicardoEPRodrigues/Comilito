@@ -13,7 +13,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0004](0004-save-format.md) | `.comilito` zip bundle with optional audio and relative paths | Superseded by 0006 | 2026-11-12 |
 | [0005](0005-storage-location-and-hashing.md) | Default storage in Documents, zip as the only format, lazy hashing | Partly superseded by 0006 | 2026-11-12 |
 | [0006](0006-project-folders.md) | A project is a folder; zip is only for export/import | Accepted | 2026-11-12 |
-| [0007](0007-backups.md) | Automatic backups using the export zip | Accepted | 2026-11-12 |
+| [0007](0007-backups.md) | Automatic backups using the export zip | Accepted (location: 0026) | 2026-11-12 |
 | [0008](0008-scenes.md) | Scenes: saved mixes with smart crossfades | Accepted | 2026-11-12 |
 | [0009](0009-overlay-scenes-and-roles.md) | Overlay scenes with layer roles | Superseded by 0010 | 2026-11-12 |
 | [0010](0010-scene-stack.md) | Scene stack instead of a single overlay | Amended by 0011 | 2026-11-12 |
@@ -31,7 +31,9 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0022](0022-dropping-files-onto-the-window.md) | Import audio by dropping files onto the window | Accepted | 2026-11-13 |
 | [0023](0023-home-screen-and-projects-folder.md) | Home screen, recent projects and moving the projects folder | Accepted | 2026-11-13 |
 | [0024](0024-background-move-and-window-state.md) | Move the projects folder in the background; remember the window size | Accepted | 2026-11-13 |
-| [0025](0025-theme-packages.md) | Themes can bring a watermark and fonts, shared as `.comilito-theme` packages | Accepted | 2026-11-13 |
+| [0025](0025-theme-packages.md) | Themes can bring a watermark and fonts, shared as `.comilito-theme` packages | Accepted (editor: 0027) | 2026-11-13 |
+| [0026](0026-backups-in-app-data.md) | Keep backups in the app's data folder, not the projects folder | Accepted | 2026-11-13 |
+| [0027](0027-theme-editor-files.md) | The theme editor can add a woodcut, font files and licences | Accepted | 2026-11-13 |
 
 ## Template
 

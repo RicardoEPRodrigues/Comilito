@@ -21,9 +21,9 @@
 - Moving the projects folder across disks (the slow, copying case) was only tested by unit
   tests; on the virtual display both folders were on one disk, so the move was an instant rename.
   Worth trying once with a big project and a USB drive to see the progress dialog.
-- Themes: the theme editor can't yet add or change a theme's own watermark or font files, only
-  keep the ones it was imported with (decision 0025).
-- Wide display fonts (e.g. Cinzel Decorative in the Alliance theme) make the home screen's
-  "COMILITO" title touch the sidebar's edge; it could shrink to fit.
+- Library: a folder can only be moved within its category. Moving one to another category would
+  also mean moving its sounds between categories (and out of scene slots that don't take them).
+- Library: dragging a sound onto a folder couldn't be checked on the virtual display (synthetic
+  drags of sound rows didn't register there); folder drags did. Worth one manual try.
 - Flatpak needs a permanent app ID (reverse domain, e.g. `me.colorcrow.Comilito`), plus
   `flatpak-builder` and the GNOME SDK with the Rust extension installed to build and test it.

@@ -1,5 +1,6 @@
 <script lang="ts">
   // About Comilito: author links and acknowledgements. Keep in sync with CREDITS.md.
+  import { fitText } from "../lib/fit";
   import { onMount } from "svelte";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { api } from "../lib/api";
@@ -33,7 +34,7 @@
 <Modal title="About Comilito" {onclose}>
   <section class="intro">
     <img src={icon} alt="" width="96" height="96" />
-    <h1 class="display">Comilito</h1>
+    <h1 class="display" use:fitText>Comilito</h1>
     <p class="muted">Version {version}</p>
     <p><button onclick={openLogs}><FileText size={13} />See logs</button></p>
     <p>A soundboard and mixer for Dungeons &amp; Dragons Dungeon Masters.</p>

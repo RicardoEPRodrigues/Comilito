@@ -32,6 +32,19 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
   files, which can include a watermark (drawn in the theme's gold, in place of the skeletal
   horse), font files and their licences. Theme files exported earlier (`.json`) still import.
 - Two optional, unbundled themes in `extras/themes/`: **Horde** and **Alliance**.
+- The **theme editor** can give a theme its own woodcut (painted in the theme's gold), font
+  files and their licences, all previewed live before saving.
+- **Library folders can be moved:** drag a folder onto another folder (or onto its category), or
+  use *Move to* in its right-click menu. The sounds inside follow.
+- *Add from URL here…* in a Library folder's (or category's) right-click menu downloads straight
+  into that folder.
+
+### Changed
+
+- **Backups** are kept in Comilito's data folder (`~/.local/share/com.comilito.app/backups` on
+  Linux) instead of a `Backups` folder among your projects, so the projects folder holds only
+  projects. Existing backups are moved there automatically. *Remove all data and quit* asks
+  whether to keep them.
 - **Dropping audio files** from the file manager onto the window imports copies of them.
 - **Scene groups** can be renamed and ungrouped from their ⋯ menu (or right-click), and scenes
   moved between groups.
@@ -46,6 +59,8 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 
 - Comilito no longer crashes at start on systems without a Documents folder set up; it uses
   `~/Documents` then.
+- Titles in wide display fonts (for example "Comilito" on the home screen in the Alliance theme)
+  no longer overflow their column; they shrink to fit.
 - Waveforms sometimes stayed blank until the sound was played, and jumped in size when the
   playback time appeared.
 - Dropping a file on the window could replace the app with a media player playing that file.
