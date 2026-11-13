@@ -40,6 +40,7 @@ export const api = {
   importTheme: (path: string) => invoke<Theme>("import_theme", { path }),
   exportTheme: (theme: Theme, dest: string) => invoke<void>("export_theme", { theme, dest }),
   readThemeAsset: (name: string) => invoke<ArrayBuffer>("read_theme_asset", { name }),
+  addThemeFile: (path: string, role: "watermark" | "font" | "licence") => invoke<string>("add_theme_file", { path, role }),
 
   // Projects
   listProjects: () => invoke<ProjectSummary[]>("list_projects"),

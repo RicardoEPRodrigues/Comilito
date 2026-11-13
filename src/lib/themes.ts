@@ -160,7 +160,7 @@ const watermarkUrls = new Map<string, Promise<string>>();
 
 const IMAGE_TYPES: Record<string, string> = { png: "image/png", webp: "image/webp", svg: "image/svg+xml" };
 
-function loadFont(family: string, file: string): Promise<void> {
+export function loadFont(family: string, file: string): Promise<void> {
   const key = `${family}\n${file}`;
   let loading = loadedFonts.get(key);
   if (!loading) {
@@ -177,7 +177,7 @@ function loadFont(family: string, file: string): Promise<void> {
   return loading;
 }
 
-function watermarkUrl(file: string): Promise<string> {
+export function watermarkUrl(file: string): Promise<string> {
   let url = watermarkUrls.get(file);
   if (!url) {
     const type = IMAGE_TYPES[file.split(".").pop() ?? ""] ?? "application/octet-stream";

@@ -75,8 +75,10 @@ pub struct ThemeFonts {
 }
 
 /// What a bundled file is for. Each role accepts only its own file types.
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum Role {
+/// `Deserialize` lets the frontend name a role as "watermark", "font" or "licence".
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Role {
     Watermark,
     Font,
     Licence,
@@ -240,7 +242,11 @@ pub fn save(config_dir: &Path, theme: &Theme) -> Result<(), String> {
     }
     fs::create_dir_all(themes_dir(config_dir)).map_err(|e| e.to_string())?;
     let json = serde_json::to_string_pretty(theme).map_err(|e| e.to_string())?;
-    storage::write_atomically(&path_for(config_dir, &theme.id), json.as_bytes())
+    storage::write_atomically(&path_for(config_dir, &theme.id), json.as_bytes())?;
+    // The theme editor stores files as soon as they're picked; any it no longer uses (picked,
+    // then replaced or removed) go now.
+    remove_unused_assets(config_dir);
+    Ok(())
 }
 
 pub fn delete(config_dir: &Path, id: &str) -> Result<(), String> {
@@ -290,6 +296,24 @@ fn store_asset(config_dir: &Path, ext: &str, bytes: &[u8]) -> Result<String, Str
         storage::write_atomically(&path, bytes)?;
     }
     Ok(name)
+}
+
+/// Stores a file picked in the theme editor (a watermark, font or licence) and returns its
+/// stored name, for the theme being edited to refer to. Same checks as an import.
+pub fn add_file(config_dir: &Path, file: &Path, role: Role) -> Result<String, String> {
+    let ext = extension(&file.to_string_lossy());
+    if !role.accepts(&ext) {
+        return Err(format!("a .{ext} file can't be used there"));
+    }
+    let size = fs::metadata(file).map_err(|e| format!("could not read {}: {e}", file.display()))?.len();
+    if size > MAX_ASSET {
+        return Err(format!("that file is too big for a theme (the limit is {} MB)", MAX_ASSET / (1024 * 1024)));
+    }
+    let bytes = fs::read(file).map_err(|e| format!("could not read {}: {e}", file.display()))?;
+    if !content_matches(&ext, &bytes) {
+        return Err(format!("that file isn't really a .{ext} file"));
+    }
+    store_asset(config_dir, &ext, &bytes)
 }
 
 /// Reads one file out of a package, refusing it if it's bigger than `limit`.
@@ -532,6 +556,28 @@ mod tests {
         assert!(import(&dir.0, &json).is_err());
 
         assert!(list(&dir.0).is_empty());
+    }
+
+    #[test]
+    fn adds_picked_files_and_cleans_up_unused_ones() {
+        let dir = TempDir::new();
+        let png = dir.0.join("woodcut.png");
+        fs::write(&png, PNG).unwrap();
+        assert!(add_file(&dir.0, &png, Role::Font).is_err(), "a PNG isn't a font");
+        let fake = dir.0.join("font.woff2");
+        fs::write(&fake, PNG).unwrap();
+        assert!(add_file(&dir.0, &fake, Role::Font).is_err(), "contents must match the extension");
+
+        let mut t = theme("user-1");
+        t.watermark = Some(add_file(&dir.0, &png, Role::Watermark).unwrap());
+        save(&dir.0, &t).unwrap();
+        let stored = t.watermark.clone().unwrap();
+        assert!(read_asset(&dir.0, &stored).is_ok());
+
+        // Back to the horse: saving drops the file nothing uses any more.
+        t.watermark = None;
+        save(&dir.0, &t).unwrap();
+        assert!(read_asset(&dir.0, &stored).is_err());
     }
 
     #[test]

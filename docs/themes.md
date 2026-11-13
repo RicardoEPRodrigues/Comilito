@@ -29,8 +29,24 @@ A user theme can also bring files with it:
 `<config>` is `~/.config/comilito` on Linux and `%APPDATA%\comilito` on Windows.
 
 In a stored theme, `watermark`, `fontFiles` and `licences` hold those stored names. A copy of a
-theme points at the same files. When a theme is deleted, files no other theme uses are deleted
-too.
+theme points at the same files. When a theme is saved or deleted, files no theme uses are
+deleted.
+
+## In the theme editor
+
+Under the colours ([decision 0027](decisions/0027-theme-editor-files.md)):
+
+- **Woodcut:** a preview of the watermark painted in the theme's gold. *Choose image…* picks a
+  PNG, WebP or SVG; *Use the horse* goes back to the skeletal horse.
+- **Font files:** *Add font file…* picks a WOFF2, WOFF, TTF or OTF, asks what to call it (guessed
+  from the file name, e.g. `NewRocker-Regular.woff2` → "New Rocker") and makes it the display
+  font. The theme's fonts are listed first in both font menus. Removing the font in use switches
+  back to the base theme's font.
+- **Licences:** *Add licence…* attaches a licence text (e.g. a font's `OFL.txt`) so it travels
+  with the theme when it's exported.
+
+A picked file is checked and stored straight away (`add_theme_file`), with the same checks as an
+import, so the whole app previews it before the theme is saved.
 
 ## Sharing: `.comilito-theme` packages
 

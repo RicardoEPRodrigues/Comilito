@@ -37,7 +37,7 @@
   /* Painted in gold rather than drawn light-on-dark like the horse, so it needs more opacity
      to show on a dark page. */
   :global(:root[data-dark="true"]) .themed {
-    opacity: 0.2;
+    opacity: 0.16;
   }
   :global(:root.no-watermark) .watermark {
     display: none;

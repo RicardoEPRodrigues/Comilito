@@ -131,6 +131,7 @@ pub fn run() {
             commands::import_theme,
             commands::export_theme,
             commands::read_theme_asset,
+            commands::add_theme_file,
             commands::list_projects,
             commands::projects_folder,
             commands::duplicate_project,

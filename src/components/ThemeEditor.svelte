@@ -1,11 +1,14 @@
 <script lang="ts">
-  // Editing a user theme (decision 0016): name, light or dark, fonts and every colour token.
-  // The whole app previews the theme live while it's edited. Built-in themes are never
-  // edited directly; the Appearance page makes a copy first.
-  import { Check, RotateCcw } from "@lucide/svelte";
+  // Editing a user theme (decisions 0016 and 0025): name, light or dark, fonts, every colour
+  // token, and the files the theme brings with it (its woodcut watermark, font files and their
+  // licences). The whole app previews the theme live while it's edited. Built-in themes are
+  // never edited directly; the Appearance page makes a copy first.
+  import { Check, FileText, ImageUp, Plus, RotateCcw, Trash2, Type } from "@lucide/svelte";
+  import { open } from "@tauri-apps/plugin-dialog";
+  import horse from "../assets/skeletal-horse.svg";
   import { api } from "../lib/api";
-  import { refreshUserThemes, run, ui } from "../lib/store.svelte";
-  import { BODY_FONTS, BUILT_IN_THEMES, COLOR_TOKENS, DISPLAY_FONTS, contrast } from "../lib/themes";
+  import { askText, refreshUserThemes, run, ui } from "../lib/store.svelte";
+  import { BODY_FONTS, BUILT_IN_THEMES, COLOR_TOKENS, DISPLAY_FONTS, contrast, loadFont, watermarkUrl } from "../lib/themes";
   import type { Theme } from "../lib/types";
 
   let { theme, onsave, oncancel }: { theme: Theme; onsave: (t: Theme) => void; oncancel: () => void } = $props();
@@ -30,7 +33,67 @@
   const displayFonts = $derived([...ownFonts, ...DISPLAY_FONTS.filter((f) => !ownFonts.includes(f))]);
   const bodyFonts = $derived([...ownFonts, ...BODY_FONTS.filter((f) => !ownFonts.includes(f))]);
 
-  const readability =$derived(contrast(colour("text"), colour("bg")));
+  const readability = $derived(contrast(colour("text"), colour("bg")));
+
+  // ---- Files the theme brings (decision 0025) ----
+  // A picked file is stored by Rust straight away (under its hash) and the draft refers to it
+  // by that name. Saving keeps it; files no saved theme uses are cleaned up on the next save.
+
+  /** Asks for a file and stores it for `role`; null if cancelled or refused. */
+  async function pickFile(role: "watermark" | "font" | "licence", title: string, extensions: string[]) {
+    const path = await open({ title, filters: [{ name: title, extensions }] });
+    if (typeof path !== "string") return null;
+    return { path, name: await run(api.addThemeFile(path, role)) };
+  }
+
+  async function chooseWatermark() {
+    const picked = await pickFile("watermark", "Woodcut image", ["png", "webp", "svg"]);
+    if (picked?.name) draft.watermark = picked.name;
+  }
+
+  /** "NewRocker-Regular.woff2" → "New Rocker": a starting guess for the font's name. */
+  function guessFamily(path: string): string {
+    const file = path.split(/[\\/]/).pop() ?? "";
+    return file
+      .replace(/\.[^.]+$/, "")
+      .replace(/[-_ ]?(Regular|Italic|Bold|Medium|Light|Black|SemiBold|Variable|VF)$/i, "")
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/[-_]+/g, " ")
+      .trim();
+  }
+
+  async function addFont() {
+    const picked = await pickFile("font", "Font file", ["woff2", "woff", "ttf", "otf"]);
+    if (!picked?.name) return;
+    const answer = await askText("Font name", "Shown in the font lists as", guessFamily(picked.path));
+    // Only characters a theme accepts in a font name (Rust checks too).
+    const family = answer?.replace(/[^\p{L}\p{N} _-]/gu, "").trim().slice(0, 60);
+    if (!family) return;
+    draft.fontFiles = { ...(draft.fontFiles ?? {}), [family]: picked.name };
+    // Use it for headings straight away; that's what theme fonts are usually for.
+    draft.fonts.display = family;
+    void loadFont(family, picked.name);
+  }
+
+  function removeFont(family: string) {
+    const { [family]: _, ...rest } = draft.fontFiles ?? {};
+    draft.fontFiles = rest;
+    if (draft.fonts.display === family) draft.fonts.display = base.fonts.display;
+    if (draft.fonts.body === family) draft.fonts.body = base.fonts.body;
+  }
+
+  async function addLicence() {
+    const picked = await pickFile("licence", "Licence text", ["txt"]);
+    if (picked?.name && !draft.licences?.includes(picked.name)) draft.licences = [...(draft.licences ?? []), picked.name];
+  }
+
+  // The woodcut preview, shown the way the app shows it: its shape painted in the gold.
+  let watermarkPreview = $state<string | null>(null);
+  $effect(() => {
+    const file = draft.watermark;
+    watermarkPreview = null;
+    if (file) watermarkUrl(file).then((url) => draft.watermark === file && (watermarkPreview = url)).catch(() => {});
+  });
 
   async function save() {
     const t = $state.snapshot(draft);
@@ -74,6 +137,50 @@
       </label>
     {/each}
   </div>
+  <div class="files">
+    <div class="file-block">
+      <span class="caps">Woodcut</span>
+      <div class="woodcut-row">
+        <div class="woodcut" style:background={colour("bg")}>
+          {#if watermarkPreview}
+            <div class="mask" style:--woodcut="url({watermarkPreview})" style:background={colour("gold")}></div>
+          {:else}
+            <img src={horse} alt="" />
+          {/if}
+        </div>
+        <div class="file-actions">
+          <button onclick={chooseWatermark}><ImageUp size={13} />{draft.watermark ? "Change image…" : "Choose image…"}</button>
+          {#if draft.watermark}<button class="ghost" onclick={() => (draft.watermark = undefined)}><RotateCcw size={13} />Use the horse</button>{/if}
+          <small>A one-colour PNG, WebP or SVG on a transparent background. Only its shape is used, painted in the theme's gold.</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="file-block">
+      <span class="caps">Font files</span>
+      {#each ownFonts as family (family)}
+        <div class="font-row">
+          <Type size={14} />
+          <span class="font-name" style:font-family={`"${family}"`}>{family}</span>
+          <button class="icon" title="Remove this font" onclick={() => removeFont(family)}><Trash2 size={13} /></button>
+        </div>
+      {:else}
+        <small>None: the theme uses fonts that come with Comilito.</small>
+      {/each}
+      <div class="file-actions inline">
+        <button onclick={addFont}><Plus size={13} />Add font file…</button>
+        <button onclick={addLicence}><FileText size={13} />Add licence…</button>
+      </div>
+      {#each draft.licences ?? [] as licence, i (licence)}
+        <div class="font-row">
+          <FileText size={14} /><span class="licence">Licence {i + 1}</span>
+          <button class="icon" title="Remove this licence" onclick={() => (draft.licences = draft.licences!.filter((l) => l !== licence))}><Trash2 size={13} /></button>
+        </div>
+      {/each}
+      <small>Fonts usually ask for their licence (e.g. OFL.txt) to be passed on with them; it's shared when the theme is exported.</small>
+    </div>
+  </div>
+
   {#if readability < 4.5}
     <p class="warn">Text on the page has low contrast ({readability.toFixed(1)}:1). Aim for at least 4.5:1 so it's easy to read.</p>
   {/if}
@@ -119,6 +226,71 @@
   }
   .colour span {
     flex: 1;
+  }
+  .files {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.2rem;
+  }
+  .file-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    min-width: 0;
+  }
+  .woodcut-row {
+    display: flex;
+    gap: 0.8rem;
+  }
+  .woodcut {
+    flex: none;
+    width: 7rem;
+    height: 7rem;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    display: grid;
+    padding: 0.4rem;
+  }
+  .woodcut img,
+  .woodcut .mask {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    opacity: 0.8;
+  }
+  .woodcut .mask {
+    -webkit-mask: var(--woodcut) center / contain no-repeat;
+    mask: var(--woodcut) center / contain no-repeat;
+  }
+  .file-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+  .file-actions.inline {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .font-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .font-name {
+    flex: 1;
+    font-size: 1.15rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .licence {
+    flex: 1;
+    font-size: 0.85rem;
+  }
+  small {
+    color: var(--muted);
+    font-size: 0.75rem;
   }
   .warn {
     color: var(--warn);

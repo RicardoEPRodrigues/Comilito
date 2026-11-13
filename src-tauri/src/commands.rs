@@ -118,6 +118,14 @@ pub fn export_theme(theme: crate::themes::Theme, dest: PathBuf, state: AppStateR
     crate::themes::export(&config_dir, &theme, &dest)
 }
 
+/// Stores a file picked in the theme editor (`role`: "watermark", "font" or "licence") and
+/// returns the name the theme should refer to it by.
+#[tauri::command]
+pub fn add_theme_file(path: PathBuf, role: crate::themes::Role, state: AppStateRef) -> Result<String, String> {
+    let config_dir = lock(&state)?.config_dir.clone();
+    crate::themes::add_file(&config_dir, &path, role)
+}
+
 /// A file a user theme brought with it (a font or its watermark), as raw bytes.
 /// `ipc::Response` sends them as binary, which arrives in JavaScript as an `ArrayBuffer`
 /// instead of a (much bigger, slower) JSON array of numbers.
