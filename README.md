@@ -81,23 +81,23 @@ Removing Comilito itself depends on how you installed it:
 That leaves your **projects** and Comilito's own **data** on the computer, on purpose: projects
 are your work, and uninstalling shouldn't take them with it.
 
-**Comilito's data** (settings, your own themes, logs, the downloaded yt-dlp and ffmpeg, about
-400 MB): the easy way is *Preferences › Projects & tools › Remove all data and quit*, before
-uninstalling. It deletes the folders below and leaves your projects alone. To do it by hand:
+**Comilito's data** (settings, your own themes, logs, backups, the downloaded yt-dlp and ffmpeg,
+about 400 MB): the easy way is *Preferences › Projects & tools › Remove all data and quit*, before
+uninstalling. It deletes the folders below (asking whether to keep the backups) and leaves your
+projects alone. To do it by hand:
 
 | | Linux | Windows |
 |---|---|---|
 | Preferences and your own themes | `~/.config/comilito/` | `%APPDATA%\comilito\` |
 | Window size and position | `~/.config/com.comilito.app/` | `%APPDATA%\com.comilito.app\` |
-| Logs, downloaded tools, webview storage | `~/.local/share/com.comilito.app/` | `%APPDATA%\com.comilito.app\` and `%LOCALAPPDATA%\com.comilito.app\` |
+| Backups, logs, downloaded tools, webview storage | `~/.local/share/com.comilito.app/` (backups in `backups/`) | `%APPDATA%\com.comilito.app\` and `%LOCALAPPDATA%\com.comilito.app\` |
 | Cache (may not exist) | `~/.cache/com.comilito.app/` | `%LOCALAPPDATA%\com.comilito.app\` |
 
 On Linux, `~/.config`, `~/.local/share` and `~/.cache` are the defaults; if you've set
 `XDG_CONFIG_HOME`, `XDG_DATA_HOME` or `XDG_CACHE_HOME`, look there instead.
 
 **Your projects**, only if you want them gone too: the projects folder, `~/Documents/Comilito/` by
-default (Preferences › Projects & tools shows where yours is). It holds one folder per project
-and the `Backups` folder. Delete single projects from the home screen (⋯ › Delete), or the whole
+default (Preferences › Projects & tools shows where yours is). It holds one folder per project. Delete single projects from the home screen (⋯ › Delete), or the whole
 folder by hand.
 
 ## Development

@@ -1,8 +1,9 @@
-//! Moving the projects folder somewhere else, and duplicating a project.
+//! Moving the projects folder somewhere else, duplicating a project, and moving backups out
+//! of the projects folder (where older versions kept them, decision 0026).
 //!
-//! Only Comilito's own things are moved: folders holding a `comilito.json`, and the
-//! `Backups` folder. The projects folder may be a folder the user also keeps other files in
-//! (say `~/Documents`), and those must stay where they are.
+//! Only Comilito's own things are moved: folders holding a `comilito.json`. The projects
+//! folder may be a folder the user also keeps other files in (say `~/Documents`), and those
+//! must stay where they are.
 
 use std::{
     fs,
@@ -11,10 +12,10 @@ use std::{
 
 use crate::storage::{self, PROJECT_FILE};
 
-/// The name of the backups folder inside the projects folder (see `AppState::backups_root`).
-pub const BACKUPS: &str = "Backups";
+/// Where versions before decision 0026 kept backups: `<projects folder>/Backups`.
+pub const OLD_BACKUPS: &str = "Backups";
 
-/// What a move would carry: the project folders and the backups folder in `root`.
+/// What a move would carry: the project folders in `root`.
 pub fn movable_entries(root: &Path) -> Vec<PathBuf> {
     let Ok(entries) = fs::read_dir(root) else {
         return Vec::new();
@@ -22,7 +23,7 @@ pub fn movable_entries(root: &Path) -> Vec<PathBuf> {
     let mut found: Vec<PathBuf> = entries
         .flatten()
         .map(|e| e.path())
-        .filter(|p| p.join(PROJECT_FILE).is_file() || (p.is_dir() && p.file_name().is_some_and(|n| n == BACKUPS)))
+        .filter(|p| p.join(PROJECT_FILE).is_file())
         .collect();
     found.sort();
     found
@@ -39,7 +40,7 @@ pub struct MovePlan {
     pub total_bytes: u64,
 }
 
-/// Checks a move of every project folder and the backups from `from` into `to`. Checking
+/// Checks a move of every project folder from `from` into `to`. Checking
 /// everything first means the move either does all of them or (barring a disk error halfway)
 /// none: no name may already exist in `to`.
 pub fn plan_move(from: &Path, to: &Path) -> Result<MovePlan, String> {
@@ -49,7 +50,7 @@ pub fn plan_move(from: &Path, to: &Path) -> Result<MovePlan, String> {
     let entries = movable_entries(from);
     // Moving into one of the folders being moved would move a folder into itself.
     if entries.iter().any(|e| to.starts_with(e)) {
-        return Err("the new folder can't be inside a project or the backups folder".into());
+        return Err("the new folder can't be inside a project".into());
     }
     fs::create_dir_all(to).map_err(|e| format!("could not create {}: {e}", to.display()))?;
     for entry in &entries {
@@ -85,6 +86,44 @@ pub fn run_move(plan: &MovePlan, progress: &mut dyn FnMut(u64, &Path)) -> Result
 #[cfg(test)]
 pub fn move_projects(from: &Path, to: &Path) -> Result<usize, String> {
     run_move(&plan_move(from, to)?, &mut |_, _| {})
+}
+
+/// Moves backups from `<projects folder>/Backups` (older versions) into `backups_dir`, and
+/// returns how many files moved. Backups already in `backups_dir` win: a file with the same
+/// name is left in the old folder rather than overwritten. The old folder is removed once empty.
+pub fn migrate_backups(projects_root: &Path, backups_dir: &Path) -> Result<usize, String> {
+    let old = projects_root.join(OLD_BACKUPS);
+    if !old.is_dir() || same_place(&old, backups_dir) {
+        return Ok(0);
+    }
+    let mut moved = 0;
+    // Backups are laid out as `<project name>/<project name> <date>.comilito`.
+    let projects = fs::read_dir(&old).map_err(|e| format!("could not read {}: {e}", old.display()))?;
+    for project in projects.flatten().filter(|e| e.path().is_dir()) {
+        let target_dir = backups_dir.join(project.file_name());
+        fs::create_dir_all(&target_dir).map_err(|e| format!("could not create {}: {e}", target_dir.display()))?;
+        for file in fs::read_dir(project.path()).into_iter().flatten().flatten() {
+            let target = target_dir.join(file.file_name());
+            if target.exists() || !file.path().is_file() {
+                continue;
+            }
+            move_file(&file.path(), &target)?;
+            moved += 1;
+        }
+        // `remove_dir` only removes empty folders, so anything left behind stays.
+        let _ = fs::remove_dir(project.path());
+    }
+    let _ = fs::remove_dir(&old);
+    Ok(moved)
+}
+
+/// Renames a file, or copies and deletes it when it's on another disk.
+fn move_file(from: &Path, to: &Path) -> Result<(), String> {
+    if fs::rename(from, to).is_ok() {
+        return Ok(());
+    }
+    fs::copy(from, to).map_err(|e| format!("could not copy {}: {e}", from.display()))?;
+    fs::remove_file(from).map_err(|e| format!("copied, but could not remove {}: {e}", from.display()))
 }
 
 /// Copies a project folder next to itself as "<name> (copy)" and renames the copy inside its
@@ -168,22 +207,41 @@ mod tests {
     use crate::storage::{create_project, test_support::TempDir};
 
     #[test]
-    fn moves_projects_and_backups_but_nothing_else() {
+    fn moves_projects_but_nothing_else() {
         let root = TempDir::new();
         let from = root.0.join("old");
         let to = root.0.join("new");
         create_project(&from, "One", ProjectDefaults::default()).unwrap();
         create_project(&from, "Two", ProjectDefaults::default()).unwrap();
-        fs::create_dir_all(from.join(BACKUPS)).unwrap();
         fs::write(from.join("shopping list.txt"), "eggs").unwrap();
 
-        assert_eq!(move_projects(&from, &to).unwrap(), 3);
+        assert_eq!(move_projects(&from, &to).unwrap(), 2);
         assert!(to.join("One").join(PROJECT_FILE).is_file());
         assert!(to.join("Two").join(PROJECT_FILE).is_file());
-        assert!(to.join(BACKUPS).is_dir());
         // The unrelated file stays, so the old folder does too.
         assert!(from.join("shopping list.txt").is_file());
         assert!(!to.join("shopping list.txt").exists());
+    }
+
+    #[test]
+    fn migrates_old_backups_without_overwriting() {
+        let root = TempDir::new();
+        let projects = root.0.join("projects");
+        let backups = root.0.join("data").join("backups");
+        let old = projects.join(OLD_BACKUPS).join("Strahd");
+        fs::create_dir_all(&old).unwrap();
+        fs::write(old.join("Strahd 2026-11-01 10-00.comilito"), "old").unwrap();
+        fs::write(old.join("Strahd 2026-11-02 10-00.comilito"), "old").unwrap();
+        fs::create_dir_all(backups.join("Strahd")).unwrap();
+        fs::write(backups.join("Strahd").join("Strahd 2026-11-02 10-00.comilito"), "new").unwrap();
+
+        assert_eq!(migrate_backups(&projects, &backups).unwrap(), 1);
+        assert!(backups.join("Strahd").join("Strahd 2026-11-01 10-00.comilito").is_file());
+        let kept = fs::read_to_string(backups.join("Strahd").join("Strahd 2026-11-02 10-00.comilito")).unwrap();
+        assert_eq!(kept, "new", "existing backups are never overwritten");
+        // The clashing file stays behind, so the old folder does too.
+        assert!(old.join("Strahd 2026-11-02 10-00.comilito").is_file());
+        assert_eq!(migrate_backups(&root.0.join("nowhere"), &backups).unwrap(), 0);
     }
 
     #[test]

@@ -99,7 +99,7 @@ export const api = {
   previewPosition: () => invoke<[string, number] | null>("preview_position"),
   logMessage: (level: "info" | "warn" | "error", message: string) => invoke<void>("log_message", { level, message }),
   openLogFile: () => invoke<void>("open_log_file"),
-  forgetAllData: () => invoke<void>("forget_all_data"),
+  forgetAllData: (keepBackups: boolean) => invoke<void>("forget_all_data", { keepBackups }),
   toggleEffect: (id: string) => invoke<void>("toggle_effect", { id }),
   moveSounds: (ids: string[], category: Category, folder: string) =>
     invoke<void>("move_sounds", { ids, category, folder }),

@@ -11,7 +11,7 @@
 //! `state-changed` event, not as a return value, so there's one way state reaches the UI.
 
 use std::{
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Mutex, MutexGuard},
     time::Duration,
 };
@@ -752,15 +752,18 @@ pub fn open_log_file(app: AppHandle) -> Result<(), String> {
 }
 
 /// Removes everything Comilito stored on this computer apart from projects: preferences,
-/// user themes, downloaded tools, logs, caches and the window's saved state. Then quits.
-/// Projects (in the projects folder) and their backups are left alone.
+/// user themes, downloaded tools, logs, caches, the window's saved state and, unless
+/// `keep_backups`, the backups (which live in the app data folder, decision 0026). Then quits.
+/// Projects (in the projects folder) are left alone.
 #[tauri::command]
-pub fn forget_all_data(app: AppHandle, state: AppStateRef) -> Result<(), String> {
+pub fn forget_all_data(keep_backups: bool, app: AppHandle, state: AppStateRef) -> Result<(), String> {
     use tauri::Manager;
-    {
+    let backups_dir = {
         let mut s = lock(&state)?;
         s.close_project()?;
-    }
+        s.backups_dir.clone()
+    };
+    let keep = keep_backups.then_some(backups_dir.as_path());
     let paths = app.path();
     let dirs = [
         lock(&state)?.config_dir.clone(),
@@ -770,14 +773,36 @@ pub fn forget_all_data(app: AppHandle, state: AppStateRef) -> Result<(), String>
         paths.app_cache_dir().map_err(|e| e.to_string())?,
     ];
     for dir in dirs {
-        if dir.exists() {
-            std::fs::remove_dir_all(&dir).map_err(|e| format!("could not remove {}: {e}", dir.display()))?;
-        }
+        remove_all_except(&dir, keep)?;
     }
     // Not `app.exit(0)`: Tauri's normal exit lets plugins save their state, and the
     // window-state plugin would write `.window-state.json` straight back into a folder we just
     // removed. The project is already closed and saved, so nothing else needs to run.
     std::process::exit(0);
+}
+
+/// Deletes `dir` and everything in it, except `keep` (and the folders leading to it) when
+/// `keep` is inside `dir`.
+fn remove_all_except(dir: &Path, keep: Option<&Path>) -> Result<(), String> {
+    let err = |p: &Path, e: std::io::Error| format!("could not remove {}: {e}", p.display());
+    if !dir.exists() {
+        return Ok(());
+    }
+    match keep {
+        Some(keep) if keep == dir => Ok(()),
+        Some(keep) if keep.starts_with(dir) => {
+            for entry in std::fs::read_dir(dir).map_err(|e| err(dir, e))?.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    remove_all_except(&path, Some(keep))?;
+                } else {
+                    std::fs::remove_file(&path).map_err(|e| err(&path, e))?;
+                }
+            }
+            Ok(())
+        }
+        _ => std::fs::remove_dir_all(dir).map_err(|e| err(dir, e)),
+    }
 }
 
 #[tauri::command]

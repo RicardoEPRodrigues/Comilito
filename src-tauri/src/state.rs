@@ -34,6 +34,8 @@ pub struct AppState {
     pub config_dir: PathBuf,
     /// `~/Documents/Comilito`, used unless the preferences say otherwise.
     pub default_projects_root: PathBuf,
+    /// Where backups go: `<app data folder>/backups` (decision 0026).
+    pub backups_dir: PathBuf,
     /// True while `move_projects_folder` moves projects on its background thread. Opening,
     /// creating, duplicating or deleting projects is refused meanwhile.
     pub moving_projects: bool,
@@ -163,10 +165,10 @@ impl AppState {
             .unwrap_or_else(|| self.default_projects_root.clone())
     }
 
-    /// `<projects folder>/Backups` (decision 0007). Outside every project folder, so backups
-    /// never end up inside exports.
+    /// `<app data folder>/backups` (decisions 0007 and 0026): with the app's own files, so the
+    /// projects folder holds only projects, and never inside a project (so never in exports).
     pub fn backups_root(&self) -> PathBuf {
-        self.projects_root().join(crate::relocate::BACKUPS)
+        self.backups_dir.clone()
     }
 
     /// The open project, or an error for commands that need one.

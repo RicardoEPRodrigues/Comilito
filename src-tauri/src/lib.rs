@@ -71,6 +71,16 @@ pub fn run() {
                 .or_else(|_| app.path().home_dir().map(|home| home.join("Documents")))?;
             let default_projects_root = documents.join("Comilito");
             let prefs = prefs::load(&config_dir);
+            let backups_dir = data_dir.join("backups");
+            // Older versions kept backups in `<projects folder>/Backups`. Move them in the
+            // background (it may copy across disks); new backups already go to the new place.
+            let projects_root = prefs.projects_folder.clone().unwrap_or_else(|| default_projects_root.clone());
+            let migrate_to = backups_dir.clone();
+            thread::spawn(move || match relocate::migrate_backups(&projects_root, &migrate_to) {
+                Ok(0) => {}
+                Ok(n) => logging::info(&format!("Moved {n} backups to {}", migrate_to.display())),
+                Err(e) => logging::error(&format!("could not move the old backups: {e}")),
+            });
             // Where the bundled sample audio was installed (`bundle.resources` in
             // tauri.conf.json). In development that's next to the debug binary.
             let sample_dir = app
@@ -88,6 +98,7 @@ pub fn run() {
                 prefs,
                 config_dir,
                 default_projects_root,
+                backups_dir: backups_dir.clone(),
                 moving_projects: false,
                 sample_dir,
                 open: None,

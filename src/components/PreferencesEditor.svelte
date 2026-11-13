@@ -6,7 +6,7 @@
   import { open } from "@tauri-apps/plugin-dialog";
   import type { Component } from "svelte";
   import { api } from "../lib/api";
-  import { confirmAction, formatBytes, moveProjects, notify, openLogs, refreshTools, run, ui } from "../lib/store.svelte";
+  import { ask, confirmAction, formatBytes, moveProjects, notify, openLogs, refreshTools, run, ui } from "../lib/store.svelte";
   import type { Preferences } from "../lib/types";
   import { CATEGORIES } from "../lib/types";
   import { closeEditor, fingerprint } from "../lib/unsaved";
@@ -42,14 +42,15 @@
     if (typeof folder === "string" && draft) draft.projectsFolder = folder;
   }
 
-  /** Moves every project and the backups into another folder, right away (not on Save). */
+  /** Moves every project into another folder, right away (not on Save). Backups stay in the
+   *  app's data folder (decision 0026). */
   async function moveToFolder() {
     const to = await open({ directory: true, title: "Move the projects to…" });
     if (typeof to !== "string" || !draft) return;
     const from = (await run(api.projectsFolder())) ?? "";
     const ok = await confirmAction(
       "Move all projects?",
-      `Every project and its backups move from ${from} to ${to}, which becomes the projects ` +
+      `Every project moves from ${from} to ${to}, which becomes the projects ` +
         "folder. Other files in the old folder stay where they are. An open project is closed and " +
         "reopened from its new place.",
       "Move projects",
@@ -82,17 +83,22 @@
     await refreshTools();
   }
 
-  /** Removes preferences, themes, tools, logs and caches (not projects), then quits. */
+  /** Removes preferences, themes, tools, logs, caches and (if asked) backups, never projects,
+   *  then quits. Backups live in the app's data folder (decision 0026), so they're asked about. */
   async function forgetEverything() {
-    const ok = await confirmAction(
-      "Remove all Comilito data from this computer?",
-      "Deletes your preferences, your own themes, the downloaded tools, logs and caches, then " +
-        "closes Comilito. Your projects and their backups are kept. Use this before uninstalling, " +
-        "or to start over with a clean slate.",
-      "Remove and quit",
-      true,
-    );
-    if (ok) await run(api.forgetAllData());
+    const answer = await ask({
+      title: "Remove all Comilito data from this computer?",
+      message:
+        "Deletes your preferences, your own themes, the downloaded tools, logs and caches, then " +
+        "closes Comilito. Your projects are kept. Use this before uninstalling, or to start over " +
+        "with a clean slate.\n\nBackups are kept with this data. Keep them, or delete them too?",
+      choices: [
+        { label: "Cancel", value: "cancel" },
+        { label: "Delete backups too", value: "all", danger: true },
+        { label: "Keep backups", value: "keep", primary: true },
+      ],
+    });
+    if (answer?.choice === "keep" || answer?.choice === "all") await run(api.forgetAllData(answer.choice === "keep"));
   }
 
   const pct = (v: number) => Math.round(v * 100);
@@ -151,13 +157,14 @@
             <div class="section-head"><span class="caps">Projects folder</span></div>
             <div class="row">
               <code class="grow">{draft.projectsFolder ?? "Default (Documents/Comilito)"}</code>
-              <button onclick={moveToFolder} title="Move every project and the backups to another folder">Move to…</button>
+              <button onclick={moveToFolder} title="Move every project to another folder">Move to…</button>
               <button onclick={chooseFolder} title="Look for projects in another folder, without moving any">Choose…</button>
               {#if draft.projectsFolder}<button onclick={() => (draft!.projectsFolder = null)}>Use default</button>{/if}
             </div>
             <p class="muted small">
-              <strong>Move to…</strong> moves your projects and backups there. <strong>Choose…</strong>
+              <strong>Move to…</strong> moves your projects there. <strong>Choose…</strong>
               only changes where Comilito looks (for example a folder you synced from another computer).
+              Backups are kept separately, in Comilito's data folder.
             </p>
             <label class="switch">
               <input type="checkbox" bind:checked={draft.openLastProject} />

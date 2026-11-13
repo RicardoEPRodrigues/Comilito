@@ -128,8 +128,11 @@ self-contained again.
 
 ## Backups
 
-See [decision 0007](decisions/0007-backups.md). Backups are `.comilito` zips written to
-`~/Documents/Comilito/Backups/<Project name>/`:
+See decisions [0007](decisions/0007-backups.md) and [0026](decisions/0026-backups-in-app-data.md).
+Backups are `.comilito` zips written to `<app data folder>/backups/<Project name>/`
+(`~/.local/share/com.comilito.app/backups/` on Linux, `%APPDATA%\com.comilito.app\backups\` on
+Windows). Versions before 0026 wrote them to `<projects folder>/Backups/`; they're moved over the
+next time Comilito starts.
 
 - every 30 minutes while there are changes, and when the project is closed
 - the newest 1 is kept (configurable); the new backup is written before the oldest is deleted
