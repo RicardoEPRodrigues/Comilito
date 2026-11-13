@@ -1,0 +1,119 @@
+<script lang="ts">
+  // The "Levels", "Sound defaults per category" and "Backups" sections, shared by
+  // Project settings and Preferences (docs/preferences.md).
+  //
+  // The parent passes draft objects with `bind:defaults={...}`; `$bindable()` allows this
+  // component to change them in place.
+  import type { BackupSettings, ProjectDefaults } from "../lib/types";
+  import { CATEGORIES } from "../lib/types";
+
+  let {
+    defaults = $bindable(),
+    backups = $bindable(),
+  }: { defaults: ProjectDefaults; backups: BackupSettings } = $props();
+
+  const pct = (v: number) => Math.round(v * 100);
+</script>
+
+<section>
+  <h2>Levels</h2>
+  <label class="row">
+    <span>Ducking level</span>
+    <input type="range" min="0" max="100" value={pct(defaults.duckLevel)}
+      oninput={(e) => (defaults.duckLevel = e.currentTarget.valueAsNumber / 100)} />
+    <span class="v">{pct(defaults.duckLevel)}%</span>
+  </label>
+  <label class="row">
+    <span>New sound volume</span>
+    <input type="range" min="0" max="100" value={pct(defaults.soundVolume)}
+      oninput={(e) => (defaults.soundVolume = e.currentTarget.valueAsNumber / 100)} />
+    <span class="v">{pct(defaults.soundVolume)}%</span>
+  </label>
+  <label class="row">
+    <span>Scene transition</span>
+    <input type="number" min="0" max="60" step="0.1" value={defaults.transitionMs / 1000}
+      onchange={(e) => (defaults.transitionMs = Math.round(Math.max(0, e.currentTarget.valueAsNumber || 0) * 1000))} />
+    <span class="v">s</span>
+  </label>
+</section>
+
+<section>
+  <h2>Sound defaults per category</h2>
+  <table>
+    <thead>
+      <tr><th></th><th>Loop</th><th>Fade in (s)</th><th>Fade out (s)</th><th>Shuffle</th></tr>
+    </thead>
+    <tbody>
+      {#each CATEGORIES as c (c.id)}
+        {@const d = defaults.categories[c.id]}
+        <tr>
+          <td>{c.label}</td>
+          <td><input type="checkbox" bind:checked={d.loop} /></td>
+          <td><input type="number" min="0" max="60" step="0.1" value={d.fadeInMs / 1000}
+            onchange={(e) => (d.fadeInMs = Math.round(Math.max(0, e.currentTarget.valueAsNumber || 0) * 1000))} /></td>
+          <td><input type="number" min="0" max="60" step="0.1" value={d.fadeOutMs / 1000}
+            onchange={(e) => (d.fadeOutMs = Math.round(Math.max(0, e.currentTarget.valueAsNumber || 0) * 1000))} /></td>
+          <td>
+            {#if c.id === "music"}
+              <input type="checkbox" checked={d.shuffle ?? false} onchange={(e) => (d.shuffle = e.currentTarget.checked)} />
+            {:else}—{/if}
+          </td>
+        </tr>
+      {/each}
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Backups</h2>
+  <label class="row">
+    <span>Every</span>
+    <input type="number" min="1" max="1440" bind:value={backups.intervalMinutes} />
+    <span class="v">min</span>
+  </label>
+  <label class="row">
+    <span>Backups to keep</span>
+    <input type="number" min="1" max="100" bind:value={backups.keep} />
+  </label>
+  <label class="row">
+    <span>Include audio</span>
+    <input type="checkbox" bind:checked={backups.includeAudio} />
+  </label>
+</section>
+
+<style>
+  section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .row span:first-child {
+    width: 9rem;
+  }
+  input[type="range"] {
+    width: 10rem;
+  }
+  input[type="number"] {
+    width: 5rem;
+  }
+  .v {
+    color: var(--muted);
+  }
+  table {
+    border-collapse: collapse;
+  }
+  th {
+    font-weight: normal;
+    color: var(--muted);
+    text-align: left;
+    padding: 0 0.5rem 0.2rem 0;
+  }
+  td {
+    padding: 0.15rem 0.5rem 0.15rem 0;
+  }
+</style>

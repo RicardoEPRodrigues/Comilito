@@ -20,6 +20,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0011](0011-stack-ui-and-presets.md) | Saved stack, presets, drag-and-drop stack UI | Accepted | 2026-11-12 |
 | [0012](0012-preferences.md) | Preferences window with app and project levels | Accepted | 2026-11-12 |
 | [0013](0013-plain-svelte-not-sveltekit.md) | Plain Svelte with Vite instead of SvelteKit | Accepted | 2026-11-12 |
+| [0014](0014-html5-drag-and-drop.md) | Hand-written HTML5 drag and drop for the stack | Accepted | 2026-11-13 |
 
 ## Template
 

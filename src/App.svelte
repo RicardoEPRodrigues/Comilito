@@ -1,139 +1,65 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api/core";
-  import VolumeSlider from "./VolumeSlider.svelte";
+  import { onMount } from "svelte";
+  import { api } from "./lib/api";
+  import { init, project, run, ui } from "./lib/store.svelte";
+  import ProjectPicker from "./components/ProjectPicker.svelte";
+  import Workspace from "./components/Workspace.svelte";
+  import Dialog from "./components/Dialog.svelte";
+  import Editors from "./components/Editors.svelte";
+  import Notices from "./components/Notices.svelte";
 
-  // Must match the Rust `Category` enum's JSON names (src-tauri/src/project.rs).
-  type Category = "music" | "ambience" | "effects";
+  let ready = $state(false);
 
-  const categories: { id: Category; label: string }[] = [
-    { id: "music", label: "Music" },
-    { id: "ambience", label: "Ambience" },
-    { id: "effects", label: "Effects" },
-  ];
+  onMount(async () => {
+    await init();
+    ready = true;
+  });
 
-  // Same shape as the Rust `Volumes` struct.
-  interface Volumes {
-    master: number;
-    music: number;
-    ambience: number;
-    effects: number;
-  }
+  // Theme: "system" follows the OS; otherwise force light or dark via a data attribute
+  // that app.css reads. `$effect` re-runs whenever something it reads changes.
+  $effect(() => {
+    const theme = ui.prefs?.appearance.theme ?? "system";
+    if (theme === "system") delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = theme;
+  });
 
-  // Asking Rust for the version proves the UI -> Rust command bridge works.
-  let version = $state("…");
+  /** Global shortcuts: Space, Esc and scene hotkeys (docs/scenes.md "Controls"). */
+  function onKeydown(e: KeyboardEvent) {
+    // Already handled by a dialog (see Dialog.svelte).
+    if (e.defaultPrevented) return;
+    // Never steal keys while typing in a field.
+    const target = e.target as HTMLElement;
+    if (target.closest("input, textarea, select, [contenteditable]")) return;
+    // While a dialog or editor is open, keys belong to it.
+    if (ui.question || ui.editing) return;
+    const p = project();
+    if (!p) return;
 
-  invoke<string>("app_version")
-    .then((v) => (version = v))
-    .catch((err) => (version = `error: ${err}`));
-
-  // Rust owns the real volumes; we fetch them once and then send every change back.
-  // `null` until the first answer arrives, so the sliders don't flash a wrong position.
-  let volumes = $state<Volumes | null>(null);
-
-  invoke<Volumes>("get_volumes")
-    .then((v) => (volumes = v))
-    .catch((err) => (error = String(err)));
-
-  function setMaster(v: number) {
-    volumes!.master = v;
-    run("set_master_volume", { volume: v });
-  }
-
-  function setCategory(category: Category, v: number) {
-    volumes![category] = v;
-    run("set_category_volume", { category, volume: v });
-  }
-
-  // Temporary test controls until there's a real sound library.
-  let path = $state("");
-  let playCategory = $state<Category>("music");
-  let error = $state("");
-
-  // When a Rust command returns Err(message), invoke() rejects with that message.
-  async function run(command: string, args?: Record<string, unknown>) {
-    error = "";
-    try {
-      await invoke(command, args);
-    } catch (err) {
-      error = String(err);
+    if (e.key === " ") {
+      e.preventDefault();
+      run(api.togglePlay());
+    } else if (e.key === "Escape") {
+      run(api.stopAll());
+    } else if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+      const scene = p.scenes.find((s) => s.hotkey && s.hotkey.toLowerCase() === e.key.toLowerCase());
+      if (scene) {
+        e.preventDefault();
+        run(api.sceneHotkey(scene.id));
+      }
     }
   }
 </script>
 
-<main>
-  <h1>Comilito</h1>
-  <p class="version">Version {version}</p>
+<svelte:window onkeydown={onKeydown} />
 
-  <section>
-    <h2>Audio test</h2>
-    <form
-      onsubmit={(e) => {
-        e.preventDefault();
-        run("play_file", { path, category: playCategory });
-      }}
-    >
-      <input bind:value={path} placeholder="/path/to/sound.ogg" />
-      <select bind:value={playCategory}>
-        {#each categories as c (c.id)}
-          <option value={c.id}>{c.label}</option>
-        {/each}
-      </select>
-      <button type="submit" disabled={!path}>Play</button>
-      <button type="button" onclick={() => run("stop_all")}>Stop all</button>
-    </form>
-    {#if error}
-      <p class="error">{error}</p>
-    {/if}
-  </section>
-
-  {#if volumes}
-    <section class="mixer">
-      <h2>Mixer</h2>
-      <VolumeSlider label="Master" value={volumes.master} onchange={setMaster} />
-      {#each categories as c (c.id)}
-        <VolumeSlider
-          label={c.label}
-          value={volumes[c.id]}
-          onchange={(v) => setCategory(c.id, v)}
-        />
-      {/each}
-    </section>
+{#if ready}
+  {#if ui.snapshot?.project}
+    <Workspace />
+  {:else}
+    <ProjectPicker />
   {/if}
-</main>
+{/if}
 
-<style>
-  :global(body) {
-    margin: 0;
-    font-family: system-ui, sans-serif;
-    background: #1b1b1f;
-    color: #e6e6e6;
-  }
-
-  main {
-    padding: 2rem;
-  }
-
-  .version {
-    color: #888;
-  }
-
-  form {
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  form input {
-    flex: 1;
-    max-width: 40rem;
-  }
-
-  .mixer {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .error {
-    color: #ff7b7b;
-  }
-</style>
+<Editors />
+<Dialog />
+<Notices />

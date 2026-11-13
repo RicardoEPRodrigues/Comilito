@@ -157,7 +157,8 @@ or preset load it's the top scene's.
 - **Mixer bar** (bottom): play/pause, master and per-category volumes.
 - **Play / Edit mode:** in Play mode the library and scenes can't be changed by accident. The
   stack can always be changed.
-- **Save current mix to scene:** stores live slider tweaks back into a scene.
+- **Live sliders** in an expanded stack entry change that layer's volume in its scene directly
+  (and are saved), so there's no separate "save current mix to scene" step.
 
 ## Data (draft, in `comilito.json`)
 

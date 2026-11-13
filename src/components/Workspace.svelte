@@ -1,0 +1,126 @@
+<script lang="ts">
+  // The main screen for an open project (layout from docs/scenes.md "UI layout"):
+  //   header / library | stack | effects / mixer bar
+  import { api } from "../lib/api";
+  import { askText, run, ui } from "../lib/store.svelte";
+  import ContextMenu from "./ContextMenu.svelte";
+  import EffectsPad from "./EffectsPad.svelte";
+  import Library from "./Library.svelte";
+  import MixerBar from "./MixerBar.svelte";
+  import StackPanel from "./StackPanel.svelte";
+
+  // `$derived` recomputes when what it reads changes. The `!` tells TypeScript the project
+  // exists: App only shows this component when it does.
+  const project = $derived(ui.snapshot!.project!);
+  const missingCount = $derived(ui.snapshot!.missing.length);
+
+  async function rename() {
+    const name = await askText("Rename project", "Name", project.name);
+    if (name) run(api.renameProject(name));
+  }
+</script>
+
+<div class="workspace">
+  <header>
+    <button class="title" onclick={rename} disabled={ui.mode !== "edit"} title="Rename (Edit mode)">
+      <h1>{project.name}</h1>
+    </button>
+
+    <div class="mode" role="group" aria-label="Mode">
+      <button class:active={ui.mode === "play"} onclick={() => (ui.mode = "play")}>Play</button>
+      <button class:active={ui.mode === "edit"} onclick={() => (ui.mode = "edit")}>Edit</button>
+    </div>
+
+    <div class="spacer"></div>
+    <button onclick={() => (ui.editing = { kind: "projectSettings" })}>Project settings</button>
+    <button onclick={() => (ui.editing = { kind: "preferences" })}>Preferences</button>
+    <button onclick={() => run(api.closeProject())}>Close</button>
+  </header>
+
+  {#if ui.snapshot!.changedOnDisk}
+    <div class="banner">
+      <span>comilito.json was changed by another program (a sync tool?).</span>
+      <button onclick={() => run(api.reloadProject())}>Reload from disk</button>
+      <button onclick={() => run(api.keepMyVersion())}>Keep mine</button>
+    </div>
+  {/if}
+  {#if missingCount > 0}
+    <div class="banner">
+      <span>
+        {missingCount} sound{missingCount === 1 ? "" : "s"} can't find {missingCount === 1 ? "its" : "their"}
+        audio file. They're marked ⚠ in the library.
+      </span>
+    </div>
+  {/if}
+
+  <main>
+    <Library />
+    <StackPanel />
+    <EffectsPad />
+  </main>
+
+  <MixerBar />
+</div>
+
+<ContextMenu />
+
+<style>
+  .workspace {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  .title {
+    background: none;
+    border: none;
+    padding: 0;
+  }
+  .title:disabled {
+    opacity: 1;
+  }
+  h1 {
+    font-size: 1.1rem;
+  }
+  .mode {
+    display: flex;
+  }
+  .mode button {
+    border-radius: 0;
+  }
+  .mode button:first-child {
+    border-radius: 6px 0 0 6px;
+  }
+  .mode button:last-child {
+    border-radius: 0 6px 6px 0;
+  }
+  .mode button.active {
+    background: var(--accent);
+    color: var(--accent-text);
+    border-color: var(--accent);
+  }
+  .spacer {
+    flex: 1;
+  }
+  .banner {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem 0.8rem;
+    background: color-mix(in srgb, var(--warn) 18%, var(--panel));
+    border-bottom: 1px solid var(--border);
+  }
+  main {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(15rem, 20rem) 1fr minmax(12rem, 16rem);
+  }
+</style>
