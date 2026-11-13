@@ -31,6 +31,11 @@ use tauri::{AppHandle, Emitter, Manager, RunEvent, path::BaseDirectory};
 // On Android this function becomes the app's entry point; on desktop main.rs calls it.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Before anything else, so a crash during startup leaves a trace (see logging.rs).
+    #[cfg(target_os = "linux")]
+    logging::capture_stderr("com.comilito.app");
+    logging::log_panics();
+
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         // Opens web links (About page) in the user's browser instead of inside the app.
@@ -49,8 +54,12 @@ pub fn run() {
         )
         // `setup` runs once the app exists, so we can ask Tauri for OS folders.
         .setup(|app| {
-            // Without audio output the app is useless, so refuse to start with a clear message.
-            let engine = AudioEngine::new()?;
+            let data_dir = app.path().app_data_dir()?;
+            logging::init(&data_dir.join("logs"));
+
+            // Without audio output the app is useless, so refuse to start with a clear message
+            // (in the log too: it may have been started without a terminal).
+            let engine = AudioEngine::new().inspect_err(|e| logging::error(&format!("can't start: {e}")))?;
 
             let config_dir = app.path().config_dir()?.join("comilito");
             let default_projects_root = app.path().document_dir()?.join("Comilito");
@@ -64,8 +73,6 @@ pub fn run() {
                 .filter(|p| p.is_dir());
 
             // Hands ownership of the state to Tauri, which shares it with every command.
-            let data_dir = app.path().app_data_dir()?;
-            logging::init(&data_dir.join("logs"));
             let tools_dir = tools::tools_dir(&data_dir);
             // A channel: the sending half wakes the download worker, which owns the other half.
             let (download_wakeup, download_queue) = mpsc::channel();

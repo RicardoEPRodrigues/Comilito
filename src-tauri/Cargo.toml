@@ -42,6 +42,9 @@ tauri-plugin-window-state = "2"
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus = "5"
 
+[target."cfg(unix)".dependencies]
+libc = "0.2"
+
 # Optimize dependencies (kira, its decoders, ebur128...) even in debug builds: decoding and
 # measuring audio unoptimized is many times slower. Our own code stays unoptimized, so it
 # still compiles quickly and debugs well. Only the first build after this takes longer.

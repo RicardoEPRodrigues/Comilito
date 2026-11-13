@@ -69,6 +69,37 @@ First version: projects, a sound library, scenes, the scene stack with ducking a
 presets, an effects pad, export/import, relinking missing audio, hashing and automatic backups.
 Not yet: choosing the audio output device, and a warning when quitting during hashing.
 
+## Uninstalling
+
+Removing Comilito itself depends on how you installed it:
+
+- **AppImage:** delete the `.AppImage` file. If AppImageLauncher (or a similar tool) added it to
+  your app menu, remove it from there too, or delete its entry in `~/.local/share/applications/`.
+- **.deb package:** `sudo apt remove comilito`.
+- **Windows installer:** Settings › Apps › Comilito › Uninstall.
+
+That leaves your **projects** and Comilito's own **data** on the computer, on purpose: projects
+are your work, and uninstalling shouldn't take them with it.
+
+**Comilito's data** (settings, your own themes, logs, the downloaded yt-dlp and ffmpeg, about
+400 MB): the easy way is *Preferences › Projects & tools › Remove all data and quit*, before
+uninstalling. It deletes the folders below and leaves your projects alone. To do it by hand:
+
+| | Linux | Windows |
+|---|---|---|
+| Preferences and your own themes | `~/.config/comilito/` | `%APPDATA%\comilito\` |
+| Window size and position | `~/.config/com.comilito.app/` | `%APPDATA%\com.comilito.app\` |
+| Logs, downloaded tools, webview storage | `~/.local/share/com.comilito.app/` | `%APPDATA%\com.comilito.app\` and `%LOCALAPPDATA%\com.comilito.app\` |
+| Cache (may not exist) | `~/.cache/com.comilito.app/` | `%LOCALAPPDATA%\com.comilito.app\` |
+
+On Linux, `~/.config`, `~/.local/share` and `~/.cache` are the defaults; if you've set
+`XDG_CONFIG_HOME`, `XDG_DATA_HOME` or `XDG_CACHE_HOME`, look there instead.
+
+**Your projects**, only if you want them gone too: the projects folder, `~/Documents/Comilito/` by
+default (Preferences › Projects & tools shows where yours is). It holds one folder per project
+and the `Backups` folder. Delete single projects from the home screen (⋯ › Delete), or the whole
+folder by hand.
+
 ## Development
 
 Prerequisites:

@@ -763,8 +763,10 @@ pub fn forget_all_data(app: AppHandle, state: AppStateRef) -> Result<(), String>
             std::fs::remove_dir_all(&dir).map_err(|e| format!("could not remove {}: {e}", dir.display()))?;
         }
     }
-    app.exit(0);
-    Ok(())
+    // Not `app.exit(0)`: Tauri's normal exit lets plugins save their state, and the
+    // window-state plugin would write `.window-state.json` straight back into a folder we just
+    // removed. The project is already closed and saved, so nothing else needs to run.
+    std::process::exit(0);
 }
 
 #[tauri::command]

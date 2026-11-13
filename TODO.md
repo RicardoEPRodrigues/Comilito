@@ -2,7 +2,6 @@
 
 ## Feature
 
-- AppImage build
 - flatpak version (not now)
 - Add ability to have plugins.
 - Add a plug in that associates a video with a scene and the top scene's video plays on a seperate window.
@@ -10,6 +9,11 @@
 ## Bugs
 
 ## Left to do or to check (added by Claude)
+
+- **AppImage closes right after opening when double-clicked** (fine from a terminal). Not
+  reproducible on the virtual display, even with the file manager's exact environment. Comilito
+  now writes its error output to `~/.local/share/com.comilito.app/logs/stderr.log` when started
+  without a terminal: double-click a fresh build, then read that file for the cause.
 
 - Downloads of only part of a video can't report a percentage (ffmpeg does the download), so they
   show "downloading the selected part…" instead. Consider estimating progress from ffmpeg's

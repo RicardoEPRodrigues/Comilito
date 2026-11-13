@@ -37,6 +37,8 @@ it's small, maintained and cross-platform. Prefer the standard library and Tauri
 
 ## Documentation and decisions
 
+- [CHANGELOG.md](CHANGELOG.md) lists user-visible changes. Add an entry under **Unreleased**
+  (Added / Changed / Fixed) with each change a user would notice.
 - `docs/` describes how the app works. Update it when behaviour changes.
 - `docs/decisions/` holds decision records (ADRs). When a meaningful decision is made in
   conversation (tech choice, format, trade-off), write a new numbered record using the
