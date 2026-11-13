@@ -195,6 +195,17 @@ pub struct Loudness {
     pub lufs: f32,
     /// Highest sample, linear (1.0 = the loudest a file can be without clipping).
     pub peak: f32,
+    /// Length of the file, measured at the same time. Missing in files measured before it
+    /// existed; those are measured again in the background.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration_ms: Option<u64>,
+}
+
+impl FileInfo {
+    /// Whether the background analysis (loudness and duration) still has to look at this file.
+    pub fn needs_analysis(&self) -> bool {
+        self.loudness.is_none_or(|l| l.duration_ms.is_none())
+    }
 }
 
 /// Loudness normalization: which categories are evened out, and to what level.
@@ -752,7 +763,7 @@ mod tests {
                 size: 1,
                 modified: String::new(),
                 sha256: None,
-                loudness: Some(Loudness { lufs, peak }),
+                loudness: Some(Loudness { lufs, peak, duration_ms: Some(1000) }),
             },
             volume: None,
             looping: None,

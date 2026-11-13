@@ -3,7 +3,9 @@
   import { onMount } from "svelte";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { api } from "../lib/api";
-  import { run } from "../lib/store.svelte";
+  import { FileText } from "@lucide/svelte";
+  import icon from "../../src-tauri/icons/128x128@2x.png";
+  import { openLogs, run } from "../lib/store.svelte";
   import Modal from "./Modal.svelte";
 
   let { onclose }: { onclose: () => void } = $props();
@@ -30,8 +32,10 @@
 
 <Modal title="About Comilito" {onclose}>
   <section class="intro">
-    <h1>Comilito</h1>
+    <img src={icon} alt="" width="96" height="96" />
+    <h1 class="display">Comilito</h1>
     <p class="muted">Version {version}</p>
+    <p><button onclick={openLogs}><FileText size={13} />See logs</button></p>
     <p>A soundboard and mixer for Dungeons &amp; Dragons Dungeon Masters.</p>
     <p>
       Made by Ricardo Rodrigues ·
@@ -102,7 +106,10 @@
         {@render link("https://tauri.app", "Tauri")},
         {@render link("https://github.com/tesselode/kira", "kira")} (audio),
         {@render link("https://github.com/pdeljanov/Symphonia", "Symphonia")} (decoding),
-        {@render link("https://svelte.dev", "Svelte")}, and other open-source libraries listed in
+        {@render link("https://svelte.dev", "Svelte")},
+        {@render link("https://lucide.dev", "Lucide")} icons (ISC), the UnifrakturMaguntia, Grenze Gotisch,
+        Pirata One, MedievalSharp and Inter fonts (SIL Open Font Licence, via
+        {@render link("https://fontsource.org", "Fontsource")}), and other open-source libraries listed in
         <code>Cargo.toml</code> and <code>package.json</code>, each under its own licence.
       </li>
     </ul>
@@ -112,6 +119,12 @@
 <style>
   .intro {
     text-align: center;
+  }
+  .intro img {
+    border-radius: 18px;
+  }
+  h1 {
+    font-size: 2.6rem;
   }
   .intro p {
     margin: 0.3rem 0;

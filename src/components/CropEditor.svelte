@@ -10,6 +10,7 @@
   import Capital from "./Capital.svelte";
   import ToolsInstall from "./ToolsInstall.svelte";
   import Waveform from "./Waveform.svelte";
+  import { followPreview, wheelView, zoomView } from "../lib/wave";
 
   let { sound }: { sound: Sound } = $props();
 
@@ -26,6 +27,10 @@
   let saving = $state(false);
   const previewing = $derived(ui.snapshot?.playback.preview === sound.id);
   const ext = $derived(sound.file.path.split(".").pop()?.toUpperCase() ?? "");
+
+  let position = $state<number | null>(null);
+  onMount(() => followPreview(sound.id, (ms) => (position = ms)));
+  const cursor = $derived(position !== null && view.end > view.start ? (position - view.start) / (view.end - view.start) : null);
 
   onMount(async () => {
     refreshTools();
@@ -76,13 +81,11 @@
     if (sel.end <= sel.start) sel.end = Math.min(duration, sel.start + 100);
   }
 
+  /** The zoom buttons zoom around the middle of the selection. */
   function zoom(factor: number) {
     const centre = (sel.start + sel.end) / 2;
-    const span = Math.min(duration, Math.max(1000, (view.end - view.start) * factor));
-    let start = Math.max(0, centre - span / 2);
-    const end = Math.min(duration, start + span);
-    start = Math.max(0, end - span);
-    view = { start, end };
+    const anchor = Math.min(1, Math.max(0, (centre - view.start) / (view.end - view.start || 1)));
+    view = zoomView(view, duration, factor, anchor);
   }
 
   /** "m:ss.cc" (or "h:mm:ss.cc", or plain seconds) → milliseconds. */
@@ -143,13 +146,21 @@
 
   <div class="section-head">
     <span class="caps">Crop</span>
-    <span class="hint">Drag the handles, or drag across the waveform for a new selection</span>
+    <span class="hint">Drag the handles or across the waveform · Ctrl + scroll to zoom</span>
     <button class="icon framed" title="Zoom out" onclick={() => zoom(2)}><ZoomOut size={15} /></button>
     <button class="icon framed" title="Zoom in on the selection" onclick={() => zoom(0.4)}><ZoomIn size={15} /></button>
     <button class="icon framed" title="Show everything" onclick={() => (view = { start: 0, end: duration })}><Scan size={15} /></button>
   </div>
 
-  <div class="wave" bind:clientWidth={width}>
+  <div
+    class="wave"
+    bind:clientWidth={width}
+    role="presentation"
+    onwheel={(e) => {
+      const next = wheelView(e, view, duration);
+      if (next) view = next;
+    }}
+  >
     {#if loading}
       <p class="muted">Reading the audio…</p>
     {:else}
@@ -159,6 +170,7 @@
         selection={{ start: Math.max(0, toFraction(sel.start)), end: Math.min(1, toFraction(sel.end)) }}
         onselect={onSelect}
         onrelease={onRelease}
+        playhead={cursor}
       />
     {/if}
   </div>

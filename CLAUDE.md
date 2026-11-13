@@ -50,3 +50,10 @@ it's small, maintained and cross-platform. Prefer the standard library and Tauri
   Exception: the bundled sample audio in `src-tauri/resources/sample/`, re-encoded to keep it
   small (a few MB in total) and credited in [CREDITS.md](CREDITS.md) with its licence.
 - Do not push unless asked.
+
+
+## TODO.md
+
+In this project there is a TODO.md where the developer will write things to correct. When asked, look into it and implement the requests therein.
+
+If you find other things left to be done, add them there. You can format the document, but only remove sentences if they are fixed.

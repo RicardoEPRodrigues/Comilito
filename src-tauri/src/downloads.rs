@@ -336,7 +336,7 @@ fn run(app: &AppHandle, id: &str, request: &DownloadRequest, _dir: &Path) -> Res
     }
     let mut cmd = tools::hidden_command(&yt_dlp);
     cmd.arg(&request.url)
-        .args(["--no-playlist", "--newline", "--no-warnings", "--no-mtime"])
+        .args(["--no-playlist", "--newline", "--no-warnings", "--no-mtime", "--color", "never"])
         .args(["-f", "bestaudio[ext=m4a]/bestaudio/best"])
         .args(["-x", "--audio-format", "m4a", "--audio-quality", "192K"])
         .arg("--ffmpeg-location")
@@ -345,6 +345,9 @@ fn run(app: &AppHandle, id: &str, request: &DownloadRequest, _dir: &Path) -> Res
         .arg("-o")
         .arg(tmp.join("audio.%(ext)s"));
     if let Some(r) = request.range {
+        // A part of a video is fetched by ffmpeg, which reports no percentage: say so instead
+        // of showing a progress bar stuck at 0%.
+        update(app, id, |j| j.message = Some("downloading the selected part…".into()));
         cmd.arg("--download-sections")
             .arg(format!("*{:.3}-{:.3}", r.start_ms as f64 / 1000.0, r.end_ms as f64 / 1000.0));
     }
@@ -354,27 +357,43 @@ fn run(app: &AppHandle, id: &str, request: &DownloadRequest, _dir: &Path) -> Res
         .spawn()
         .map_err(|e| format!("could not run yt-dlp: {e}"))?;
 
-    // Read progress lines on another thread, so this one can watch for "cancel".
-    let stdout = child.stdout.take().expect("piped");
-    let (app2, id2) = (app.clone(), id.to_string());
-    let reader = thread::spawn(move || {
-        let mut last = Instant::now();
-        for line in BufReader::new(stdout).lines().map_while(Result::ok) {
-            if let Some(rest) = line.trim().strip_prefix("COMILITO") {
-                let percent: f32 = rest.trim().trim_end_matches('%').trim().parse().unwrap_or(0.0);
-                if last.elapsed() > Duration::from_millis(250) {
-                    last = Instant::now();
-                    update(&app2, &id2, |j| j.progress = (percent / 100.0).clamp(0.0, 1.0));
+    // Read yt-dlp's output on other threads, so this one can watch for "cancel". Progress
+    // lines can arrive on stdout or stderr depending on the version, so both are read; error
+    // lines from stderr are kept for the message if the download fails.
+    let errors = std::sync::Arc::new(Mutex::new(String::new()));
+    let readers: Vec<_> = [
+        Box::new(child.stdout.take().expect("piped")) as Box<dyn Read + Send>,
+        Box::new(child.stderr.take().expect("piped")) as Box<dyn Read + Send>,
+    ]
+    .into_iter()
+    .map(|stream| {
+        let (app2, id2, errors) = (app.clone(), id.to_string(), errors.clone());
+        thread::spawn(move || {
+            let mut last = Instant::now() - Duration::from_secs(1);
+            for line in BufReader::new(stream).lines().map_while(Result::ok) {
+                if let Some(rest) = line.trim().strip_prefix("COMILITO") {
+                    // "N/A" (unknown size) is skipped rather than shown as 0%.
+                    let Ok(percent) = rest.trim().trim_end_matches('%').trim().parse::<f32>() else {
+                        continue;
+                    };
+                    if last.elapsed() > Duration::from_millis(250) || percent >= 100.0 {
+                        last = Instant::now();
+                        update(&app2, &id2, |j| j.progress = (percent / 100.0).clamp(0.0, 1.0));
+                    }
+                } else if line.contains("[ExtractAudio]") || line.contains("[Merger]") {
+                    update(&app2, &id2, |j| {
+                        j.progress = 1.0;
+                        j.message = Some("converting…".into());
+                    });
+                } else if line.contains("ERROR") {
+                    if let Ok(mut e) = errors.lock() {
+                        *e = line.clone();
+                    }
                 }
-            } else if line.contains("[ExtractAudio]") || line.contains("[Merger]") {
-                update(&app2, &id2, |j| {
-                    j.progress = 1.0;
-                    j.message = Some("converting…".into());
-                });
             }
-        }
-    });
-    let mut stderr = child.stderr.take().expect("piped");
+        })
+    })
+    .collect();
 
     let status = loop {
         if is_cancelled(app, id) {
@@ -387,11 +406,12 @@ fn run(app: &AppHandle, id: &str, request: &DownloadRequest, _dir: &Path) -> Res
             None => thread::sleep(Duration::from_millis(200)),
         }
     };
-    let _ = reader.join();
+    for reader in readers {
+        let _ = reader.join();
+    }
     if !status.success() {
-        let mut message = String::new();
-        let _ = stderr.read_to_string(&mut message);
-        let line = message.lines().rev().find(|l| l.contains("ERROR")).unwrap_or("the download failed");
+        let line = errors.lock().map(|e| e.clone()).unwrap_or_default();
+        let line = if line.is_empty() { "the download failed".to_string() } else { line };
         return Err(line.trim_start_matches("ERROR:").trim().to_string());
     }
     // yt-dlp chose the final name's extension; find the audio it left.
@@ -487,6 +507,11 @@ fn finish(app: &AppHandle, id: &str, request: &DownloadRequest, dir: &Path, resu
         Ok(Some(sound_id))
     });
     let cancelled = matches!(&outcome, Err(e) if e == "CANCELLED");
+    match &outcome {
+        Ok(_) => crate::logging::info(&format!("Downloaded \"{}\" from {}", request.name, request.url)),
+        Err(_) if cancelled => crate::logging::info(&format!("Download cancelled: {}", request.url)),
+        Err(e) => crate::logging::error(&format!("Download failed ({}): {e}", request.url)),
+    }
     if let Some(job) = s.downloads.iter_mut().find(|j| j.id == id) {
         match &outcome {
             Ok(sound_id) => {

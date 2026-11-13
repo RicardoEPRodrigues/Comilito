@@ -5,7 +5,7 @@
   import { api } from "../lib/api";
   import { removeSound } from "../lib/actions";
   import { soundDragStart } from "../lib/library";
-  import { openSoundInLibrary, run, ui } from "../lib/store.svelte";
+  import { durationOf, formatDuration, openSoundInLibrary, run, ui } from "../lib/store.svelte";
   import type { Sound } from "../lib/types";
   import { openMenu, type MenuItem } from "./ContextMenu.svelte";
 
@@ -46,7 +46,7 @@
   </button>
   {#if missing}<span class="warn" title="The audio file is missing"><TriangleAlert size={13} /></span>{/if}
   <span class="name">{sound.name}</span>
-  {#if detail}<span class="detail">{detail}</span>{/if}
+  {#if detail}<span class="detail">{detail}</span>{:else if durationOf(sound) !== null}<span class="detail">{formatDuration(durationOf(sound)!)}</span>{/if}
   <button class="icon star" class:on={sound.favourite} title={sound.favourite ? "Favourite" : "Add to favourites"} onclick={toggleFavourite}>
     <Star size={12} fill={sound.favourite ? "currentColor" : "none"} />
   </button>

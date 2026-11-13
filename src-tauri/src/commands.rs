@@ -590,6 +590,58 @@ pub fn preview_range(
     Ok(())
 }
 
+/// The previewed sound and where it is (ms), for the waveform cursor. Polled by the UI.
+#[tauri::command]
+pub fn preview_position(state: AppStateRef) -> Result<Option<(String, u64)>, String> {
+    Ok(lock(&state)?.engine.preview_position())
+}
+
+/// Lets the UI write to the log file (errors it shows, for example).
+#[tauri::command]
+pub fn log_message(level: String, message: String) {
+    match level.as_str() {
+        "error" => crate::logging::error(&message),
+        "warn" => crate::logging::warn(&message),
+        _ => crate::logging::info(&message),
+    }
+}
+
+/// "See logs": opens the log file in the system's text viewer.
+#[tauri::command]
+pub fn open_log_file(app: AppHandle) -> Result<(), String> {
+    let path = crate::logging::path().ok_or("logging isn't available")?;
+    app.opener()
+        .open_path(path.to_string_lossy(), None::<&str>)
+        .map_err(|e| format!("could not open the log: {e}"))
+}
+
+/// Removes everything Comilito stored on this computer apart from projects: preferences,
+/// user themes, downloaded tools, logs, caches and the window's saved state. Then quits.
+/// Projects (in the projects folder) and their backups are left alone.
+#[tauri::command]
+pub fn forget_all_data(app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    use tauri::Manager;
+    {
+        let mut s = lock(&state)?;
+        s.close_project()?;
+    }
+    let paths = app.path();
+    let dirs = [
+        lock(&state)?.config_dir.clone(),
+        paths.app_config_dir().map_err(|e| e.to_string())?,
+        paths.app_data_dir().map_err(|e| e.to_string())?,
+        paths.app_local_data_dir().map_err(|e| e.to_string())?,
+        paths.app_cache_dir().map_err(|e| e.to_string())?,
+    ];
+    for dir in dirs {
+        if dir.exists() {
+            std::fs::remove_dir_all(&dir).map_err(|e| format!("could not remove {}: {e}", dir.display()))?;
+        }
+    }
+    app.exit(0);
+    Ok(())
+}
+
 #[tauri::command]
 pub fn stop_preview(app: AppHandle, state: AppStateRef) -> Result<(), String> {
     let mut s = lock(&state)?;

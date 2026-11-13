@@ -249,8 +249,6 @@
       <div class="empty" class:target={dropIndex !== null}>
         Drag scenes or presets here, or double-click a scene.
       </div>
-    {:else}
-      <span class="caps edge">Top</span>
     {/if}
 
     {#each displayed as entry, p (entry.id)}
@@ -364,7 +362,6 @@
         {/if}
       </div>
     {/each}
-    {#if n > 0}<span class="caps edge">Bottom</span>{/if}
   </div>
 </section>
 
@@ -447,11 +444,6 @@
     padding: 0.1rem 0.2rem 1rem;
     position: relative;
     z-index: 1;
-  }
-  .edge {
-    color: var(--muted);
-    font-size: 0.6rem;
-    letter-spacing: 0.25em;
   }
   .empty {
     border: 1.5px dashed var(--rule);

@@ -5,31 +5,38 @@
   import { Globe, LoaderCircle, Link, Scale, Download as DownloadIcon } from "@lucide/svelte";
   import { onMount } from "svelte";
   import { api } from "../lib/api";
-  import { formatBytes, formatDuration, refreshTools, run, ui } from "../lib/store.svelte";
+  import { askText, formatBytes, formatDuration, refreshTools, run, ui, type UrlPrefill } from "../lib/store.svelte";
   import { CATEGORIES, type Category, type Probe } from "../lib/types";
   import Modal from "./Modal.svelte";
+  import TimeInput from "./TimeInput.svelte";
   import ToolsInstall from "./ToolsInstall.svelte";
 
-  let { onclose }: { onclose: () => void } = $props();
+  let { onclose, prefill }: { onclose: () => void; prefill?: UrlPrefill } = $props();
 
-  let url = $state("");
+  // svelte-ignore state_referenced_locally
+  let url = $state(prefill?.url ?? "");
   let probing = $state(false);
   let probe = $state<Probe | null>(null);
   let error = $state("");
   let needTools = $state(false);
-  let partial = $state(false);
-  let from = $state("0:00");
-  let to = $state("10:00");
+  // svelte-ignore state_referenced_locally
+  let partial = $state(!!prefill?.range);
+  // svelte-ignore state_referenced_locally
+  let fromMs = $state(prefill?.range?.startMs ?? 0);
+  // svelte-ignore state_referenced_locally
+  let toMs = $state(prefill?.range?.endMs ?? 10 * 60 * 1000);
   let name = $state("");
   // svelte-ignore state_referenced_locally
-  let category = $state<Category>(ui.library.category ?? "ambience");
+  let category = $state<Category>(prefill?.category ?? ui.library.category ?? "ambience");
   // svelte-ignore state_referenced_locally
-  let folder = $state(ui.library.category && ui.library.folder ? ui.library.folder : "");
+  let folder = $state(prefill?.folder ?? (ui.library.category && ui.library.folder ? ui.library.folder : ""));
   let updateAvailable = $state<boolean | null>(null);
 
   onMount(() => {
     refreshTools();
     api.toolsUpdateAvailable().then((v) => (updateAvailable = v)).catch(() => {});
+    // "Download again": look the link up straight away, keeping the original settings.
+    if (prefill) check();
   });
 
   async function check() {
@@ -40,15 +47,19 @@
     needTools = false;
     try {
       probe = await api.probeUrl(url.trim());
-      name = probe.title;
-      if (probe.durationMs && probe.durationMs > 20 * 60 * 1000) {
-        // Long ambience videos: suggest a 10-minute part.
-        partial = true;
-        from = "0:00";
-        to = "10:00";
+      if (prefill) {
+        name = prefill.name;
       } else {
-        partial = false;
-        to = probe.durationMs ? formatDuration(probe.durationMs) : "10:00";
+        name = probe.title;
+        if (probe.durationMs && probe.durationMs > 20 * 60 * 1000) {
+          // Long ambience videos: suggest a 10-minute part.
+          partial = true;
+          fromMs = 0;
+          toMs = 10 * 60 * 1000;
+        } else {
+          partial = false;
+          toMs = probe.durationMs ?? 10 * 60 * 1000;
+        }
       }
     } catch (e) {
       const message = String(e);
@@ -59,19 +70,13 @@
     }
   }
 
-  function parseTime(text: string): number | null {
-    const parts = text.trim().split(":").map(Number);
-    if (parts.length === 0 || parts.some((p) => Number.isNaN(p))) return null;
-    return Math.round(parts.reduce((acc, p) => acc * 60 + p, 0) * 1000);
-  }
+  const range = $derived(partial && toMs > fromMs ? { startMs: fromMs, endMs: toMs } : null);
 
-  const range = $derived.by(() => {
-    if (!partial) return null;
-    const startMs = parseTime(from);
-    const endMs = parseTime(to);
-    if (startMs === null || endMs === null || endMs <= startMs) return null;
-    return { startMs, endMs };
-  });
+  async function newFolder() {
+    const created = await askText("New folder", "Name");
+    if (!created) return;
+    if (await run(api.createFolder(category, created).then(() => true))) folder = created;
+  }
   const estimate = $derived.by(() => {
     if (!probe?.size) return null;
     if (!range || !probe.durationMs) return probe.size;
@@ -93,6 +98,7 @@
         folder,
         name: name.trim(),
         range,
+        replace: prefill?.replace ?? null,
       }),
     );
     if (id) onclose();
@@ -131,13 +137,14 @@
     <div class="field">
       <span class="caps">What to download</span>
       <label class="radio"><input type="radio" bind:group={partial} value={false} />Everything {#if probe.size}<span class="muted small">≈ {formatBytes(probe.size)}</span>{/if}</label>
-      <label class="radio">
-        <input type="radio" bind:group={partial} value={true} />Only from
-        <input class="time" bind:value={from} onfocus={() => (partial = true)} /> to
-        <input class="time" bind:value={to} onfocus={() => (partial = true)} />
-        {#if partial && estimate}<span class="muted small">≈ {formatBytes(estimate)} · long ambience loops rarely need hours</span>{/if}
-      </label>
-      {#if partial && !range}<span class="error small">The end must be after the start (times like 5:00 or 1:02:30).</span>{/if}
+      <div class="radio">
+        <label class="radio"><input type="radio" bind:group={partial} value={true} />Only from</label>
+        <TimeInput label="From" value={fromMs} onchange={(ms) => ((fromMs = ms), (partial = true))} />
+        to
+        <TimeInput label="To" value={toMs} onchange={(ms) => ((toMs = ms), (partial = true))} />
+      </div>
+      {#if partial && estimate}<span class="muted small">≈ {formatBytes(estimate)} · long ambience loops rarely need hours</span>{/if}
+      {#if partial && !range}<span class="error small">The end must be after the start.</span>{/if}
     </div>
 
     <div class="save-to">
@@ -150,9 +157,18 @@
       </label>
       <label class="field">
         <span class="caps">Folder</span>
-        <select bind:value={folder}>
+        <select
+          value={folder}
+          onchange={(e) => {
+            if (e.currentTarget.value === "__new__") {
+              e.currentTarget.value = folder;
+              newFolder();
+            } else folder = e.currentTarget.value;
+          }}
+        >
           <option value="">(category folder)</option>
           {#each folders as f (f)}<option value={f}>{f}</option>{/each}
+          <option value="__new__">+ New folder…</option>
         </select>
       </label>
     </div>
@@ -237,11 +253,6 @@
     align-items: center;
     gap: 0.5rem;
     flex-wrap: wrap;
-  }
-  .time {
-    width: 5.5rem;
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
   }
   .save-to {
     display: flex;

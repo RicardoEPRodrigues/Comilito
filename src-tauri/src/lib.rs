@@ -4,6 +4,7 @@ mod commands;
 mod crop;
 mod desktop;
 mod downloads;
+mod logging;
 mod loudness;
 mod mix;
 mod prefs;
@@ -50,7 +51,9 @@ pub fn run() {
                 .filter(|p| p.is_dir());
 
             // Hands ownership of the state to Tauri, which shares it with every command.
-            let tools_dir = tools::tools_dir(&app.path().app_data_dir()?);
+            let data_dir = app.path().app_data_dir()?;
+            logging::init(&data_dir.join("logs"));
+            let tools_dir = tools::tools_dir(&data_dir);
             // A channel: the sending half wakes the download worker, which owns the other half.
             let (download_wakeup, download_queue) = mpsc::channel();
             app.manage(Mutex::new(AppState {
@@ -112,6 +115,10 @@ pub fn run() {
             commands::remove_sound,
             commands::preview_sound,
             commands::preview_range,
+            commands::preview_position,
+            commands::log_message,
+            commands::open_log_file,
+            commands::forget_all_data,
             commands::stop_preview,
             commands::sound_waveform,
             commands::crop_sound,
@@ -317,8 +324,12 @@ fn ticker(app: AppHandle) {
         // ---- Slow work, with the state unlocked ----
         match job {
             Some(SlowJob::Backup { dir, project, backups_dir }) => {
-                if let Err(e) = bundle::write_backup(&dir, &project, &backups_dir) {
-                    let _ = app.emit("notice", format!("Backup failed: {e}"));
+                match bundle::write_backup(&dir, &project, &backups_dir) {
+                    Ok(path) => logging::info(&format!("Backup written: {}", path.display())),
+                    Err(e) => {
+                        logging::error(&format!("Backup failed: {e}"));
+                        let _ = app.emit("notice", format!("Backup failed: {e}"));
+                    }
                 }
             }
             Some(SlowJob::Hash { sound_id, path, size }) => {
@@ -355,7 +366,7 @@ fn ticker(app: AppHandle) {
                         match result {
                             Ok(measured) => {
                                 if let Some(sound) = open.project.sound_mut(&sound_id)
-                                    && sound.file.loudness.is_none()
+                                    && sound.file.needs_analysis()
                                 {
                                     sound.file.loudness = Some(measured);
                                 }

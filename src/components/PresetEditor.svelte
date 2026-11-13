@@ -115,8 +115,6 @@
   <div class="entries">
     {#if draft.stack.length === 0}
       <div class="empty">Drag scenes here from the Scenes tab.</div>
-    {:else}
-      <span class="caps edge">Top</span>
     {/if}
     {#each displayed as { entry, index } (index)}
       {@const scene = sceneById(entry.scene)}
@@ -145,7 +143,6 @@
         <button class="icon" onclick={() => draft.stack.splice(index, 1)} title="Remove from this preset"><X size={18} /></button>
       </div>
     {/each}
-    {#if draft.stack.length}<span class="caps edge">Bottom</span>{/if}
   </div>
   {#if p.stack.length === 0 && draft.stack.length > 0}
     <p class="muted tip">Tip: Load puts this preset in the tapestry.</p>
@@ -200,11 +197,6 @@
     display: flex;
     flex-direction: column;
     gap: 0.55rem;
-  }
-  .edge {
-    color: var(--muted);
-    font-size: 0.6rem;
-    letter-spacing: 0.25em;
   }
   .empty {
     border: 1.5px dashed var(--rule);

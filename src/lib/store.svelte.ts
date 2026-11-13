@@ -31,8 +31,19 @@ export type Editing =
   | { kind: "projectSettings" }
   | { kind: "preferences"; page?: string }
   | { kind: "about" }
-  | { kind: "addUrl" }
+  | { kind: "addUrl"; prefill?: UrlPrefill }
   | null;
+
+/** "Download again": the URL dialog opens with the original download's settings. */
+export interface UrlPrefill {
+  url: string;
+  name: string;
+  category: Category;
+  folder: string;
+  range: { startMs: number; endMs: number } | null;
+  /** The sound whose file the new download replaces. */
+  replace: string;
+}
 
 /**
  * What the centre panel is editing in place (decisions 0017 and 0018), Unity-prefab style.
@@ -139,8 +150,15 @@ export async function run<T>(promise: Promise<T>): Promise<T | undefined> {
     return await promise;
   } catch (err) {
     notify(String(err));
+    // Keep a record in the log file ("See logs"). Ignore failures: the log is a bonus.
+    api.logMessage("error", String(err)).catch(() => {});
     return undefined;
   }
+}
+
+/** "See logs": opens the log file. */
+export function openLogs() {
+  return run(api.openLogFile());
 }
 
 /** Shows a question and waits for the answer (`null` if cancelled). */
@@ -293,6 +311,11 @@ export function formatDuration(ms: number): string {
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
+}
+
+/** A sound's length, if it has been measured (see loudness.rs). */
+export function durationOf(sound: Sound): number | null {
+  return sound.file.loudness?.durationMs ?? null;
 }
 
 export function formatBytes(bytes: number): string {

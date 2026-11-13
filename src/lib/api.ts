@@ -78,6 +78,10 @@ export const api = {
   previewRange: (id: string, startMs: number, endMs: number, seam: boolean) =>
     invoke<void>("preview_range", { id, startMs: Math.round(startMs), endMs: Math.round(endMs), seam }),
   stopPreview: () => invoke<void>("stop_preview"),
+  previewPosition: () => invoke<[string, number] | null>("preview_position"),
+  logMessage: (level: "info" | "warn" | "error", message: string) => invoke<void>("log_message", { level, message }),
+  openLogFile: () => invoke<void>("open_log_file"),
+  forgetAllData: () => invoke<void>("forget_all_data"),
   toggleEffect: (id: string) => invoke<void>("toggle_effect", { id }),
   moveSounds: (ids: string[], category: Category, folder: string) =>
     invoke<void>("move_sounds", { ids, category, folder }),

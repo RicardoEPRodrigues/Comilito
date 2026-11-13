@@ -57,7 +57,8 @@ a network connection, and project folders must stay self-contained (0006).
 - External programs (yt-dlp, ffmpeg) become optional runtime dependencies, fetched on first use.
   The app works fully offline without them; only "From URL" for non-direct links, time ranges,
   conversions and cropping need them.
-- Roughly 100–150 MB of disk space once both are downloaded (ffmpeg is the bulk).
+- About 400 MB of disk space once both are downloaded (measured 2026-11-13: the static ffmpeg and
+  ffprobe builds are ~190 MB each; yt-dlp ~40 MB).
 - A small HTTP client crate is needed for direct links and tool downloads (`ureq` or `reqwest`),
   to be justified when added.
 - `comilito.json` gains the optional `source` field on sounds, which needs a `formatVersion` bump and

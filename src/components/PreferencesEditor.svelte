@@ -6,7 +6,7 @@
   import { open } from "@tauri-apps/plugin-dialog";
   import type { Component } from "svelte";
   import { api } from "../lib/api";
-  import { confirmAction, formatBytes, notify, refreshTools, run, ui } from "../lib/store.svelte";
+  import { confirmAction, formatBytes, notify, openLogs, refreshTools, run, ui } from "../lib/store.svelte";
   import type { Preferences } from "../lib/types";
   import { CATEGORIES } from "../lib/types";
   import { closeEditor, fingerprint } from "../lib/unsaved";
@@ -58,6 +58,19 @@
     if (!(await confirmAction("Remove the download tools?", "yt-dlp and ffmpeg are deleted. They're downloaded again the next time you need them.", "Remove", true))) return;
     await run(api.removeTools());
     await refreshTools();
+  }
+
+  /** Removes preferences, themes, tools, logs and caches (not projects), then quits. */
+  async function forgetEverything() {
+    const ok = await confirmAction(
+      "Remove all Comilito data from this computer?",
+      "Deletes your preferences, your own themes, the downloaded tools, logs and caches, then " +
+        "closes Comilito. Your projects and their backups are kept. Use this before uninstalling, " +
+        "or to start over with a clean slate.",
+      "Remove and quit",
+      true,
+    );
+    if (ok) await run(api.forgetAllData());
   }
 
   const pct = (v: number) => Math.round(v * 100);
@@ -133,6 +146,18 @@
             {:else}
               <ToolsInstall />
             {/if}
+          </section>
+          <section>
+            <div class="section-head"><span class="caps">Logs</span><span class="hint">Errors and background events, for troubleshooting</span></div>
+            <div class="row"><button onclick={openLogs}>See logs</button></div>
+          </section>
+          <section>
+            <div class="section-head"><span class="caps">Remove Comilito's data</span></div>
+            <p class="muted">
+              Preferences, themes, downloaded tools, logs and caches are kept outside your projects.
+              Remove them before uninstalling, or to start over. Projects are never touched.
+            </p>
+            <div class="row"><button class="danger" onclick={forgetEverything}>Remove all data and quit…</button></div>
           </section>
         {:else if page === "behaviour"}
           <section class="form">

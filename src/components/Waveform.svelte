@@ -19,8 +19,10 @@
     playhead?: number | null;
     /** Played part shown in the accent colour (simple waveform without selection). */
     progress?: number | null;
+    /** A click on a waveform without selection: play from that point. */
+    onseek?: (fraction: number) => void;
   }
-  let { peaks, height = 56, selection = null, onselect, onrelease, playhead = null, progress = null }: Props = $props();
+  let { peaks, height = 56, selection = null, onselect, onrelease, playhead = null, progress = null, onseek }: Props = $props();
 
   let canvas: HTMLCanvasElement;
   let width = $state(600);
@@ -97,6 +99,10 @@
   }
 
   function down(e: PointerEvent) {
+    if (!selection && onseek) {
+      onseek(fraction(e));
+      return;
+    }
     if (!selection || !onselect) return;
     const f = fraction(e);
     const near = 10 / width;
@@ -110,6 +116,10 @@
   }
 
   function move(e: PointerEvent) {
+    if (!selection && onseek) {
+      canvas.style.cursor = "pointer";
+      return;
+    }
     if (!selection || !onselect) return;
     const f = fraction(e);
     if (!dragging) {

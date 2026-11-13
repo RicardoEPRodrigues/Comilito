@@ -52,6 +52,7 @@ pub fn measure(path: &Path) -> Result<Loudness, String> {
         // A silent file measures as −∞; store a floor instead (JSON has no infinity).
         lufs: if lufs.is_finite() { lufs as f32 } else { -70.0 },
         peak: peak as f32,
+        duration_ms: Some(data.duration().as_millis() as u64),
     })
 }
 

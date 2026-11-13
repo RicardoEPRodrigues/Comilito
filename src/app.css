@@ -146,6 +146,16 @@ button.danger {
   color: var(--danger);
   border-color: var(--danger);
 }
+/* A confirming button that's also destructive ("Delete", "Remove"): solid danger colour with
+   white text, rather than danger text on the accent colour (hard to read). */
+button.primary.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+button.primary.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 85%, black);
+}
 button.ghost {
   border-color: transparent;
 }

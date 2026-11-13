@@ -108,6 +108,8 @@ pub struct AudioEngine {
     /// When a range preview should stop by itself (the "loop seam" preview plays across the
     /// loop point for a few seconds, then stops).
     preview_stop_at: Option<Instant>,
+    /// Where a range preview starts in the file, so its position can be reported in file time.
+    preview_offset: f64,
 
     /// Effects are loaded into memory once so they start instantly. `StaticSoundData` is
     /// reference counted inside, so cloning it to play again doesn't copy the samples.
@@ -146,6 +148,7 @@ impl AudioEngine {
             effects: Vec::new(),
             preview: None,
             preview_stop_at: None,
+            preview_offset: 0.0,
             effect_cache: HashMap::new(),
         })
     }
@@ -537,6 +540,7 @@ impl AudioEngine {
             .play(data)
             .map_err(|e| format!("could not play {}: {e}", sound.name))?;
         self.preview = Some((sound.id.clone(), handle));
+        self.preview_offset = 0.0;
         Ok(())
     }
 
@@ -580,7 +584,19 @@ impl AudioEngine {
             .play(data)
             .map_err(|e| format!("could not play {}: {e}", sound.name))?;
         self.preview = Some((sound.id.clone(), handle));
+        self.preview_offset = start;
         Ok(())
+    }
+
+    /// Where the preview is playing, in milliseconds from the start of the file, for the
+    /// cursor on the waveform. `None` when nothing is previewed.
+    pub fn preview_position(&self) -> Option<(String, u64)> {
+        let (id, handle) = self.preview.as_ref()?;
+        if handle.state() == PlaybackState::Stopped {
+            return None;
+        }
+        // kira reports positions within the slice, so add where the slice starts.
+        Some((id.clone(), ((handle.position() + self.preview_offset) * 1000.0) as u64))
     }
 
     /// Drops cached effect audio (for example after the project closes or a file changed).

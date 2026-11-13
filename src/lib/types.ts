@@ -35,6 +35,8 @@ export interface Loudness {
   lufs: number;
   /** Highest sample, linear (1 = full scale). */
   peak: number;
+  /** Length of the file, measured with the loudness. */
+  durationMs?: number;
 }
 
 export interface Normalization {

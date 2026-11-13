@@ -7,7 +7,7 @@
   import { ArrowDownAZ, FolderOpen, Play, Square, Star, TriangleAlert } from "@lucide/svelte";
   import { api } from "../lib/api";
   import { findSounds, soundDragStart, tapestrySoundIds, type Filter } from "../lib/library";
-  import { formatBytes, folderOf, run, ui } from "../lib/store.svelte";
+  import { durationOf, formatBytes, formatDuration, folderOf, run, ui } from "../lib/store.svelte";
   import { CATEGORIES, type Sound } from "../lib/types";
   import BulkEditor from "./BulkEditor.svelte";
   import CropEditor from "./CropEditor.svelte";
@@ -89,7 +89,8 @@
   const visible = $derived(list.slice(first, last));
 
   function meta(s: Sound): string {
-    const parts = [formatBytes(s.file.size)];
+    const length = durationOf(s);
+    const parts = [length !== null ? `${formatDuration(length)} · ${formatBytes(s.file.size)}` : formatBytes(s.file.size)];
     if (s.file.loudness) parts.push(`${s.file.loudness.lufs.toFixed(1)} LUFS`);
     if (!lib.category) parts.push(`${CATEGORIES.find((c) => c.id === s.category)!.label}${folderOf(s) ? ` › ${folderOf(s)}` : ""}`);
     return parts.join(" · ");

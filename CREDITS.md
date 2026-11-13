@@ -33,6 +33,13 @@ re-encoded to a lower MP3 bitrate (112 / 96 / 96 kbps) to keep the app small; no
   The sources are in `src-tauri/icons/source/` and the design file in `pencil/`.
 - Interface symbols are Unicode emoji, drawn by the system's fonts.
 
+## Downloaded tools
+
+Comilito downloads these on first use, into its own data folder (decision 0019):
+[yt-dlp](https://github.com/yt-dlp/yt-dlp) (Unlicense) and
+[FFmpeg](https://ffmpeg.org) (GPL builds from [yt-dlp/FFmpeg-Builds](https://github.com/yt-dlp/FFmpeg-Builds)).
+They run as separate programs; Comilito doesn't link to them.
+
 ## Inspiration
 
 - [Ascapes Mixer](https://github.com/ilyaly/ascapes-mixer) by ilyaly (MIT). Comilito is an
@@ -41,5 +48,8 @@ re-encoded to a lower MP3 bitrate (112 / 96 / 96 kbps) to keep the app small; no
 ## Built with
 
 [Tauri](https://tauri.app), [kira](https://github.com/tesselode/kira),
-[Symphonia](https://github.com/pdeljanov/Symphonia), [Svelte](https://svelte.dev), and the other
+[Symphonia](https://github.com/pdeljanov/Symphonia), [Svelte](https://svelte.dev),
+[Lucide](https://lucide.dev) icons (ISC), the UnifrakturMaguntia, Grenze Gotisch, Pirata One,
+MedievalSharp and Inter fonts (SIL Open Font Licence, bundled via [Fontsource](https://fontsource.org)),
+and the other
 open-source libraries listed in `src-tauri/Cargo.toml` and `package.json`, each under its own licence.

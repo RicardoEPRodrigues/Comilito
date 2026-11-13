@@ -124,7 +124,7 @@ impl OpenProject {
     /// The next sound that still needs its loudness measured, if any.
     pub fn next_to_analyze(&self) -> Option<&crate::project::Sound> {
         self.project.sounds.iter().find(|snd| {
-            snd.file.loudness.is_none()
+            snd.file.needs_analysis()
                 && !self.missing.contains(&snd.id)
                 && !self.analysis_failed.contains(&snd.id)
         })
@@ -273,7 +273,7 @@ impl AppState {
                     .sounds
                     .iter()
                     .filter(|snd| {
-                        snd.file.loudness.is_none()
+                        snd.file.needs_analysis()
                             && !open.missing.contains(&snd.id)
                             && !open.analysis_failed.contains(&snd.id)
                     })
@@ -308,6 +308,7 @@ impl AppState {
 /// any thread to emit events.
 pub fn emit_state(app: &AppHandle, state: &AppState, problems: Vec<String>) {
     for message in problems {
+        crate::logging::warn(&message);
         let _ = app.emit("notice", message);
     }
     // `let _ =` explicitly ignores the Result: if the window is gone there's no one to tell.

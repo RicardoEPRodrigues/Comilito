@@ -22,12 +22,13 @@
   import { api } from "../lib/api";
   import { moveSounds, relinkOne, removeSound } from "../lib/actions";
   import { formatDb, normalizationGainDb } from "../lib/loudness";
-  import { focusOn, folderOf, formatBytes, formatDuration, run, scenesUsing, soundById, ui } from "../lib/store.svelte";
+  import { askText, focusOn, folderOf, formatBytes, formatDuration, run, scenesUsing, soundById, ui } from "../lib/store.svelte";
   import { CATEGORIES, type Category, type Sound } from "../lib/types";
   import { confirmLeave, fingerprint } from "../lib/unsaved";
   import Capital from "./Capital.svelte";
   import OverrideField from "./OverrideField.svelte";
   import Waveform from "./Waveform.svelte";
+  import { followPreview, wheelView, type View } from "../lib/wave";
 
   let { id }: { id: string } = $props();
 
@@ -59,17 +60,41 @@
   let peaks = $state<number[]>([]);
   let durationMs = $state<number | null>(null);
   let waveError = $state("");
+  /** The part of the sound the waveform shows (Ctrl + scroll zooms). */
+  let view = $state<View>({ start: 0, end: 0 });
+  let waveWidth = $state(600);
+  /** Where the preview is playing (ms), for the cursor. */
+  let position = $state<number | null>(null);
 
   onMount(() => {
     if (missing) return;
     api
-      .soundWaveform(id, 220)
+      .soundWaveform(id, 10)
       .then((w) => {
-        peaks = w.peaks;
         durationMs = w.durationMs;
+        view = { start: 0, end: w.durationMs };
       })
       .catch((e) => (waveError = String(e)));
+    return followPreview(id, (ms) => (position = ms));
   });
+
+  // Peaks for the visible part, refetched when zooming or resizing.
+  $effect(() => {
+    const { start, end } = view;
+    if (end <= start) return;
+    const buckets = Math.max(60, Math.round(waveWidth / 3));
+    api.soundWaveform(id, buckets, start, end).then((w) => {
+      if (view.start === start && view.end === end) peaks = w.peaks;
+    });
+  });
+
+  const cursor = $derived(position !== null && view.end > view.start ? (position - view.start) / (view.end - view.start) : null);
+
+  /** Click on the waveform: play the sound from there. */
+  function seek(fraction: number) {
+    const from = view.start + fraction * (view.end - view.start);
+    if (durationMs) run(api.previewRange(id, from, durationMs, false));
+  }
 
   async function save() {
     const current = soundById(id);
@@ -112,23 +137,26 @@
     await moveSounds([id], sound.category, folder);
   }
 
+  /** "Download again": the URL dialog, filled in with the original download's settings. */
   function downloadAgain() {
     const src = sound.source!;
-    const direct = /\.(mp3|ogg|oga|flac|wav|m4a|aac)(\?|#|$)/i.test(src.url);
-    run(
-      api.startDownload({
+    ui.editing = {
+      kind: "addUrl",
+      prefill: {
         url: src.url,
-        kind: direct ? "direct" : "page",
-        title: src.title ?? sound.name,
-        site: src.site ?? "",
-        ext: direct ? src.url.split(/[?#]/)[0].split(".").pop()!.toLowerCase() : "m4a",
+        name: sound.name,
         category: sound.category,
         folder: folderOf(sound),
-        name: sound.name,
         range: src.range ?? null,
         replace: id,
-      }),
-    );
+      },
+    };
+  }
+
+  async function newFolderHere() {
+    const name = await askText("New folder", "Name");
+    if (!name) return;
+    if (await run(api.createFolder(sound.category, name).then(() => true))) await changeFolder(name);
   }
 </script>
 
@@ -155,7 +183,20 @@
     {:else if waveError}
       <span class="muted grow">Couldn't draw the waveform: {waveError}</span>
     {:else}
-      <div class="grow"><Waveform {peaks} height={52} /></div>
+      <div
+        class="grow"
+        bind:clientWidth={waveWidth}
+        role="presentation"
+        title="Click to play from there · Ctrl + scroll to zoom"
+        onwheel={(e) => {
+          if (!durationMs) return;
+          const next = wheelView(e, view, durationMs);
+          if (next) view = next;
+        }}
+      >
+        <Waveform {peaks} height={52} playhead={cursor} progress={cursor} onseek={seek} />
+      </div>
+      {#if position !== null}<span class="pos">{formatDuration(position)}</span>{/if}
     {/if}
     <button disabled={missing} onclick={() => (ui.library.cropping = true)}><Scissors size={13} />Crop</button>
   </div>
@@ -171,9 +212,19 @@
       </label>
       <label class="field">
         <span class="caps">Folder</span>
-        <select value={folderOf(sound)} onchange={(e) => changeFolder(e.currentTarget.value)}>
+        <select
+          value={folderOf(sound)}
+          onchange={(e) => {
+            const v = e.currentTarget.value;
+            if (v === "__new__") {
+              e.currentTarget.value = folderOf(sound);
+              newFolderHere();
+            } else changeFolder(v);
+          }}
+        >
           <option value="">({CATEGORIES.find((c) => c.id === sound.category)?.label} folder)</option>
           {#each folders as f (f)}<option value={f}>{f}</option>{/each}
+          <option value="__new__">+ New folder…</option>
         </select>
       </label>
       <div class="field">
@@ -329,6 +380,11 @@
   .grow {
     flex: 1;
     min-width: 0;
+  }
+  .pos {
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
   }
   section {
     display: flex;
