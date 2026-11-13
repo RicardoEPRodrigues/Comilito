@@ -30,7 +30,7 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 | Setting | Default |
 |---|---|
 | Ducking level | 30% |
-| Master volume | 90% |
+| Master volume | 100% |
 | Music / Ambience / Effects category volume | 80% / 60% / 100% |
 | New sound volume | 100% |
 | Scene transition time | 2.5 s |

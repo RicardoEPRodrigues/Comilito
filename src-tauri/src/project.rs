@@ -307,7 +307,7 @@ impl Project {
         Self {
             format_version: FORMAT_VERSION,
             name: name.to_string(),
-            master_volume: 0.9,
+            master_volume: 1.0,
             categories: PerCategory {
                 music: CategoryMix { volume: 0.8 },
                 ambience: CategoryMix { volume: 0.6 },

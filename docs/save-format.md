@@ -32,7 +32,7 @@ transferred. Avoid having the same project open on two devices at the same time.
 {
   "formatVersion": 1,
   "name": "Curse of Strahd",
-  "masterVolume": 0.9,
+  "masterVolume": 1.0,
   "categories": {
     "music":    { "volume": 0.8 },
     "ambience": { "volume": 0.6 },
