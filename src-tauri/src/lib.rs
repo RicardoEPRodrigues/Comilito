@@ -62,7 +62,14 @@ pub fn run() {
             let engine = AudioEngine::new().inspect_err(|e| logging::error(&format!("can't start: {e}")))?;
 
             let config_dir = app.path().config_dir()?.join("comilito");
-            let default_projects_root = app.path().document_dir()?.join("Comilito");
+            // Some systems don't define a Documents folder (on Linux, no XDG_DOCUMENTS_DIR in
+            // user-dirs.dirs). Fall back to ~/Documents rather than refusing to start.
+            // `.or_else(...)` tries the second lookup only if the first returned an error.
+            let documents = app
+                .path()
+                .document_dir()
+                .or_else(|_| app.path().home_dir().map(|home| home.join("Documents")))?;
+            let default_projects_root = documents.join("Comilito");
             let prefs = prefs::load(&config_dir);
             // Where the bundled sample audio was installed (`bundle.resources` in
             // tauri.conf.json). In development that's next to the debug binary.

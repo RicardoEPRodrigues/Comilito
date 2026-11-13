@@ -40,6 +40,8 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 
 ### Fixed
 
+- Comilito no longer crashes at start on systems without a Documents folder set up; it uses
+  `~/Documents` then.
 - Waveforms sometimes stayed blank until the sound was played, and jumped in size when the
   playback time appeared.
 - Dropping a file on the window could replace the app with a media player playing that file.
