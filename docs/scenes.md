@@ -110,6 +110,7 @@ The stack is the focus, and it's driven mainly by drag and drop.
 |---|---|
 | Add a scene | drag it from the list into the stack, at any position (top, bottom, between two scenes) |
 | Add a sound to a scene | drag it from the Sounds tab onto the scene in the stack (music joins the playlist, ambience becomes a layer, effects go on the pad) |
+| Remove a sound from a scene | Edit mode: expand the entry in the stack and press ✕ next to the sound (it stays in the library) |
 | Reorder | drag an entry within the stack |
 | Enable / disable | the checkbox on the entry |
 | Remove | × on the entry, or drag it out of the stack |

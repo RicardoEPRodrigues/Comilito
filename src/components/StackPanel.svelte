@@ -123,6 +123,17 @@
   }
 </script>
 
+<!-- In Edit mode, a ✕ that takes a sound out of the scene (it stays in the library). -->
+{#snippet removeButton(sceneId: string, soundId: string)}
+  {#if ui.mode === "edit"}
+    <button
+      class="icon"
+      title="Remove from this scene"
+      onclick={() => run(api.removeSoundFromScene(sceneId, soundId))}>✕</button
+    >
+  {/if}
+{/snippet}
+
 <svelte:window ondragover={onWindowDragOver} />
 
 <section
@@ -204,8 +215,12 @@
             {#if scene.music?.tracks.length}
               <div class="tracks">
                 {#each scene.music.tracks as trackId (trackId)}
-                  <div class:playing={snapshot.mix.musicEntry === entry.id && snapshot.playback.musicSound === trackId}>
-                    🎵 {soundById(trackId)?.name ?? "?"}
+                  <div
+                    class="item"
+                    class:playing={snapshot.mix.musicEntry === entry.id && snapshot.playback.musicSound === trackId}
+                  >
+                    <span class="layer-name">🎵 {soundById(trackId)?.name ?? "?"}</span>
+                    {@render removeButton(scene.id, trackId)}
                   </div>
                 {/each}
               </div>
@@ -229,10 +244,17 @@
                 <span class="vol" title="Effective volume after ducking">
                   {entry.enabled ? percent(layerVolumes[i] ?? 0) : "—"}
                 </span>
+                {@render removeButton(scene.id, layer.sound)}
               </div>
             {/each}
-            {#if !scene.music?.tracks.length && scene.ambience.length === 0}
-              <span class="muted">No music or ambience in this scene.</span>
+            {#each scene.effects as effectId (effectId)}
+              <div class="item">
+                <span class="layer-name">💥 {soundById(effectId)?.name ?? "?"}</span>
+                {@render removeButton(scene.id, effectId)}
+              </div>
+            {/each}
+            {#if !scene.music?.tracks.length && scene.ambience.length === 0 && scene.effects.length === 0}
+              <span class="muted">This scene has no sounds yet.</span>
             {/if}
           </div>
         {/if}
@@ -339,6 +361,11 @@
     display: flex;
     flex-direction: column;
     gap: 0.3rem;
+  }
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
   .tracks div.playing {
     color: var(--accent);
