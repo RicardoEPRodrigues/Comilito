@@ -5,6 +5,7 @@
 - flatpak version (not now)
 - Add ability to have plugins.
 - Add a plug in that associates a video with a scene and the top scene's video plays on a seperate window.
+- Create a first time experience.
 
 ## Bugs
 
