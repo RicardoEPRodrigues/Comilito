@@ -7,11 +7,37 @@
   invoke<string>("app_version")
     .then((v) => (version = v))
     .catch((err) => (version = `error: ${err}`));
+
+  // Temporary test controls until there's a real sound library.
+  let path = $state("");
+  let error = $state("");
+
+  // When a Rust command returns Err(message), invoke() rejects with that message.
+  async function run(command: string, args?: Record<string, unknown>) {
+    error = "";
+    try {
+      await invoke(command, args);
+    } catch (err) {
+      error = String(err);
+    }
+  }
 </script>
 
 <main>
   <h1>Comilito</h1>
-  <p>Version {version}</p>
+  <p class="version">Version {version}</p>
+
+  <section>
+    <h2>Audio test</h2>
+    <form onsubmit={(e) => { e.preventDefault(); run("play_file", { path }); }}>
+      <input bind:value={path} placeholder="/path/to/sound.ogg" />
+      <button type="submit" disabled={!path}>Play</button>
+      <button type="button" onclick={() => run("stop_all")}>Stop all</button>
+    </form>
+    {#if error}
+      <p class="error">{error}</p>
+    {/if}
+  </section>
 </main>
 
 <style>
@@ -24,5 +50,23 @@
 
   main {
     padding: 2rem;
+  }
+
+  .version {
+    color: #888;
+  }
+
+  form {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  input {
+    flex: 1;
+    max-width: 40rem;
+  }
+
+  .error {
+    color: #ff7b7b;
   }
 </style>

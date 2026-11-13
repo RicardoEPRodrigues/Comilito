@@ -59,6 +59,9 @@ so they start instantly.
 | `get_preferences()` / `set_preferences(p)` | App preferences ([preferences.md](preferences.md)) |
 | `set_project_defaults(d)` | Project-level default levels |
 
+Temporary, for testing the engine before the project model exists:
+`play_file(path)` plays a file by absolute path. It will be removed once `play_sound(id)` works.
+
 Events from Rust to UI: `playback-state-changed`, `project-changed`, `missing-files`,
 `hashing-progress`, `project-changed-on-disk` (for example, updated by a sync tool).
 
@@ -75,7 +78,7 @@ src-tauri/
   src/
     main.rs          Desktop entry point; just calls lib.rs
     lib.rs           Tauri setup, command registration
-    audio.rs         (planned) kira wrapper: tracks, play/stop/fade
+    audio.rs         kira wrapper (so far: play a file, stop all)
     project.rs       (planned) data model (serde structs)
     storage.rs       (planned) save/load, bundle zip, relinking
 docs/
