@@ -101,3 +101,6 @@ Other commands:
 Inspired by [Ascapes Mixer](https://github.com/ilyaly/ascapes-mixer) by ilyaly (MIT).
 Comilito is an independent implementation, not a fork. Sample audio credits and other
 acknowledgements are in [CREDITS.md](CREDITS.md) and the app's About window.
+
+Comilito was created with the help of AI (Claude, through Claude Code), with the author directing
+the design and decisions.

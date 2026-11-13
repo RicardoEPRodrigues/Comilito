@@ -4,6 +4,12 @@ Comilito is made by Ricardo Rodrigues — [colorcrow.me](https://colorcrow.me/) 
 [GitHub](https://github.com/RicardoEPRodrigues). The same information is shown in the app's
 About window (`src/components/About.svelte`); keep the two in sync.
 
+## Made with AI
+
+Comilito was created with the help of AI: most of its code and documentation were written by
+[Claude](https://www.anthropic.com/claude) (Anthropic), through Claude Code, with Ricardo
+Rodrigues directing the design, making the decisions and testing the app.
+
 ## Sample audio
 
 Bundled in `src-tauri/resources/sample/` and copied into a new project when the user starts

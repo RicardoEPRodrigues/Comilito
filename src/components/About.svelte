@@ -42,6 +42,15 @@
   </section>
 
   <section>
+    <h2>Made with AI</h2>
+    <p class="ai">
+      Comilito was created with the help of AI: most of its code and documentation were written
+      by {@render link("https://www.anthropic.com/claude", "Claude")} (Anthropic), through Claude Code,
+      with Ricardo Rodrigues directing the design, making the decisions and testing the app.
+    </p>
+  </section>
+
+  <section>
     <h2>Acknowledgements</h2>
 
     <h3>Sample audio</h3>
@@ -121,6 +130,10 @@
   }
   a {
     color: var(--accent);
+  }
+  .ai {
+    margin: 0.3rem 0 0;
+    user-select: text;
   }
   .note {
     margin: 0.2rem 0 0;
