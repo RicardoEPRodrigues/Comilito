@@ -2,7 +2,7 @@
 
 A lightweight desktop soundboard and mixer for Dungeons & Dragons Dungeon Masters.
 
-Named after *Invincible*, the Lich King's theme from World of Warcraft.
+![Comilito with the sample project open: three scenes stacked in the Tapestry, the top one silencing the music below it, with the effects pad on the right and the Library underneath](docs/images/screenshot.png)
 
 ## What it does
 
