@@ -94,6 +94,7 @@ pub fn run() {
             commands::duplicate_scene,
             commands::delete_scene,
             commands::set_layer_volume,
+            commands::add_sound_to_scene,
             commands::stack_insert,
             commands::stack_move,
             commands::stack_remove,

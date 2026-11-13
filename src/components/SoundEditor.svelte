@@ -1,8 +1,10 @@
 <script lang="ts">
   // Edits a sound's name and settings. Changes are kept in a local draft until Save.
   import { api } from "../lib/api";
-  import { ask, project, run } from "../lib/store.svelte";
-  import { CATEGORIES, type Category, type Sound } from "../lib/types";
+  import { changeSoundCategory } from "../lib/actions";
+  import { project, run } from "../lib/store.svelte";
+  import { closeEditor, fingerprint } from "../lib/unsaved";
+  import { CATEGORIES, type Sound } from "../lib/types";
   import Modal from "./Modal.svelte";
   import OverrideField from "./OverrideField.svelte";
 
@@ -17,45 +19,22 @@
   const defaults = $derived(project()!.defaults);
   const catDefaults = $derived(defaults.categories[draft.category]);
 
-  /** Scenes that use this sound in a slot the new category doesn't fit (it will leave them). */
-  function scenesLosingSound(category: Category): string[] {
-    return project()!
-      .scenes.filter(
-        (s) =>
-          (category !== "music" && s.music?.tracks.includes(draft.id)) ||
-          (category !== "ambience" && s.ambience.some((l) => l.sound === draft.id)) ||
-          (category !== "effects" && s.effects.includes(draft.id)),
-      )
-      .map((s) => s.name);
-  }
+  // svelte-ignore state_referenced_locally
+  const initial = fingerprint($state.snapshot(original));
+  const dirty = $derived(fingerprint($state.snapshot(draft)) !== initial);
 
   async function save() {
     if (!draft.name.trim()) draft.name = original.name;
-    const newCategory = draft.category;
-
-    if (newCategory !== original.category) {
-      const losing = scenesLosingSound(newCategory);
-      if (losing.length > 0) {
-        const answer = await ask({
-          title: "Change category?",
-          message: `"${draft.name}" will be removed from: ${losing.join(", ")}.`,
-          choices: [
-            { label: "Cancel", value: "cancel" },
-            { label: "Change category", value: "ok", primary: true },
-          ],
-        });
-        if (answer?.choice !== "ok") return;
-      }
-    }
-
-    // Settings first (Rust ignores the category there), then the move, which also moves the file.
-    await run(api.updateSound({ ...$state.snapshot(draft), category: original.category }));
-    if (newCategory !== original.category) await run(api.setSoundCategory(draft.id, newCategory));
+    // The category change asks first if scenes would lose the sound; stop if cancelled.
+    if (!(await changeSoundCategory(draft.id, draft.category))) return;
+    // `update_sound` leaves the category alone, so this order is safe.
+    await run(api.updateSound($state.snapshot(draft)));
     onclose();
   }
 </script>
 
-<Modal title="Edit sound" {onclose}>
+<!-- ✕ and Esc go through closeEditor (may ask about unsaved changes); Cancel just closes. -->
+<Modal title="Edit sound" onclose={() => closeEditor(dirty, save, onclose)}>
   <label class="row">
     <span>Name</span>
     <input bind:value={draft.name} />

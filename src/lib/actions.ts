@@ -117,6 +117,40 @@ export async function removeSound(soundId: string) {
   if (answer?.choice === "delete") await run(api.removeSound(soundId, true));
 }
 
+/**
+ * Moves a sound to another category, first warning about scenes it would leave.
+ * Returns false if the user cancelled.
+ */
+export async function changeSoundCategory(soundId: string, category: Category): Promise<boolean> {
+  const p = project();
+  const sound = soundById(soundId);
+  if (!p || !sound || sound.category === category) return true;
+
+  // Scenes using the sound in a slot the new category doesn't fit.
+  const losing = p.scenes
+    .filter(
+      (s) =>
+        (category !== "music" && s.music?.tracks.includes(soundId)) ||
+        (category !== "ambience" && s.ambience.some((l) => l.sound === soundId)) ||
+        (category !== "effects" && s.effects.includes(soundId)),
+    )
+    .map((s) => s.name);
+
+  if (losing.length > 0) {
+    const answer = await ask({
+      title: "Change category?",
+      message: `"${sound.name}" will be removed from: ${losing.join(", ")}.`,
+      choices: [
+        { label: "Cancel", value: "cancel" },
+        { label: "Change category", value: "ok", primary: true },
+      ],
+    });
+    if (answer?.choice !== "ok") return false;
+  }
+  await run(api.setSoundCategory(soundId, category));
+  return true;
+}
+
 export async function savePreset() {
   const name = await askText("Save stack as preset", "Preset name");
   if (name) await run(api.presetSave(name));

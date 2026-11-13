@@ -68,6 +68,8 @@ export const api = {
   updateScene: (scene: Scene) => invoke<void>("update_scene", { scene }),
   duplicateScene: (id: string) => invoke<string>("duplicate_scene", { id }),
   deleteScene: (id: string) => invoke<void>("delete_scene", { id }),
+  addSoundToScene: (sceneId: string, soundId: string) =>
+    invoke<void>("add_sound_to_scene", { sceneId, soundId }),
   setLayerVolume: (sceneId: string, layerIndex: number, volume: number) =>
     invoke<void>("set_layer_volume", { sceneId, layerIndex, volume }),
 

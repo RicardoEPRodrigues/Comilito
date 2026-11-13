@@ -1,11 +1,38 @@
 <script lang="ts">
   // The project's sounds, one tab per category. Preview with ▶; add/edit/remove in Edit mode.
+  // Drag a sound onto another category's tab to move it there, or onto a scene in the stack
+  // to add it to that scene.
   import { api } from "../lib/api";
-  import { addSoundFiles, relinkOne, removeSound } from "../lib/actions";
+  import { addSoundFiles, changeSoundCategory, relinkOne, removeSound } from "../lib/actions";
   import { run, ui } from "../lib/store.svelte";
   import { CATEGORIES, type Category } from "../lib/types";
 
   let category = $state<Category>("music");
+  /** The tab a dragged sound is over, to highlight it. */
+  let tabTarget = $state<Category | null>(null);
+
+  function startDrag(e: DragEvent, soundId: string) {
+    ui.drag = { kind: "sound", id: soundId };
+    e.dataTransfer?.setData("text/plain", soundId);
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = "copyMove";
+  }
+
+  function onTabDragOver(e: DragEvent, target: Category) {
+    // Only sounds can be dropped on a tab, and not on their own category's tab.
+    const drag = ui.drag;
+    if (drag?.kind !== "sound") return;
+    if (project.sounds.find((s) => s.id === drag.id)?.category === target) return;
+    e.preventDefault();
+    tabTarget = target;
+  }
+
+  async function onTabDrop(e: DragEvent, target: Category) {
+    e.preventDefault();
+    const drag = ui.drag;
+    tabTarget = null;
+    ui.drag = null;
+    if (drag?.kind === "sound") await changeSoundCategory(drag.id, target);
+  }
 
   const project = $derived(ui.snapshot!.project!);
   const missing = $derived(new Set(ui.snapshot!.missing));
@@ -19,7 +46,15 @@
 
 <div class="cats" role="tablist">
   {#each CATEGORIES as c (c.id)}
-    <button role="tab" class:active={category === c.id} onclick={() => (category = c.id)}>
+    <button
+      role="tab"
+      class:active={category === c.id}
+      class:target={tabTarget === c.id}
+      onclick={() => (category = c.id)}
+      ondragover={(e) => onTabDragOver(e, c.id)}
+      ondragleave={() => (tabTarget = null)}
+      ondrop={(e) => onTabDrop(e, c.id)}
+    >
       {c.icon} {c.label}
     </button>
   {/each}
@@ -31,7 +66,16 @@
   {/if}
   <ul>
     {#each sounds as sound (sound.id)}
-      <li class:missing={missing.has(sound.id)}>
+      <li
+        class:missing={missing.has(sound.id)}
+        draggable="true"
+        ondragstart={(e) => startDrag(e, sound.id)}
+        ondragend={() => {
+          ui.drag = null;
+          tabTarget = null;
+        }}
+        title="Drag to another category's tab, or onto a scene in the stack"
+      >
         <button
           class="icon"
           onclick={() => run(api.previewSound(sound.id))}
@@ -76,6 +120,13 @@
   .cats button.active {
     border-color: var(--accent);
     color: var(--accent);
+  }
+  .cats button.target {
+    background: color-mix(in srgb, var(--accent) 25%, var(--panel-2));
+    border-color: var(--accent);
+  }
+  li[draggable="true"] {
+    cursor: grab;
   }
   .scroll {
     flex: 1;

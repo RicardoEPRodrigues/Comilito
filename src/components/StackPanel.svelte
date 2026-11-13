@@ -33,10 +33,26 @@
     expanded = next;
   }
 
-  function onItemDragOver(e: DragEvent, p: number) {
+  /** The entry a dragged sound is over (sounds are added to a scene, not inserted). */
+  let soundTarget = $state<string | null>(null);
+
+  // When any drag ends (here or elsewhere, dropped or cancelled), clear the drop indicators.
+  $effect(() => {
+    if (!ui.drag) {
+      dropIndex = null;
+      soundTarget = null;
+    }
+  });
+
+  function onItemDragOver(e: DragEvent, p: number, entry: StackEntry) {
     if (!ui.drag) return;
     e.preventDefault();
     e.stopPropagation();
+    if (ui.drag.kind === "sound") {
+      soundTarget = entry.id;
+      dropIndex = null;
+      return;
+    }
     // Upper half of the item: insert above it; lower half: below it.
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const upper = e.clientY < rect.top + rect.height / 2;
@@ -44,7 +60,8 @@
   }
 
   function onPanelDragOver(e: DragEvent) {
-    if (!ui.drag) return;
+    // Sounds can only be dropped on an entry, not between them.
+    if (!ui.drag || ui.drag.kind === "sound") return;
     e.preventDefault();
     // Over empty space below the entries: insert at the bottom.
     if (dropIndex === null) dropIndex = 0;
@@ -54,9 +71,18 @@
     e.preventDefault();
     const drag = ui.drag;
     const index = dropIndex ?? 0;
+    const target = soundTarget;
     dropIndex = null;
+    soundTarget = null;
     ui.drag = null;
     if (!drag) return;
+
+    if (drag.kind === "sound") {
+      // Add the sound to the scene of the entry it was dropped on.
+      const entry = project.stack.find((en) => en.id === target);
+      if (entry) await run(api.addSoundToScene(entry.scene, drag.id));
+      return;
+    }
 
     if (drag.kind === "scene") await insertScene(drag.id, index);
     else if (drag.kind === "preset") await run(api.presetInsert(drag.id, index));
@@ -106,7 +132,10 @@
   ondragover={onPanelDragOver}
   ondragleave={(e) => {
     // Only clear when leaving the panel itself, not when moving between its children.
-    if (!panel.contains(e.relatedTarget as Node)) dropIndex = null;
+    if (!panel.contains(e.relatedTarget as Node)) {
+      dropIndex = null;
+      soundTarget = null;
+    }
   }}
   ondrop={onDrop}
   role="list"
@@ -134,8 +163,9 @@
         class:disabled={!entry.enabled}
         class:drop-above={dropIndex === n - p}
         class:drop-below={p === n - 1 && dropIndex === 0}
+        class:drop-into={soundTarget === entry.id}
         role="listitem"
-        ondragover={(e) => onItemDragOver(e, p)}
+        ondragover={(e) => onItemDragOver(e, p, entry)}
       >
         <!-- Only the header row is draggable: if the whole entry were, dragging a volume
              slider in the expanded details would drag the entry instead. -->
@@ -271,6 +301,10 @@
   }
   .entry.drop-below {
     border-bottom-color: var(--accent);
+  }
+  .entry.drop-into {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 15%, var(--panel));
   }
   .entry.disabled {
     opacity: 0.55;

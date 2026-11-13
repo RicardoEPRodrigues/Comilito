@@ -22,7 +22,7 @@ use crate::{
     bundle,
     prefs::Preferences,
     project::{
-        BackupSettings, Category, PresetEntry, ProjectDefaults, Scene, Sound, StackEntry,
+        BackupSettings, Category, Layer, Playlist, PresetEntry, ProjectDefaults, Scene, Sound, StackEntry,
         StackPreset, new_id,
     },
     state::{AppState, OpenProject, Snapshot, emit_state},
@@ -584,6 +584,61 @@ pub fn delete_scene(id: String, app: AppHandle, state: AppStateRef) -> Result<()
         .unwrap_or_default();
     open.project.scenes.retain(|sc| sc.id != id);
     open.project.remove_dangling_references();
+    let problems = s.project_changed(transition);
+    emit_state(&app, &s, problems);
+    Ok(())
+}
+
+/// Dropping a sound on a scene in the stack: adds it where its category belongs (music to the
+/// playlist, ambience as a layer, effects to the pad). Does nothing if it's already there.
+#[tauri::command]
+pub fn add_sound_to_scene(
+    scene_id: String,
+    sound_id: String,
+    app: AppHandle,
+    state: AppStateRef,
+) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    let open = s.open_mut()?;
+    let category = open
+        .project
+        .sound(&sound_id)
+        .ok_or("that sound no longer exists")?
+        .category;
+    let scene = open
+        .project
+        .scenes
+        .iter_mut()
+        .find(|sc| sc.id == scene_id)
+        .ok_or("that scene no longer exists")?;
+
+    match category {
+        Category::Music => {
+            // `get_or_insert_with` creates the playlist if the scene had none.
+            let playlist = scene.music.get_or_insert_with(|| Playlist {
+                tracks: Vec::new(),
+                shuffle: None,
+            });
+            if !playlist.tracks.contains(&sound_id) {
+                playlist.tracks.push(sound_id);
+            }
+        }
+        Category::Ambience => {
+            if !scene.ambience.iter().any(|l| l.sound == sound_id) {
+                scene.ambience.push(Layer {
+                    sound: sound_id,
+                    volume: None,
+                    role: None,
+                });
+            }
+        }
+        Category::Effects => {
+            if !scene.effects.contains(&sound_id) {
+                scene.effects.push(sound_id);
+            }
+        }
+    }
+    let transition = millis(open.project.defaults.transition_ms.min(1000));
     let problems = s.project_changed(transition);
     emit_state(&app, &s, problems);
     Ok(())

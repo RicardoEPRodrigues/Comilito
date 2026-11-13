@@ -20,14 +20,16 @@ Each category has its own volume, and each sound has its own volume, loop and fa
 1. **Create a project** (one per campaign). It's a folder in `~/Documents/Comilito/`.
    Choose **Start from the sample** to get a few sounds and scenes to try things out.
 2. Switch to **Edit** mode (top bar). In **Sounds**, add music, ambience and effect files; they're
-   copied into the project. ▶ previews a sound; ✎ sets its volume, loop and fades.
+   copied into the project. ▶ previews a sound; ✎ sets its volume, loop and fades. Drag a sound
+   onto another category's tab to move it there.
 3. In **Scenes**, create scenes: a music playlist, ambience layers (each with a volume and an
    optional role), effects for the pad, and optionally a hotkey.
 4. Back in **Play** mode, drag scenes into the **stack** (or double-click them). Scenes higher up
    duck the ambience below them; the top-most scene with music plays its music.
    Tick a scene off to disable it without removing it; drag it out of the stack to remove it.
 5. **Space** starts / pauses, **Esc** stops everything, scene hotkeys add or toggle a scene.
-   Click a stack entry to see its layers' effective volumes and adjust them live.
+   Click a stack entry to see its layers' effective volumes and adjust them live, or drag a
+   sound from the Sounds tab onto it to add it to that scene.
 6. **Save stack as preset** for stacks you reuse; drag a preset in, or right-click → Replace stack.
 
 Everything saves automatically. See [docs/scenes.md](docs/scenes.md) for how the stack works.

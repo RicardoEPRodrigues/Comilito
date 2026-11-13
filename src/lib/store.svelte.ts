@@ -26,6 +26,7 @@ export type Drag =
   | { kind: "scene"; id: string }
   | { kind: "preset"; id: string }
   | { kind: "entry"; id: string }
+  | { kind: "sound"; id: string }
   | null;
 
 /** A question with buttons (and optionally a text field); see Dialog.svelte. */
