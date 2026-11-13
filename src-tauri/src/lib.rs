@@ -1,5 +1,7 @@
 mod audio;
+mod mix;
 mod project;
+mod storage;
 
 use std::sync::Mutex;
 
