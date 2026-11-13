@@ -30,6 +30,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0021](0021-no-play-edit-mode.md) | Remove the Play / Edit mode; everything is always editable | Accepted | 2026-11-13 |
 | [0022](0022-dropping-files-onto-the-window.md) | Import audio by dropping files onto the window | Accepted | 2026-11-13 |
 | [0023](0023-home-screen-and-projects-folder.md) | Home screen, recent projects and moving the projects folder | Accepted | 2026-11-13 |
+| [0024](0024-background-move-and-window-state.md) | Move the projects folder in the background; remember the window size | Accepted | 2026-11-13 |
 
 ## Template
 

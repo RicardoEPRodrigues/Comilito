@@ -35,6 +35,18 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         // Opens web links (About page) in the user's browser instead of inside the app.
         .plugin(tauri_plugin_opener::init())
+        // Remembers the window's size, position and maximised state between launches (saved
+        // when the app closes, restored when the window is created). Not visibility or
+        // decorations: those always come from tauri.conf.json.
+        .plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::SIZE
+                        | tauri_plugin_window_state::StateFlags::POSITION
+                        | tauri_plugin_window_state::StateFlags::MAXIMIZED,
+                )
+                .build(),
+        )
         // `setup` runs once the app exists, so we can ask Tauri for OS folders.
         .setup(|app| {
             // Without audio output the app is useless, so refuse to start with a clear message.
@@ -62,6 +74,7 @@ pub fn run() {
                 prefs,
                 config_dir,
                 default_projects_root,
+                moving_projects: false,
                 sample_dir,
                 open: None,
                 tools_dir,

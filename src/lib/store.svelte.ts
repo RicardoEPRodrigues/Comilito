@@ -118,6 +118,8 @@ export const ui = $state({
     cropping: false,
   },
   drag: null as Drag,
+  /** While the projects folder is being moved (a dialog covers the app). */
+  moving: null as null | { doneBytes: number; totalBytes: number; current: string },
   question: null as Question | null,
   notices: [] as Notice[],
   desktop: null as DesktopAppearance | null,
@@ -255,6 +257,9 @@ export async function init() {
   await listen<DownloadJob[]>("downloads-changed", (e) => {
     ui.downloads = e.payload;
   });
+  await listen<{ doneBytes: number; totalBytes: number; current: string }>("projects-move-progress", (e) => {
+    ui.moving = e.payload;
+  });
   await listen<InstallProgress>("tools-progress", (e) => {
     ui.toolsProgress = e.payload;
   });
@@ -269,6 +274,37 @@ export async function init() {
   ui.desktop = desktop;
   ui.downloads = downloads;
   await refreshUserThemes();
+}
+
+/** Moves every project and the backups to `to` (decision 0023). Rust does it on a background
+ *  thread; this resolves with how many folders moved when it ends, or rejects with the reason.
+ *  `ui.moving` drives the progress dialog meanwhile. */
+export async function moveProjects(to: string): Promise<number> {
+  // Listen before starting, so the end can't slip past.
+  // In an object, because TypeScript can't see the assignment inside the callback.
+  const sub: { stop?: () => void } = {};
+  const finished = new Promise<number>((resolve, reject) => {
+    listen<{ moved: number | null; error: string | null }>("projects-moved", (e) => {
+      sub.stop?.();
+      ui.moving = null;
+      if (e.payload.moved !== null && !e.payload.error) resolve(e.payload.moved);
+      else reject(e.payload.error ?? "the move failed");
+    }).then((u) => (sub.stop = u));
+  });
+  try {
+    ui.moving = { doneBytes: 0, totalBytes: 0, current: "" };
+    await api.moveProjectsFolder(to);
+  } catch (e) {
+    // Refused before anything moved (a name clash, for example).
+    ui.moving = null;
+    sub.stop?.();
+    throw e;
+  }
+  const moved = await finished;
+  // Rust saved the new folder and the recent list; keep the local copy in step.
+  const prefs = await api.getPreferences();
+  if (ui.prefs) ui.prefs = { ...ui.prefs, projectsFolder: prefs.projectsFolder, recentProjects: prefs.recentProjects };
+  return moved;
 }
 
 /** Saves preferences and keeps the local copy in step. */

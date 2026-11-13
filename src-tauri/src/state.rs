@@ -34,6 +34,9 @@ pub struct AppState {
     pub config_dir: PathBuf,
     /// `~/Documents/Comilito`, used unless the preferences say otherwise.
     pub default_projects_root: PathBuf,
+    /// True while `move_projects_folder` moves projects on its background thread. Opening,
+    /// creating, duplicating or deleting projects is refused meanwhile.
+    pub moving_projects: bool,
     /// The bundled sample audio, if it was found at startup.
     pub sample_dir: Option<PathBuf>,
     pub open: Option<OpenProject>,
@@ -176,6 +179,7 @@ impl AppState {
     }
 
     pub fn open_project(&mut self, dir: PathBuf) -> Result<(), String> {
+        self.not_moving()?;
         let project = storage::load_project(&dir)?;
         self.close_project()?;
 
@@ -304,6 +308,14 @@ impl AppState {
                 preset_groups: Vec::new(),
             },
         }
+    }
+
+    /// An error while the projects are being moved (see `moving_projects`).
+    pub fn not_moving(&self) -> Result<(), String> {
+        if self.moving_projects {
+            return Err("the projects are being moved; wait until that's done".into());
+        }
+        Ok(())
     }
 
     pub fn save_prefs(&self) -> Result<(), String> {

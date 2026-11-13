@@ -4,8 +4,9 @@
     "windows": [
       {
         "title": "Comilito",
-        "width": 1100,
-        "height": 720,
+        "width": 1280,
+        "height": 800,
+        "center": true,
         "minWidth": 640,
         "minHeight": 480,
         "dragDropEnabled": true

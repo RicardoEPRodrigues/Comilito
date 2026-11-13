@@ -35,6 +35,7 @@ symphonia = { version = "0.6", default-features = false, features = ["aac", "iso
 # HTTP downloads: direct audio links and the yt-dlp / ffmpeg tools (decision 0019).
 # Small, blocking (no async runtime) and bundles its own TLS, so it works the same everywhere.
 ureq = "3"
+tauri-plugin-window-state = "2"
 
 # Reading the desktop's accent colour from the XDG portal (desktop.rs). zbus is already in
 # the build through tauri-plugin-opener, so this adds no new code.

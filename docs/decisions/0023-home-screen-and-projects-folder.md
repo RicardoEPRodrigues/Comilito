@@ -56,6 +56,6 @@ They also asked for a setting to migrate the projects folder.
 
 - `preferences.json` gains `openLastProject` and `recentProjects`, both optional with defaults,
   so older files still load.
-- A move across disks copies everything while holding the app state lock, so the app is
-  unresponsive until it finishes. That's acceptable for an occasional action; a progress
-  dialog would need the copy moved to a background thread.
+- ~~A move across disks copies everything while holding the app state lock, so the app is
+  unresponsive until it finishes.~~ Superseded by 0024: the move runs on a background thread
+  with a progress dialog.

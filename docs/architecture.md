@@ -89,7 +89,9 @@ Stack indexes count from the bottom (0 = bottom), like `stack` in `comilito.json
 | Presets | `preset_save(name)`, `preset_load(preset_id)`, `preset_insert(preset_id, index)`, `preset_rename(preset_id, name)`, `preset_delete(preset_id)` |
 | Transport | `toggle_play`, `stop_all` |
 
-Events from Rust to UI: `state-changed` (a `Snapshot`), `notice` (a message string).
+Events from Rust to UI: `state-changed` (a `Snapshot`), `notice` (a message string),
+`projects-move-progress` and `projects-moved` (moving the projects folder, decision 0024), plus
+the download and tools events.
 
 ## Transport
 

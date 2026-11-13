@@ -16,7 +16,7 @@ use std::{
     time::Duration,
 };
 
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::{
@@ -197,6 +197,7 @@ pub fn show_projects_folder(project: Option<PathBuf>, app: AppHandle, state: App
 #[tauri::command]
 pub fn duplicate_project(path: PathBuf, state: AppStateRef) -> Result<PathBuf, String> {
     let mut s = lock(&state)?;
+    s.not_moving()?;
     // Copy what's on screen, not what was last saved.
     if s.open.as_ref().is_some_and(|o| o.dir == path) {
         s.save_if_dirty()?;
@@ -206,13 +207,39 @@ pub fn duplicate_project(path: PathBuf, state: AppStateRef) -> Result<PathBuf, S
     Ok(copy)
 }
 
+/// Progress of a projects-folder move, sent as `projects-move-progress`.
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MoveProgress {
+    done_bytes: u64,
+    total_bytes: u64,
+    /// The file or folder just moved.
+    current: String,
+}
+
+/// The end of a move, sent as `projects-moved`: how many folders moved, or why it stopped.
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MoveFinished {
+    moved: Option<usize>,
+    error: Option<String>,
+}
+
 /// Moves every project and the backups into another folder and makes it the projects folder
-/// (Preferences › Projects). An open project is closed first and reopened from its new place.
-/// Returns how many folders moved.
+/// (Preferences › Projects, decision 0023).
+///
+/// Checking happens here, so mistakes (a name clash, moving into a project) come back as this
+/// command's error. The move itself can take minutes across disks, so it runs on its own
+/// thread and this returns at once; progress and the end arrive as events. The state lock is
+/// only held briefly at the start and the end, so the app stays responsive meanwhile.
 #[tauri::command]
-pub fn move_projects_folder(to: PathBuf, app: AppHandle, state: AppStateRef) -> Result<usize, String> {
+pub fn move_projects_folder(to: PathBuf, app: AppHandle, state: AppStateRef) -> Result<(), String> {
     let mut s = lock(&state)?;
+    s.not_moving()?;
     let from = s.projects_root();
+    let plan = crate::relocate::plan_move(&from, &to)?;
+    // The open project's files are about to move, so close it (saving and backing it up);
+    // it's reopened from its new place at the end.
     let reopen = match &s.open {
         Some(open) if open.dir.starts_with(&from) => Some(open.dir.strip_prefix(&from).expect("checked").to_path_buf()),
         _ => None,
@@ -220,22 +247,53 @@ pub fn move_projects_folder(to: PathBuf, app: AppHandle, state: AppStateRef) -> 
     if reopen.is_some() {
         s.close_project()?;
     }
-    let result = crate::relocate::move_projects(&from, &to);
-    if let Ok(moved) = &result {
-        crate::logging::info(&format!("Moved {moved} project folders from {} to {}", from.display(), to.display()));
-        s.prefs.projects_folder = (to != s.default_projects_root).then(|| to.clone());
-        s.prefs.moved_projects(&from, &to);
-        s.save_prefs()?;
-    }
-    // Reopen it wherever it is now (back where it was if the move failed).
-    if let Some(relative) = reopen {
-        let dir = s.projects_root().join(relative);
-        if let Err(e) = s.open_project(dir) {
-            crate::logging::warn(&format!("could not reopen the project after moving: {e}"));
-        }
-    }
+    s.moving_projects = true;
     emit_state(&app, &s, Vec::new());
-    result
+    drop(s); // Unlock before the long part.
+
+    std::thread::spawn(move || {
+        let mut last_emit = std::time::Instant::now();
+        let result = crate::relocate::run_move(&plan, &mut |done, current| {
+            // A few updates a second is plenty for a progress bar.
+            if last_emit.elapsed() >= Duration::from_millis(100) || done == plan.total_bytes {
+                last_emit = std::time::Instant::now();
+                let _ = app.emit(
+                    "projects-move-progress",
+                    MoveProgress { done_bytes: done, total_bytes: plan.total_bytes, current: current.display().to_string() },
+                );
+            }
+        });
+
+        // `app.state()` fetches the same Mutex<AppState> the commands get.
+        let state = app.state::<Mutex<AppState>>();
+        let Ok(mut s) = state.lock() else { return };
+        s.moving_projects = false;
+        let finished = match result {
+            Ok(moved) => {
+                crate::logging::info(&format!("Moved {moved} project folders from {} to {}", plan.from.display(), plan.to.display()));
+                s.prefs.projects_folder = (plan.to != s.default_projects_root).then(|| plan.to.clone());
+                s.prefs.moved_projects(&plan.from, &plan.to);
+                match s.save_prefs() {
+                    Ok(()) => MoveFinished { moved: Some(moved), error: None },
+                    Err(e) => MoveFinished { moved: Some(moved), error: Some(e) },
+                }
+            }
+            Err(e) => {
+                crate::logging::warn(&format!("Moving the projects failed: {e}"));
+                MoveFinished { moved: None, error: Some(e) }
+            }
+        };
+        // Reopen it wherever it is now (back where it was if the move failed).
+        if let Some(relative) = reopen {
+            let dir = s.projects_root().join(relative);
+            if let Err(e) = s.open_project(dir) {
+                crate::logging::warn(&format!("could not reopen the project after moving: {e}"));
+            }
+        }
+        emit_state(&app, &s, Vec::new());
+        let _ = app.emit("projects-moved", finished);
+    });
+    Ok(())
 }
 
 /// Deletes a project. With `delete_audio`, the whole folder goes to the system trash; without,
@@ -249,6 +307,7 @@ pub fn delete_project(
     state: AppStateRef,
 ) -> Result<(), String> {
     let mut s = lock(&state)?;
+    s.not_moving()?;
     // Refuse anything that isn't a project folder, so a wrong path can't trash something else.
     let project_file = path.join(storage::PROJECT_FILE);
     if !project_file.is_file() {

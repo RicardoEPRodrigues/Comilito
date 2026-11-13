@@ -11,6 +11,7 @@
   import ContextMenu from "./components/ContextMenu.svelte";
   import SaveTapestryDialog from "./components/SaveTapestryDialog.svelte";
   import FileDropImport from "./components/FileDropImport.svelte";
+  import MovingProjects from "./components/MovingProjects.svelte";
 
   let ready = $state(false);
   /** Bumped when the OS light/dark preference changes, to re-run the theme effect. */
@@ -96,6 +97,7 @@
 <Editors />
 <SaveTapestryDialog />
 <FileDropImport />
+<MovingProjects />
 <Dialog />
 <ContextMenu />
 <Notices />

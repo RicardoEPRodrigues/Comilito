@@ -18,7 +18,8 @@
 - Windows: the desktop accent colour (registry) and the downloaded tools are untested.
 - Windows and macOS: dropping audio files onto the window (decision 0022) uses a different path
   from Linux (file contents sent from the webview) and is untested.
-- Moving the projects folder to another disk copies everything while the app waits, with no
-  progress shown (decision 0023). Fine for small projects; large ones may look frozen for a while.
+- Moving the projects folder across disks (the slow, copying case) was only tested by unit
+  tests; on the virtual display both folders were on one disk, so the move was an instant rename.
+  Worth trying once with a big project and a USB drive to see the progress dialog.
 - Flatpak needs a permanent app ID (reverse domain, e.g. `me.colorcrow.Comilito`), plus
   `flatpak-builder` and the GNOME SDK with the Rust extension installed to build and test it.

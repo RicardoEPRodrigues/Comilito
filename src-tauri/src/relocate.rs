@@ -28,10 +28,21 @@ pub fn movable_entries(root: &Path) -> Vec<PathBuf> {
     found
 }
 
-/// Moves every project folder and the backups from `from` into `to`, and returns how many
-/// entries moved. Checks everything first, so it either moves all of them or (barring a disk
-/// error halfway) none: no name may already exist in `to`.
-pub fn move_projects(from: &Path, to: &Path) -> Result<usize, String> {
+/// A checked move, ready to run (see `plan_move` and `run_move`). Checking is quick and
+/// happens while the user waits; running can take minutes across disks, so it runs on a
+/// background thread.
+pub struct MovePlan {
+    pub from: PathBuf,
+    pub to: PathBuf,
+    entries: Vec<PathBuf>,
+    /// Bytes in all the entries, for the progress bar.
+    pub total_bytes: u64,
+}
+
+/// Checks a move of every project folder and the backups from `from` into `to`. Checking
+/// everything first means the move either does all of them or (barring a disk error halfway)
+/// none: no name may already exist in `to`.
+pub fn plan_move(from: &Path, to: &Path) -> Result<MovePlan, String> {
     if same_place(from, to) {
         return Err("that's already the projects folder".into());
     }
@@ -51,15 +62,29 @@ pub fn move_projects(from: &Path, to: &Path) -> Result<usize, String> {
             ));
         }
     }
-    for (done, entry) in entries.iter().enumerate() {
-        let target = to.join(entry.file_name().expect("entries have names"));
-        move_dir(entry, &target).map_err(|e| {
-            format!("{e} ({done} of {} moved; the rest are still in {})", entries.len(), from.display())
+    let total_bytes = entries.iter().map(|e| dir_size(e)).sum();
+    Ok(MovePlan { from: from.to_path_buf(), to: to.to_path_buf(), entries, total_bytes })
+}
+
+/// Runs a planned move and returns how many folders moved. `progress(done_bytes, current)`
+/// is called after each file (or at once for a folder that could simply be renamed).
+pub fn run_move(plan: &MovePlan, progress: &mut dyn FnMut(u64, &Path)) -> Result<usize, String> {
+    let mut done = 0u64;
+    for (moved, entry) in plan.entries.iter().enumerate() {
+        let target = plan.to.join(entry.file_name().expect("entries have names"));
+        move_dir(entry, &target, &mut done, progress).map_err(|e| {
+            format!("{e} ({moved} of {} moved; the rest are still in {})", plan.entries.len(), plan.from.display())
         })?;
     }
     // Leave no empty folder behind (remove_dir refuses folders that still hold something).
-    let _ = fs::remove_dir(from);
-    Ok(entries.len())
+    let _ = fs::remove_dir(&plan.from);
+    Ok(plan.entries.len())
+}
+
+/// Plans and runs a move in one go, without progress (used by the tests).
+#[cfg(test)]
+pub fn move_projects(from: &Path, to: &Path) -> Result<usize, String> {
+    run_move(&plan_move(from, to)?, &mut |_, _| {})
 }
 
 /// Copies a project folder next to itself as "<name> (copy)" and renames the copy inside its
@@ -69,7 +94,7 @@ pub fn duplicate_project(dir: &Path) -> Result<PathBuf, String> {
     let parent = dir.parent().ok_or("the project folder has no parent")?;
     let name = format!("{} (copy)", project.name);
     let target = storage::unique_path(parent, Path::new(&storage::safe_file_name(&name)));
-    copy_dir(dir, &target).inspect_err(|_| {
+    copy_dir(dir, &target, &mut 0, &mut |_, _| {}).inspect_err(|_| {
         let _ = fs::remove_dir_all(&target);
     })?;
     project.name = target.file_name().unwrap_or_default().to_string_lossy().into_owned();
@@ -79,18 +104,24 @@ pub fn duplicate_project(dir: &Path) -> Result<PathBuf, String> {
 
 /// Renames when possible (instant, same disk). `rename` fails across disks, so then it copies
 /// and deletes the original, removing a half-made copy if the copy fails.
-fn move_dir(from: &Path, to: &Path) -> Result<(), String> {
+/// `done` counts bytes moved so far, across calls; `progress` hears about each step.
+fn move_dir(from: &Path, to: &Path, done: &mut u64, progress: &mut dyn FnMut(u64, &Path)) -> Result<(), String> {
+    let size = dir_size(from);
     if fs::rename(from, to).is_ok() {
+        *done += size;
+        progress(*done, from);
         return Ok(());
     }
-    if let Err(e) = copy_dir(from, to) {
+    let before = *done;
+    if let Err(e) = copy_dir(from, to, done, progress) {
+        *done = before;
         let _ = fs::remove_dir_all(to);
         return Err(e);
     }
     fs::remove_dir_all(from).map_err(|e| format!("copied, but could not remove {}: {e}", from.display()))
 }
 
-fn copy_dir(from: &Path, to: &Path) -> Result<(), String> {
+fn copy_dir(from: &Path, to: &Path, done: &mut u64, progress: &mut dyn FnMut(u64, &Path)) -> Result<(), String> {
     fs::create_dir_all(to).map_err(|e| format!("could not create {}: {e}", to.display()))?;
     let entries = fs::read_dir(from).map_err(|e| format!("could not read {}: {e}", from.display()))?;
     for entry in entries {
@@ -98,12 +129,27 @@ fn copy_dir(from: &Path, to: &Path) -> Result<(), String> {
         let source = entry.path();
         let target = to.join(entry.file_name());
         if source.is_dir() {
-            copy_dir(&source, &target)?;
+            copy_dir(&source, &target, done, progress)?;
         } else {
-            fs::copy(&source, &target).map_err(|e| format!("could not copy {}: {e}", source.display()))?;
+            *done += fs::copy(&source, &target).map_err(|e| format!("could not copy {}: {e}", source.display()))?;
+            progress(*done, &source);
         }
     }
     Ok(())
+}
+
+/// Bytes in all the files under `path` (unreadable parts count as 0; it's only for progress).
+fn dir_size(path: &Path) -> u64 {
+    let Ok(entries) = fs::read_dir(path) else {
+        return fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+    };
+    entries
+        .flatten()
+        .map(|e| match e.file_type() {
+            Ok(t) if t.is_dir() => dir_size(&e.path()),
+            _ => e.metadata().map(|m| m.len()).unwrap_or(0),
+        })
+        .sum()
 }
 
 /// Compares two folders, also when one of them is written differently (a trailing slash, a
@@ -138,6 +184,20 @@ mod tests {
         // The unrelated file stays, so the old folder does too.
         assert!(from.join("shopping list.txt").is_file());
         assert!(!to.join("shopping list.txt").exists());
+    }
+
+    #[test]
+    fn reports_progress_up_to_the_total() {
+        let root = TempDir::new();
+        let from = root.0.join("old");
+        let dir = create_project(&from, "One", ProjectDefaults::default()).unwrap();
+        fs::write(dir.join("audio").join("music").join("theme.ogg"), vec![0u8; 5000]).unwrap();
+
+        let plan = plan_move(&from, &root.0.join("new")).unwrap();
+        assert!(plan.total_bytes >= 5000);
+        let mut last = 0;
+        run_move(&plan, &mut |done, _| last = done).unwrap();
+        assert_eq!(last, plan.total_bytes);
     }
 
     #[test]

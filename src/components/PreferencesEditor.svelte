@@ -6,7 +6,7 @@
   import { open } from "@tauri-apps/plugin-dialog";
   import type { Component } from "svelte";
   import { api } from "../lib/api";
-  import { confirmAction, formatBytes, notify, openLogs, refreshTools, run, ui } from "../lib/store.svelte";
+  import { confirmAction, formatBytes, moveProjects, notify, openLogs, refreshTools, run, ui } from "../lib/store.svelte";
   import type { Preferences } from "../lib/types";
   import { CATEGORIES } from "../lib/types";
   import { closeEditor, fingerprint } from "../lib/unsaved";
@@ -43,7 +43,7 @@
   }
 
   /** Moves every project and the backups into another folder, right away (not on Save). */
-  async function moveProjects() {
+  async function moveToFolder() {
     const to = await open({ directory: true, title: "Move the projects to…" });
     if (typeof to !== "string" || !draft) return;
     const from = (await run(api.projectsFolder())) ?? "";
@@ -55,13 +55,13 @@
       "Move projects",
     );
     if (!ok) return;
-    const moved = await run(api.moveProjectsFolder(to));
-    if (moved === undefined) return;
-    notify(`Moved ${moved} folder${moved === 1 ? "" : "s"} to ${to}.`);
-    // Rust saved the new folder (and the recent list); keep both copies in step.
-    const prefs = await api.getPreferences();
-    draft.projectsFolder = prefs.projectsFolder;
-    if (ui.prefs) ui.prefs = { ...ui.prefs, projectsFolder: prefs.projectsFolder, recentProjects: prefs.recentProjects };
+    try {
+      const moved = await moveProjects(to);
+      notify(`Moved ${moved} folder${moved === 1 ? "" : "s"} to ${to}.`);
+      draft.projectsFolder = ui.prefs?.projectsFolder ?? null;
+    } catch (e) {
+      notify(`Couldn't move the projects: ${e}`);
+    }
   }
 
   async function save() {
@@ -151,7 +151,7 @@
             <div class="section-head"><span class="caps">Projects folder</span></div>
             <div class="row">
               <code class="grow">{draft.projectsFolder ?? "Default (Documents/Comilito)"}</code>
-              <button onclick={moveProjects} title="Move every project and the backups to another folder">Move to…</button>
+              <button onclick={moveToFolder} title="Move every project and the backups to another folder">Move to…</button>
               <button onclick={chooseFolder} title="Look for projects in another folder, without moving any">Choose…</button>
               {#if draft.projectsFolder}<button onclick={() => (draft!.projectsFolder = null)}>Use default</button>{/if}
             </div>

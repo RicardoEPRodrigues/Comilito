@@ -44,8 +44,9 @@ export const api = {
   listProjects: () => invoke<ProjectSummary[]>("list_projects"),
   projectsFolder: () => invoke<string>("projects_folder"),
   duplicateProject: (path: string) => invoke<string>("duplicate_project", { path }),
-  /** Moves every project and the backups; returns how many folders moved. */
-  moveProjectsFolder: (to: string) => invoke<number>("move_projects_folder", { to }),
+  /** Checks and starts moving every project and the backups. Returns once the move has
+   *  started; use `moveProjects` in store.svelte.ts to wait for the end. */
+  moveProjectsFolder: (to: string) => invoke<void>("move_projects_folder", { to }),
   /** The projects folder, or with `project`, that project selected in the file manager. */
   showProjectsFolder: (project: string | null = null) => invoke<void>("show_projects_folder", { project }),
   createProject: (name: string, sample: boolean) => invoke<void>("create_project", { name, sample }),

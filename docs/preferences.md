@@ -60,6 +60,7 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 |---|---|---|
 | Projects folder | `~/Documents/Comilito`. *Move to…* moves every project and the backups to another folder; *Choose…* only changes where Comilito looks (decision 0023) | this computer |
 | Open the last project at start | off (also a switch on the home screen) | this computer |
+| Window size, position and maximised state | remembered from the last run (1280×800, centred, the first time) | this computer, in `.window-state.json` next to `preferences.json` |
 | Backup interval | 30 min | default for new projects |
 | Backups to keep | 1 | default for new projects |
 | Include audio in backups | off | default for new projects |
