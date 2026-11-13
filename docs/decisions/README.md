@@ -25,7 +25,8 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0016](0016-themes-and-desktop-accent.md) | Switchable themes, custom themes and the desktop accent colour | Accepted | 2026-11-13 |
 | [0017](0017-library-drawer-and-presets-tab.md) | Presets get their own tab; sounds become a collapsible Library drawer | Partly proposed | 2026-11-13 |
 | [0018](0018-library-workspace.md) | A full-screen Library workspace for editing sounds | Accepted | 2026-11-13 |
-| [0019](0019-download-audio-from-urls.md) | Download audio from video sites and direct URLs (no streaming) | Partly proposed | 2026-11-13 |
+| [0019](0019-download-audio-from-urls.md) | Download audio from video sites and direct URLs (no streaming) | Accepted | 2026-11-13 |
+| [0020](0020-cropping-sounds.md) | Crop sounds in the app, saving a copy or overwriting | Accepted | 2026-11-13 |
 
 ## Template
 
