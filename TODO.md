@@ -2,13 +2,9 @@
 
 ## Feature
 
-- flatpak version
+- AppImage build
+- flatpak version (not now)
 - when I drag a music file into the app, the app should import a copy after a confirmation prompt. (one or multiple files)
-
-## Bugs
-
-- the sound wave graphics doesn't always show on the app. need to play for it to appear.
-- the sound wave graphic changes size when playing because the time appears. there should be no jump.
 
 ## Left to do or to check (added by Claude)
 

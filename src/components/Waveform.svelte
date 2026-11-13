@@ -25,7 +25,20 @@
   let { peaks, height = 56, selection = null, onselect, onrelease, playhead = null, progress = null, onseek }: Props = $props();
 
   let canvas: HTMLCanvasElement;
+  let box: HTMLDivElement;
   let width = $state(600);
+  let scheduled = false;
+
+  /** Draws on the next frame, once the browser has laid the canvas out. Drawing straight away
+   *  could happen before layout and leave the canvas blank until something else changed. */
+  function schedule() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(() => {
+      scheduled = false;
+      draw();
+    });
+  }
   let dragging: "start" | "end" | "new" | null = null;
   let anchor = 0;
 
@@ -34,7 +47,8 @@
   }
 
   function draw() {
-    if (!canvas) return;
+    if (!canvas || !box) return;
+    width = box.clientWidth || width;
     const ratio = window.devicePixelRatio || 1;
     canvas.width = Math.max(1, Math.round(width * ratio));
     canvas.height = Math.round(height * ratio);
@@ -82,15 +96,22 @@
 
   // Redraw whenever anything drawn changes. Reading the values here makes `$effect` track them.
   $effect(() => {
-    void [peaks, selection?.start, selection?.end, playhead, progress, width, height];
-    draw();
+    void [peaks, peaks.length, selection?.start, selection?.end, playhead, progress, height];
+    schedule();
   });
 
   onMount(() => {
     // Theme changes recolour <html>; redraw when its style changes.
-    const observer = new MutationObserver(() => draw());
+    const observer = new MutationObserver(() => schedule());
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class"] });
-    return () => observer.disconnect();
+    // And redraw whenever the waveform's box changes size (window resized, panel shown...).
+    const resize = new ResizeObserver(() => schedule());
+    resize.observe(box);
+    schedule();
+    return () => {
+      observer.disconnect();
+      resize.disconnect();
+    };
   });
 
   function fraction(e: PointerEvent) {
@@ -138,7 +159,7 @@
   }
 </script>
 
-<div class="wave" bind:clientWidth={width} style:height="{height}px">
+<div class="wave" bind:this={box} style:height="{height}px">
   <canvas bind:this={canvas} style:width="{width}px" style:height="{height}px" onpointerdown={down} onpointermove={move} onpointerup={up}></canvas>
 </div>
 

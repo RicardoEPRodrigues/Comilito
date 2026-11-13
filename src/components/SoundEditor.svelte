@@ -194,9 +194,14 @@
           if (next) view = next;
         }}
       >
-        <Waveform {peaks} height={52} playhead={cursor} progress={cursor} onseek={seek} />
+        {#if peaks.length === 0}
+          <span class="muted reading">Reading the audio…</span>
+        {:else}
+          <Waveform {peaks} height={52} playhead={cursor} progress={cursor} onseek={seek} />
+        {/if}
       </div>
-      {#if position !== null}<span class="pos">{formatDuration(position)}</span>{/if}
+      <!-- Always present (empty when not playing), so the waveform doesn't jump when it appears. -->
+      <span class="pos">{position !== null ? formatDuration(position) : ""}</span>
     {/if}
     <button disabled={missing} onclick={() => (ui.library.cropping = true)}><Scissors size={13} />Crop</button>
   </div>
@@ -381,7 +386,15 @@
     flex: 1;
     min-width: 0;
   }
+  .reading {
+    display: block;
+    line-height: 52px;
+    font-size: 0.85rem;
+  }
   .pos {
+    width: 3.2rem;
+    text-align: right;
+    flex: none;
     font-size: 0.8rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
