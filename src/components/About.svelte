@@ -65,6 +65,10 @@
         from SoundBible. {@render link(CC_BY_3, "CC BY 3.0")}.
       </li>
     </ul>
+    <p class="muted note">
+      Files were renamed, and the Chopin recording, Heavy Rain Wind and Tolling Bell were
+      re-encoded to a lower bitrate to keep the app small. Nothing else was changed.
+    </p>
 
     <h3>Images</h3>
     <ul>
@@ -117,5 +121,9 @@
   }
   a {
     color: var(--accent);
+  }
+  .note {
+    margin: 0.2rem 0 0;
+    font-size: 0.85rem;
   }
 </style>

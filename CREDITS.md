@@ -16,7 +16,8 @@ from the sample.
 | `ambience/civil-war-drummer.mp3` | [Civil War Drummer](https://soundbible.com/1512-Civil-War-Drummer-.html) | DrumM8, SoundBible | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) |
 | `effects/tolling-bell.mp3` | [Tolling Bell](https://soundbible.com/2206-Tolling-Bell.html) | Daniel Simion, SoundBible | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) |
 
-Files were renamed; no other changes unless noted here.
+All files were renamed. The Chopin recording, *Heavy Rain Wind* and *Tolling Bell* were
+re-encoded to a lower MP3 bitrate (112 / 96 / 96 kbps) to keep the app small; nothing else was changed.
 
 ## Images
 
