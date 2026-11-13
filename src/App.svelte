@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { api } from "./lib/api";
-  import { init, project, rememberedMode, run, ui } from "./lib/store.svelte";
+  import { init, project, run, ui } from "./lib/store.svelte";
   import ProjectPicker from "./components/ProjectPicker.svelte";
   import Workspace from "./components/Workspace.svelte";
   import Dialog from "./components/Dialog.svelte";
@@ -21,14 +21,6 @@
     const theme = ui.prefs?.appearance.theme ?? "system";
     if (theme === "system") delete document.documentElement.dataset.theme;
     else document.documentElement.dataset.theme = theme;
-  });
-
-  // Whenever a different project opens, restore the mode it was last left in.
-  let lastProjectDir: string | null = null;
-  $effect(() => {
-    const dir = ui.snapshot?.projectDir ?? null;
-    if (dir && dir !== lastProjectDir) ui.mode = rememberedMode(dir);
-    lastProjectDir = dir;
   });
 
   /** Global shortcuts: Space, Esc and scene hotkeys (docs/scenes.md "Controls"). */

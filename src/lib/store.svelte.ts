@@ -6,7 +6,7 @@
 //
 // Rust is the source of truth for the project and playback: `ui.snapshot` is replaced
 // whole with every `state-changed` event. Everything else here is purely UI state
-// (which dialog is open, Play/Edit mode...).
+// (which dialog is open, what is being dragged...).
 
 import { listen } from "@tauri-apps/api/event";
 import { api } from "./api";
@@ -46,7 +46,6 @@ export interface Notice {
 export const ui = $state({
   snapshot: null as Snapshot | null,
   prefs: null as Preferences | null,
-  mode: "edit" as "play" | "edit",
   editing: null as Editing,
   drag: null as Drag,
   question: null as Question | null,
@@ -103,34 +102,6 @@ export async function init() {
   await listen<string>("notice", (e) => notify(e.payload));
   ui.snapshot = await api.getState();
   ui.prefs = await api.getPreferences();
-}
-
-// Play / Edit mode is remembered per project, on this computer only. It's a UI preference,
-// not project data, so it lives in the webview's localStorage rather than in comilito.json
-// (which is synced between devices). Storage can be unavailable or throw, hence the try/catch.
-
-function modeKey(projectDir: string) {
-  return `comilito.mode:${projectDir}`;
-}
-
-/** The mode a project was last left in; Edit for a project never opened before. */
-export function rememberedMode(projectDir: string): "play" | "edit" {
-  try {
-    return localStorage.getItem(modeKey(projectDir)) === "play" ? "play" : "edit";
-  } catch {
-    return "edit";
-  }
-}
-
-export function setMode(mode: "play" | "edit") {
-  ui.mode = mode;
-  const dir = ui.snapshot?.projectDir;
-  if (!dir) return;
-  try {
-    localStorage.setItem(modeKey(dir), mode);
-  } catch {
-    // Not remembered this time; nothing else depends on it.
-  }
 }
 
 // Small lookups used all over the UI.

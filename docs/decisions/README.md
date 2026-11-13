@@ -27,6 +27,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0018](0018-library-workspace.md) | A full-screen Library workspace for editing sounds | Accepted | 2026-11-13 |
 | [0019](0019-download-audio-from-urls.md) | Download audio from video sites and direct URLs (no streaming) | Accepted | 2026-11-13 |
 | [0020](0020-cropping-sounds.md) | Crop sounds in the app, saving a copy or overwriting | Accepted | 2026-11-13 |
+| [0021](0021-no-play-edit-mode.md) | Remove the Play / Edit mode; everything is always editable | Accepted | 2026-11-13 |
 
 ## Template
 

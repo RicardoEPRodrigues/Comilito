@@ -15,7 +15,6 @@
   let tab = $state<"scenes" | "sounds">("scenes");
 
   const project = $derived(ui.snapshot!.project!);
-  const editMode = $derived(ui.mode === "edit");
 
   // Scenes grouped by their `group` field; scenes without one come first.
   const groups = $derived.by(() => {
@@ -34,19 +33,15 @@
     openMenu(e, [
       { label: "Add on top", action: () => addSceneOnTop(scene.id) },
       { label: "Switch stack to this scene", action: () => run(api.stackSwitch(scene.id)) },
-      ...(editMode
-        ? [
-            { label: "Edit…", action: () => (ui.editing = { kind: "scene", id: scene.id }) },
-            {
-              label: "Duplicate",
-              action: async () => {
-                const id = await run(api.duplicateScene(scene.id));
-                if (id) ui.editing = { kind: "scene", id };
-              },
-            },
-            { label: "Delete…", action: () => deleteScene(scene.id), danger: true },
-          ]
-        : []),
+        { label: "Edit…", action: () => (ui.editing = { kind: "scene", id: scene.id }) },
+        {
+          label: "Duplicate",
+          action: async () => {
+            const id = await run(api.duplicateScene(scene.id));
+            if (id) ui.editing = { kind: "scene", id };
+          },
+        },
+        { label: "Delete…", action: () => deleteScene(scene.id), danger: true },
     ]);
   }
 
@@ -103,7 +98,7 @@
       <h2>Scenes</h2>
       {#if project.scenes.length === 0}
         <p class="muted hint">
-          No scenes yet. Add sounds in the Sounds tab, then switch to Edit mode and create a scene.
+          No scenes yet. Add sounds in the Sounds tab, then create a scene.
         </p>
       {/if}
       {#each groups as [group, scenes] (group)}
@@ -132,24 +127,20 @@
                   {#if scene.effects.length}💥{scene.effects.length}{/if}
                 </span>
                 {#if scene.hotkey}<kbd>{scene.hotkey}</kbd>{/if}
-                {#if editMode}
-                  <button
-                    class="icon"
-                    title="Edit scene"
-                    onclick={() => (ui.editing = { kind: "scene", id: scene.id })}>✎</button
-                  >
-                {/if}
+                <button
+                  class="icon"
+                  title="Edit scene"
+                  onclick={() => (ui.editing = { kind: "scene", id: scene.id })}>✎</button
+                >
               </div>
             </li>
           {/each}
         </ul>
       {/each}
     </div>
-    {#if editMode}
-      <div class="bottom">
-        <button onclick={newScene}>+ New scene</button>
-      </div>
-    {/if}
+    <div class="bottom">
+      <button onclick={newScene}>+ New scene</button>
+    </div>
   {:else}
     <SoundLibrary />
   {/if}

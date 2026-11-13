@@ -123,15 +123,13 @@
   }
 </script>
 
-<!-- In Edit mode, a ✕ that takes a sound out of the scene (it stays in the library). -->
+<!-- A ✕ that takes a sound out of the scene (it stays in the library). -->
 {#snippet removeButton(sceneId: string, soundId: string)}
-  {#if ui.mode === "edit"}
-    <button
-      class="icon"
-      title="Remove from this scene"
-      onclick={() => run(api.removeSoundFromScene(sceneId, soundId))}>✕</button
-    >
-  {/if}
+  <button
+    class="icon"
+    title="Remove from this scene"
+    onclick={() => run(api.removeSoundFromScene(sceneId, soundId))}>✕</button
+  >
 {/snippet}
 
 <svelte:window ondragover={onWindowDragOver} />

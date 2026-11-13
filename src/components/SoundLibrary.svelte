@@ -1,5 +1,5 @@
 <script lang="ts">
-  // The project's sounds, one tab per category. Preview with ▶; add/edit/remove in Edit mode.
+  // The project's sounds, one tab per category. Preview with ▶; ✎ edits, 🗑 removes.
   // Drag a sound onto another category's tab to move it there, or onto a scene in the stack
   // to add it to that scene.
   import { api } from "../lib/api";
@@ -62,7 +62,7 @@
 
 <div class="scroll">
   {#if sounds.length === 0}
-    <p class="muted">No {category} sounds yet.{ui.mode === "edit" ? "" : " Switch to Edit mode to add some."}</p>
+    <p class="muted">No {category} sounds yet.</p>
   {/if}
   <ul>
     {#each sounds as sound (sound.id)}
@@ -91,20 +91,16 @@
         {#if missing.has(sound.id)}
           <button class="icon" title="Locate the audio file" onclick={() => relinkOne(sound.id)}>📂</button>
         {/if}
-        {#if ui.mode === "edit"}
-          <button class="icon" title="Edit" onclick={() => (ui.editing = { kind: "sound", id: sound.id })}>✎</button>
-          <button class="icon danger" title="Remove" onclick={() => removeSound(sound.id)}>🗑</button>
-        {/if}
+        <button class="icon" title="Edit" onclick={() => (ui.editing = { kind: "sound", id: sound.id })}>✎</button>
+        <button class="icon danger" title="Remove" onclick={() => removeSound(sound.id)}>🗑</button>
       </li>
     {/each}
   </ul>
 </div>
 
-{#if ui.mode === "edit"}
-  <div class="bottom">
-    <button onclick={() => addSoundFiles(category)}>+ Add {category} files…</button>
-  </div>
-{/if}
+<div class="bottom">
+  <button onclick={() => addSoundFiles(category)}>+ Add {category} files…</button>
+</div>
 
 <style>
   .cats {

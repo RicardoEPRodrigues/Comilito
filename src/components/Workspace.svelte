@@ -3,7 +3,7 @@
   //   header / library | stack | effects / mixer bar
   import { api } from "../lib/api";
   import { exportProject, relinkFromFolder } from "../lib/actions";
-  import { ask, askText, run, setMode, ui } from "../lib/store.svelte";
+  import { ask, askText, run, ui } from "../lib/store.svelte";
   import ContextMenu from "./ContextMenu.svelte";
   import EffectsPad from "./EffectsPad.svelte";
   import Library from "./Library.svelte";
@@ -35,14 +35,10 @@
 
 <div class="workspace">
   <header>
-    <button class="title" onclick={rename} disabled={ui.mode !== "edit"} title="Rename (Edit mode)">
+    <button class="title" onclick={rename} title="Rename project">
       <h1>{project.name}</h1>
     </button>
 
-    <div class="mode" role="group" aria-label="Mode">
-      <button class:active={ui.mode === "play"} onclick={() => setMode("play")}>Play</button>
-      <button class:active={ui.mode === "edit"} onclick={() => setMode("edit")}>Edit</button>
-    </div>
 
     <div class="spacer"></div>
     {#if ui.snapshot!.analyzingRemaining > 0}
@@ -109,28 +105,8 @@
     border: none;
     padding: 0;
   }
-  .title:disabled {
-    opacity: 1;
-  }
   h1 {
     font-size: 1.1rem;
-  }
-  .mode {
-    display: flex;
-  }
-  .mode button {
-    border-radius: 0;
-  }
-  .mode button:first-child {
-    border-radius: 6px 0 0 6px;
-  }
-  .mode button:last-child {
-    border-radius: 0 6px 6px 0;
-  }
-  .mode button.active {
-    background: var(--accent);
-    color: var(--accent-text);
-    border-color: var(--accent);
   }
   .spacer {
     flex: 1;

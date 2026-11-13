@@ -110,7 +110,7 @@ The stack is the focus, and it's driven mainly by drag and drop.
 |---|---|
 | Add a scene | drag it from the list into the stack, at any position (top, bottom, between two scenes) |
 | Add a sound to a scene | drag it from the Sounds tab onto the scene in the stack (music joins the playlist, ambience becomes a layer, effects go on the pad) |
-| Remove a sound from a scene | Edit mode: expand the entry in the stack and press ✕ next to the sound (it stays in the library) |
+| Remove a sound from a scene | Expand the entry in the stack and press ✕ next to the sound (it stays in the library) |
 | Reorder | drag an entry within the stack |
 | Enable / disable | the checkbox on the entry |
 | Remove | × on the entry, or drag it out of the stack |
@@ -162,8 +162,7 @@ or preset load it's the top scene's.
   expands it to show its sounds with their *effective* volume and a live slider for each.
 - **Effects pad** (right): buttons for the enabled scenes' effects.
 - **Mixer bar** (bottom): play/pause, master and per-category volumes.
-- **Play / Edit mode:** in Play mode the library and scenes can't be changed by accident. The
-  stack can always be changed.
+- **No Play / Edit mode:** everything is always editable ([0021](decisions/0021-no-play-edit-mode.md)).
 - **Live sliders** in an expanded stack entry change that layer's volume in its scene directly
   (and are saved), so there's no separate "save current mix to scene" step.
 

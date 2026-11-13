@@ -1,6 +1,6 @@
 # 0008. Scenes: saved mixes with smart crossfades
 
-- Status: Accepted
+- Status: Accepted; Play/Edit mode superseded by [0021](0021-no-play-edit-mode.md)
 - Date: 2026-11-12
 
 ## Context

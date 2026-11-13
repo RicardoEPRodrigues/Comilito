@@ -637,7 +637,7 @@ pub fn add_sound_to_scene(
     Ok(())
 }
 
-/// The ✕ next to a sound in an expanded stack entry (Edit mode): takes it out of that scene.
+/// The ✕ next to a sound in an expanded stack entry: takes it out of that scene.
 /// The sound stays in the library.
 #[tauri::command]
 pub fn remove_sound_from_scene(

@@ -37,7 +37,7 @@ The Scenes/Presets panel and the effects pad aren't shown in this workspace.
 
 ## Consequences
 
-- Two "views" in the main window: Tapestry (play) and Library (manage). Play/Edit mode still
-  applies; editing in the Library workspace requires Edit mode.
+- Two "views" in the main window: Tapestry (play) and Library (manage). (The Play/Edit mode was
+  later removed by [0021](0021-no-play-edit-mode.md).)
 - Bulk editing needs a multi-value state in the editor (for example, "Fade out: mixed").
 - The drawer remains the quick way to find and drag sounds during play.
