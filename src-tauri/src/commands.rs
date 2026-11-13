@@ -267,6 +267,8 @@ fn relink(open: &mut OpenProject, id: &str, source: &std::path::Path) -> Result<
         sound.file = file;
     }
     open.missing.retain(|m| m != id);
+    // A new file gets measured again.
+    open.analysis_failed.retain(|m| m != id);
     Ok(())
 }
 

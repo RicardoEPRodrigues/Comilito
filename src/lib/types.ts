@@ -25,6 +25,21 @@ export interface FileInfo {
   size: number;
   modified: string;
   sha256?: string;
+  loudness?: Loudness;
+}
+
+export interface Loudness {
+  /** Integrated loudness, LUFS. */
+  lufs: number;
+  /** Highest sample, linear (1 = full scale). */
+  peak: number;
+}
+
+export interface Normalization {
+  music: boolean;
+  ambience: boolean;
+  effects: boolean;
+  targetLufs: number;
 }
 
 export interface Sound {
@@ -88,6 +103,7 @@ export interface ProjectDefaults {
   transitionMs: number;
   soundVolume: number;
   categories: PerCategory<SoundDefaults>;
+  normalize: Normalization;
 }
 
 export interface BackupSettings {
@@ -132,6 +148,7 @@ export interface Snapshot {
   playback: PlaybackInfo;
   changedOnDisk: boolean;
   hashingRemaining: number;
+  analyzingRemaining: number;
 }
 
 export interface ProjectSummary {

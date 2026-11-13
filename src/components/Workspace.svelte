@@ -3,7 +3,7 @@
   //   header / library | stack | effects / mixer bar
   import { api } from "../lib/api";
   import { exportProject, relinkFromFolder } from "../lib/actions";
-  import { askText, run, ui } from "../lib/store.svelte";
+  import { askText, run, setMode, ui } from "../lib/store.svelte";
   import ContextMenu from "./ContextMenu.svelte";
   import EffectsPad from "./EffectsPad.svelte";
   import Library from "./Library.svelte";
@@ -28,12 +28,16 @@
     </button>
 
     <div class="mode" role="group" aria-label="Mode">
-      <button class:active={ui.mode === "play"} onclick={() => (ui.mode = "play")}>Play</button>
-      <button class:active={ui.mode === "edit"} onclick={() => (ui.mode = "edit")}>Edit</button>
+      <button class:active={ui.mode === "play"} onclick={() => setMode("play")}>Play</button>
+      <button class:active={ui.mode === "edit"} onclick={() => setMode("edit")}>Edit</button>
     </div>
 
     <div class="spacer"></div>
-    {#if ui.snapshot!.hashingRemaining > 0}
+    {#if ui.snapshot!.analyzingRemaining > 0}
+      <span class="muted" title="Measuring loudness for normalization">
+        Measuring loudness: {ui.snapshot!.analyzingRemaining} left…
+      </span>
+    {:else if ui.snapshot!.hashingRemaining > 0}
       <span class="muted" title="Fingerprinting audio files to find them again if they go missing">
         Hashing {ui.snapshot!.hashingRemaining} file{ui.snapshot!.hashingRemaining === 1 ? "" : "s"}…
       </span>

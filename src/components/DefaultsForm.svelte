@@ -65,6 +65,29 @@
 </section>
 
 <section>
+  <h2>Loudness normalization</h2>
+  <p class="muted help">
+    Files from different sources are recorded at different volumes. Normalization measures each
+    file once and evens them out, so switching from one track or ambience to another doesn't
+    jump in volume. Quiet files are only turned up as far as they can go without distorting.
+  </p>
+  <div class="row">
+    <span>Normalize</span>
+    {#each CATEGORIES as c (c.id)}
+      <label class="check">
+        <input type="checkbox" bind:checked={defaults.normalize[c.id]} />
+        {c.label}
+      </label>
+    {/each}
+  </div>
+  <label class="row">
+    <span>Target loudness</span>
+    <input type="number" min="-40" max="-6" step="1" bind:value={defaults.normalize.targetLufs} />
+    <span class="v">LUFS (−18 is a good start; lower is quieter)</span>
+  </label>
+</section>
+
+<section>
   <h2>Backups</h2>
   <label class="row">
     <span>Every</span>
@@ -103,6 +126,15 @@
   }
   .v {
     color: var(--muted);
+  }
+  .help {
+    margin: 0;
+  }
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-right: 0.6rem;
   }
   table {
     border-collapse: collapse;

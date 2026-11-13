@@ -47,7 +47,8 @@ transferred. Avoid having the same project open on two devices at the same time.
         "path": "audio/music/castle-ravenloft.ogg",
         "size": 4821330,
         "modified": "2026-11-12T15:04:00Z",
-        "sha256": "9f2c..."
+        "sha256": "9f2c...",
+        "loudness": { "lufs": -21.4, "peak": 0.89 }
       },
       "volume": 1.0,
       "loop": true,
@@ -71,6 +72,8 @@ transferred. Avoid having the same project open on two devices at the same time.
   simply don't have it, and older versions of the app ignore it.
 - `path`: relative to the project folder.
 - `size`, `modified`, `sha256`: used to find missing files. `sha256` may be absent until hashing finishes.
+- `loudness`: measured in the background for loudness normalization
+  ([0015](decisions/0015-loudness-normalization.md)); absent until measured.
 
 ## Export and import: the `.comilito` zip
 

@@ -138,7 +138,54 @@ pub struct FileInfo {
     pub modified: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sha256: Option<String>,
+    /// Measured in the background (see loudness.rs). `None` until then.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub loudness: Option<Loudness>,
 }
+
+/// How loud a file is, measured once with EBU R128 (the broadcast loudness standard).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Loudness {
+    /// Integrated loudness in LUFS (around −14 for pop music, −30 for quiet ambience).
+    pub lufs: f32,
+    /// Highest sample, linear (1.0 = the loudest a file can be without clipping).
+    pub peak: f32,
+}
+
+/// Loudness normalization: which categories are evened out, and to what level.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Normalization {
+    pub music: bool,
+    pub ambience: bool,
+    pub effects: bool,
+    pub target_lufs: f32,
+}
+
+impl Default for Normalization {
+    fn default() -> Self {
+        Self {
+            music: true,
+            ambience: true,
+            effects: false,
+            target_lufs: -18.0,
+        }
+    }
+}
+
+impl Normalization {
+    pub fn applies_to(&self, category: Category) -> bool {
+        match category {
+            Category::Music => self.music,
+            Category::Ambience => self.ambience,
+            Category::Effects => self.effects,
+        }
+    }
+}
+
+/// The most normalization may turn a quiet file up. Turning loud files down has no limit.
+pub const MAX_NORMALIZATION_BOOST_DB: f32 = 12.0;
 
 /// A saved mix: what plays together. See docs/scenes.md.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -232,6 +279,9 @@ pub struct ProjectDefaults {
     pub transition_ms: u32,
     pub sound_volume: f32,
     pub categories: PerCategory<SoundDefaults>,
+    /// Added after the first projects were made, so it needs a default when missing.
+    #[serde(default)]
+    pub normalize: Normalization,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -293,6 +343,7 @@ impl Default for ProjectDefaults {
                     shuffle: None,
                 },
             },
+            normalize: Normalization::default(),
         }
     }
 }
@@ -304,6 +355,8 @@ pub struct ResolvedSound {
     pub looping: bool,
     pub fade_in_ms: u32,
     pub fade_out_ms: u32,
+    /// Loudness normalization gain in decibels, added on top of `volume` (0 when off).
+    pub gain_db: f32,
 }
 
 impl Project {
@@ -350,6 +403,33 @@ impl Project {
             looping: sound.looping.unwrap_or(d.looping),
             fade_in_ms: sound.fade_in_ms.unwrap_or(d.fade_in_ms),
             fade_out_ms: sound.fade_out_ms.unwrap_or(d.fade_out_ms),
+            gain_db: self.normalization_gain_db(sound),
+        }
+    }
+
+    /// How many decibels to turn a sound up (positive) or down (negative) so it plays at the
+    /// project's target loudness. 0 if normalization is off for its category or it hasn't
+    /// been measured yet.
+    pub fn normalization_gain_db(&self, sound: &Sound) -> f32 {
+        let n = &self.defaults.normalize;
+        let Some(loudness) = sound.file.loudness else {
+            return 0.0;
+        };
+        // Silent or near-silent files can't be meaningfully normalized.
+        if !n.applies_to(sound.category) || !loudness.lufs.is_finite() || loudness.lufs < -60.0 {
+            return 0.0;
+        }
+        let wanted = n.target_lufs - loudness.lufs;
+        // Never boost a file past the point where its loudest sample would clip.
+        let headroom = if loudness.peak > 0.0 {
+            -20.0 * loudness.peak.log10()
+        } else {
+            0.0
+        };
+        if wanted > 0.0 {
+            wanted.min(headroom.max(0.0)).min(MAX_NORMALIZATION_BOOST_DB)
+        } else {
+            wanted
         }
     }
 
@@ -477,6 +557,7 @@ mod tests {
                 size: 1,
                 modified: "2026-11-12T15:04:00Z".into(),
                 sha256: None,
+                loudness: None,
             },
             volume: None,
             looping: Some(true),
@@ -488,6 +569,55 @@ mod tests {
         assert!(json.contains(r#""loop":true"#));
         assert!(!json.contains("fadeInMs\":null"));
         assert!(!json.contains("sha256"));
+    }
+
+    fn sound_with_loudness(category: Category, lufs: f32, peak: f32) -> Sound {
+        Sound {
+            id: "snd".into(),
+            category,
+            name: "x".into(),
+            file: FileInfo {
+                path: "audio/x.ogg".into(),
+                size: 1,
+                modified: String::new(),
+                sha256: None,
+                loudness: Some(Loudness { lufs, peak }),
+            },
+            volume: None,
+            looping: None,
+            fade_in_ms: None,
+            fade_out_ms: None,
+        }
+    }
+
+    #[test]
+    fn normalization_turns_loud_files_down_and_quiet_files_up() {
+        let p = Project::new("Test", ProjectDefaults::default()); // target −18 LUFS
+        let loud = sound_with_loudness(Category::Music, -10.0, 1.0);
+        let quiet = sound_with_loudness(Category::Ambience, -24.0, 0.25);
+        assert_eq!(p.normalization_gain_db(&loud), -8.0);
+        assert_eq!(p.normalization_gain_db(&quiet), 6.0);
+    }
+
+    #[test]
+    fn normalization_never_clips_or_boosts_too_much() {
+        let p = Project::new("Test", ProjectDefaults::default());
+        // Wants +6 dB, but its peak (0.71 ≈ −3 dBFS) only leaves 3 dB of headroom.
+        let peaky = sound_with_loudness(Category::Music, -24.0, 0.7079);
+        assert!((p.normalization_gain_db(&peaky) - 3.0).abs() < 0.01);
+        // Wants +22 dB; capped.
+        let very_quiet = sound_with_loudness(Category::Ambience, -40.0, 0.01);
+        assert_eq!(p.normalization_gain_db(&very_quiet), MAX_NORMALIZATION_BOOST_DB);
+    }
+
+    #[test]
+    fn normalization_respects_the_category_switches() {
+        let mut p = Project::new("Test", ProjectDefaults::default());
+        let effect = sound_with_loudness(Category::Effects, -10.0, 1.0);
+        assert_eq!(p.normalization_gain_db(&effect), 0.0, "effects are off by default");
+        p.defaults.normalize.music = false;
+        let music = sound_with_loudness(Category::Music, -10.0, 1.0);
+        assert_eq!(p.normalization_gain_db(&music), 0.0);
     }
 
     #[test]

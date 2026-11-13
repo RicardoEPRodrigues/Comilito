@@ -34,6 +34,7 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 | Music / Ambience / Effects category volume | 80% / 60% / 100% |
 | New sound volume | 100% |
 | Scene transition time | 2.5 s |
+| Loudness normalization | on for music and ambience, off for effects; target −18 LUFS ([0015](decisions/0015-loudness-normalization.md)) |
 
 ### Sound defaults per category (defaults for new projects)
 
@@ -108,7 +109,8 @@ Project `comilito.json`:
     "music":    { "loop": true,  "fadeInMs": 2000, "fadeOutMs": 2000, "shuffle": false },
     "ambience": { "loop": true,  "fadeInMs": 1500, "fadeOutMs": 1500 },
     "effects":  { "loop": false, "fadeInMs": 0,    "fadeOutMs": 0 }
-  }
+  },
+  "normalize": { "music": true, "ambience": true, "effects": false, "targetLufs": -18 }
 }
 ```
 

@@ -186,6 +186,7 @@ pub fn move_audio_file(dir: &Path, info: &FileInfo, category: Category) -> Resul
     let relative = target.strip_prefix(dir).expect("target was built inside dir");
     let mut moved = file_info(dir, relative)?;
     moved.sha256 = info.sha256.clone();
+    moved.loudness = info.loudness;
     Ok(moved)
 }
 
@@ -200,6 +201,7 @@ pub fn file_info(dir: &Path, relative: &Path) -> Result<FileInfo, String> {
         size: meta.len(),
         modified: meta.modified().map(format_time).unwrap_or_default(),
         sha256: None,
+        loudness: None,
     })
 }
 

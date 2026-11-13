@@ -53,6 +53,19 @@ pub struct OpenProject {
     /// For backups: whether anything changed since the last one, and when it was made.
     pub changed_since_backup: bool,
     pub last_backup: Instant,
+    /// Sounds whose loudness couldn't be measured (undecodable file), so we don't retry.
+    pub analysis_failed: Vec<String>,
+}
+
+impl OpenProject {
+    /// The next sound that still needs its loudness measured, if any.
+    pub fn next_to_analyze(&self) -> Option<&crate::project::Sound> {
+        self.project.sounds.iter().find(|snd| {
+            snd.file.loudness.is_none()
+                && !self.missing.contains(&snd.id)
+                && !self.analysis_failed.contains(&snd.id)
+        })
+    }
 }
 
 /// What the UI renders. Sent whole with every `state-changed` event, so the UI never has
@@ -68,6 +81,8 @@ pub struct Snapshot {
     pub changed_on_disk: bool,
     /// How many sounds still wait for their sha256 (computed in the background).
     pub hashing_remaining: usize,
+    /// How many sounds still wait for their loudness to be measured.
+    pub analyzing_remaining: usize,
 }
 
 impl AppState {
@@ -110,6 +125,7 @@ impl AppState {
             changed_on_disk: false,
             changed_since_backup: false,
             last_backup: Instant::now(),
+            analysis_failed: Vec::new(),
         });
         // The stack is restored but not started: the DM presses Space when ready.
         Ok(())
@@ -182,6 +198,16 @@ impl AppState {
                     .iter()
                     .filter(|snd| snd.file.sha256.is_none() && !open.missing.contains(&snd.id))
                     .count(),
+                analyzing_remaining: open
+                    .project
+                    .sounds
+                    .iter()
+                    .filter(|snd| {
+                        snd.file.loudness.is_none()
+                            && !open.missing.contains(&snd.id)
+                            && !open.analysis_failed.contains(&snd.id)
+                    })
+                    .count(),
             },
             None => Snapshot {
                 project: None,
@@ -191,6 +217,7 @@ impl AppState {
                 playback: self.engine.playback_info(&TargetMix::default()),
                 changed_on_disk: false,
                 hashing_remaining: 0,
+                analyzing_remaining: 0,
             },
         }
     }

@@ -4,6 +4,7 @@
   import { changeSoundCategory } from "../lib/actions";
   import { project, run } from "../lib/store.svelte";
   import { closeEditor, fingerprint } from "../lib/unsaved";
+  import { formatDb, normalizationGainDb } from "../lib/loudness";
   import { CATEGORIES, type Sound } from "../lib/types";
   import Modal from "./Modal.svelte";
   import OverrideField from "./OverrideField.svelte";
@@ -48,6 +49,19 @@
       {/each}
     </select>
   </label>
+
+  <p class="muted loudness">
+    {#if draft.file.loudness}
+      Measured loudness {draft.file.loudness.lufs.toFixed(1)} LUFS ·
+      {#if normalizationGainDb(project()!, original) !== null}
+        normalized by {formatDb(normalizationGainDb(project()!, original)!)}
+      {:else}
+        not normalized (off for {original.category} in Project settings)
+      {/if}
+    {:else}
+      Loudness not measured yet.
+    {/if}
+  </p>
 
   <OverrideField
     label="Volume"
@@ -100,6 +114,10 @@
   .row input,
   .row select {
     flex: 1;
+  }
+  .loudness {
+    margin: 0 0 0 8.5rem;
+    font-size: 0.85rem;
   }
   .file {
     margin: -0.5rem 0 0 8.5rem;

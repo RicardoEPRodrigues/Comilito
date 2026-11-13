@@ -1,6 +1,7 @@
 mod audio;
 mod bundle;
 mod commands;
+mod loudness;
 mod mix;
 mod prefs;
 mod project;
@@ -139,6 +140,11 @@ enum SlowJob {
         path: PathBuf,
         size: u64,
     },
+    /// Measure loudness for normalization (see loudness.rs).
+    Analyze {
+        sound_id: String,
+        path: PathBuf,
+    },
 }
 
 /// Runs forever on its own thread, a few times per second:
@@ -153,6 +159,7 @@ fn ticker(app: AppHandle) {
     let mut last_disk_check = Instant::now();
     let mut last_info = None;
     let mut last_hashing_remaining = 0;
+    let mut last_analyzing_remaining = 0;
 
     loop {
         thread::sleep(TICK);
@@ -199,6 +206,12 @@ fn ticker(app: AppHandle) {
                         project: Box::new(open.project.clone()),
                         backups_dir,
                     });
+                } else if let Some(sound) = open.next_to_analyze() {
+                    // Loudness before hashes: it changes how things sound, hashes don't.
+                    job = Some(SlowJob::Analyze {
+                        sound_id: sound.id.clone(),
+                        path: storage::absolute_audio_path(&open.dir, &sound.file),
+                    });
                 } else if let Some(sound) = open
                     .project
                     .sounds
@@ -216,9 +229,11 @@ fn ticker(app: AppHandle) {
             let snapshot = s.snapshot();
             if last_info.as_ref() != Some(&snapshot.playback)
                 || last_hashing_remaining != snapshot.hashing_remaining
+                || last_analyzing_remaining != snapshot.analyzing_remaining
             {
                 last_info = Some(snapshot.playback);
                 last_hashing_remaining = snapshot.hashing_remaining;
+                last_analyzing_remaining = snapshot.analyzing_remaining;
                 changed = true;
             }
             if changed || !problems.is_empty() {
@@ -259,6 +274,30 @@ fn ticker(app: AppHandle) {
                             }
                         }
                     }
+                }
+            }
+            Some(SlowJob::Analyze { sound_id, path }) => {
+                let result = loudness::measure(&path);
+                if let Ok(mut s) = state.lock() {
+                    let mut problems = Vec::new();
+                    if let Some(open) = &mut s.open {
+                        match result {
+                            Ok(measured) => {
+                                if let Some(sound) = open.project.sound_mut(&sound_id)
+                                    && sound.file.loudness.is_none()
+                                {
+                                    sound.file.loudness = Some(measured);
+                                }
+                            }
+                            Err(e) => {
+                                open.analysis_failed.push(sound_id);
+                                problems.push(format!("Couldn't measure loudness: {e}"));
+                            }
+                        }
+                    }
+                    // Re-apply the mix so a playing sound glides to its normalized volume.
+                    problems.extend(s.project_changed(Duration::from_secs(1)));
+                    emit_state(&app, &s, problems);
                 }
             }
             None => {}

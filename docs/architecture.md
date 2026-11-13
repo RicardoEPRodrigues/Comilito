@@ -63,7 +63,9 @@ playlists, saves `comilito.json` one second after the last change, notices when 
 changed the file (`changedOnDisk` in the snapshot), and emits `state-changed` when what's audible
 changed. It also does the slow jobs, one at a time and **with the state unlocked** so the UI
 never waits: a backup every *N* minutes (when something changed), and hashing audio files that
-don't have a `sha256` yet (`hashingRemaining` in the snapshot).
+don't have a `sha256` yet (`hashingRemaining` in the snapshot). Before hashing it measures
+**loudness** of files that haven't been measured (`analyzingRemaining`), then re-applies the mix
+so the normalization gain takes effect.
 
 ## Command surface
 
@@ -104,6 +106,9 @@ Events from Rust to UI: `state-changed` (a `Snapshot`), `notice` (a message stri
   clicking an effect that's still playing stops it (so a looping effect is an on/off switch).
 - **Previews** (▶ in the library) play straight into the main track, so they're heard even while paused.
 - Fades on scene changes use the scene's `transitionMs` (or the sound's own fade-in, if longer).
+- **Loudness normalization** ([0015](decisions/0015-loudness-normalization.md)): every sound's
+  playback volume is its linear volume plus a gain in dB that brings it to the project's target
+  loudness (`Project::normalization_gain_db`). The mix itself (ducking, volumes) is unaware of it.
 
 ## Source layout
 
@@ -131,6 +136,7 @@ src-tauri/
     prefs.rs         App preferences (preferences.json)
     bundle.rs        .comilito zips (export, import, backups), sha256, finding missing files
     sample.rs        Builds the sample project from the bundled audio
+    loudness.rs      Measures a file's EBU R128 loudness and peak
   resources/sample/  Sample audio, shipped with the app (`bundle.resources`), see CREDITS.md
 docs/
 ```

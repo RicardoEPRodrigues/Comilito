@@ -86,6 +86,8 @@ struct MusicPlayer {
 struct AmbiencePlayer {
     handle: Stream,
     volume: f32,
+    /// The normalization gain it was last set with, to notice when it changes.
+    gain_db: f32,
 }
 
 pub struct AudioEngine {
@@ -290,13 +292,14 @@ impl AudioEngine {
                 }
                 player.paused = false;
             }
-            // Follow edits to the playing track's volume.
+            // Follow edits to the playing track's volume (or a new normalization gain).
             if let Some((id, handle)) = &mut player.current
                 && let Some(sound) = project.sound(id)
             {
+                let settings = project.resolve_sound(sound);
                 handle.set_volume(
-                    to_decibels(project.resolve_sound(sound).volume),
-                    tween_of(VOLUME_SMOOTHING),
+                    sound_decibels(settings.volume, settings.gain_db),
+                    tween_of(transition.max(VOLUME_SMOOTHING)),
                 );
             }
         }
@@ -320,11 +323,17 @@ impl AudioEngine {
         });
 
         for (sound_id, &volume) in &target.ambience {
+            let gain_db = project
+                .sound(sound_id)
+                .map_or(0.0, |s| project.resolve_sound(s).gain_db);
             if let Some(player) = self.ambience.get_mut(sound_id) {
                 // Already playing (or a one-shot that finished): only change the volume.
-                if player.volume != volume {
-                    player.handle.set_volume(to_decibels(volume), tween_of(transition));
+                if player.volume != volume || player.gain_db != gain_db {
+                    player
+                        .handle
+                        .set_volume(sound_decibels(volume, gain_db), tween_of(transition));
                     player.volume = volume;
+                    player.gain_db = gain_db;
                 }
                 continue;
             }
@@ -340,8 +349,14 @@ impl AudioEngine {
             };
             match start_stream(track, project, dir, sound, volume, looping, transition) {
                 Ok(handle) => {
-                    self.ambience
-                        .insert(sound_id.clone(), AmbiencePlayer { handle, volume });
+                    self.ambience.insert(
+                        sound_id.clone(),
+                        AmbiencePlayer {
+                            handle,
+                            volume,
+                            gain_db,
+                        },
+                    );
                 }
                 Err(e) => errors.push(e),
             }
@@ -476,7 +491,7 @@ impl AudioEngine {
         };
 
         let mut data = data
-            .volume(to_decibels(settings.volume))
+            .volume(sound_decibels(settings.volume, settings.gain_db))
             .fade_in_tween(fade_or_none(settings.fade_in_ms));
         if settings.looping {
             data = data.loop_region(..);
@@ -506,7 +521,10 @@ impl AudioEngine {
         let path = storage::absolute_audio_path(dir, &sound.file);
         let data = StreamingSoundData::from_file(&path)
             .map_err(|e| format!("could not open {}: {e}", sound.name))?
-            .volume(to_decibels(project.resolve_sound(sound).volume));
+            .volume({
+                let settings = project.resolve_sound(sound);
+                sound_decibels(settings.volume, settings.gain_db)
+            });
         let handle = self
             .manager
             .play(data)
@@ -579,7 +597,7 @@ fn start_stream(
     let path = storage::absolute_audio_path(dir, &sound.file);
     let mut data = StreamingSoundData::from_file(&path)
         .map_err(|e| format!("could not open \"{}\": {e}", sound.name))?
-        .volume(to_decibels(volume))
+        .volume(sound_decibels(volume, project.resolve_sound(sound).gain_db))
         .fade_in_tween(fade_or_none(
             // Use the longer of the scene transition and the sound's own fade-in.
             fade_in.max(Duration::from_millis(project.resolve_sound(sound).fade_in_ms as u64))
@@ -622,6 +640,17 @@ fn fade_or_click_guard(ms: u32) -> Tween {
         tween_of(Duration::from_millis(ms as u64))
     } else {
         Tween::default()
+    }
+}
+
+/// A sound's volume for kira: its linear volume plus its loudness normalization gain.
+/// Silence stays silence whatever the gain.
+fn sound_decibels(volume: f32, gain_db: f32) -> Decibels {
+    let db = to_decibels(volume);
+    if db == Decibels::SILENCE {
+        db
+    } else {
+        Decibels(db.0 + gain_db)
     }
 }
 
