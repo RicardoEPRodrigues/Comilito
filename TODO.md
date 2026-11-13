@@ -1,18 +1,20 @@
 # TODO
 
-## From the developer
+## Feature
 
 - flatpak version
+- when I drag a music file into the app, the app should import a copy after a confirmation prompt. (one or multiple files)
+
+## Bugs
+
+- the sound wave graphics doesn't always show on the app. need to play for it to appear.
+- the sound wave graphic changes size when playing because the time appears. there should be no jump.
 
 ## Left to do or to check (added by Claude)
 
-- **Check in the real app:** dragging a sound from the Library drawer onto a scene in the
-  Tapestry, onto a scene card in the Scenes tab, or into the scene editor. The hover state now
-  works ("Release to add … to …"); the drop itself couldn't be confirmed before testing stopped.
-- **Check in the real app:** the waveform cursor during a *crop* preview. kira reports positions
-  inside a slice, so the code adds the slice's start; confirm the cursor lines up with the audio.
-- **Check after reinstalling:** the desktop menu icon is no longer blurry. 48, 256 and 512 px icons
-  were added to the bundle, so menus no longer scale up the 32 px one.
+- **Check after rebuilding:** the icon in GNOME Shell (dock, Activities) is sharp. Tauri uses the
+  first PNG in `bundle.icon` as the window icon; it was the 32 px one and is now 256 px.
+
 - Downloads of only part of a video can't report a percentage (ffmpeg does the download), so they
   show "downloading the selected part…" instead. Consider estimating progress from ffmpeg's
   `time=` output.
