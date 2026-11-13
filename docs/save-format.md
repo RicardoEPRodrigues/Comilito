@@ -33,7 +33,7 @@ transferred. Avoid having the same project open on two devices at the same time.
 
 ```json
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "name": "Curse of Strahd",
   "masterVolume": 1.0,
   "categories": {
@@ -77,6 +77,28 @@ transferred. Avoid having the same project open on two devices at the same time.
 - `size`, `modified`, `sha256`: used to find missing files. `sha256` may be absent until hashing finishes.
 - `loudness`: measured in the background for loudness normalization
   ([0015](decisions/0015-loudness-normalization.md)); absent until measured.
+
+### Format version 2
+
+Version 2 (2026-11-13) only adds optional fields, so version 1 files load unchanged and are
+written back as version 2. On each sound:
+
+- `tags`: labels for searching, stored without `#`, lower-case (`["forest", "night"]`).
+- `favourite`: `true` for starred sounds (omitted when false).
+- `source`: for downloaded audio, `{ url, title, site, downloadedAt, range? }`, where `range` is
+  `{ startMs, endMs }` when only part was downloaded (decision 0019).
+- `lastUsed`: when the sound was last previewed, played or added to a scene, for "Recent".
+- `file.loudness.durationMs`: the length, measured with the loudness. Files measured before
+  this existed are measured again in the background.
+
+On the project:
+
+- `presetGroups`: preset groups in display order, including empty ones; each preset may have a
+  `group` (decision 0017).
+- `stackOrigin`: the preset the current stack was loaded from or last saved to, for
+  "From … · Modified", Update and Revert.
+
+Library folders aren't stored: they're the subfolders of `audio/<category>/` on disk.
 
 ## Export and import: the `.comilito` zip
 

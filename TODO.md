@@ -18,5 +18,5 @@
   `time=` output.
 - macOS: choose where ffmpeg comes from (decision 0019); the app currently expects one on the PATH.
 - Windows: the desktop accent colour (registry) and the downloaded tools are untested.
-- docs/save-format.md still describes format version 1; document the version 2 fields (tags,
-  favourite, source, lastUsed, durationMs, preset groups, stackOrigin).
+- Flatpak needs a permanent app ID (reverse domain, e.g. `me.colorcrow.Comilito`), plus
+  `flatpak-builder` and the GNOME SDK with the Rust extension installed to build and test it.
