@@ -47,4 +47,4 @@ it's small, maintained and cross-platform. Prefer the standard library and Tauri
 
 - Commit in small, logical steps with clear messages (imperative mood: "Add mixer track model").
 - Don't commit generated output (`target/`, `node_modules/`, `dist/`, build artifacts) or audio test files larger than a few hundred KB.
-- Only commit or push when asked.
+- Do not push unless asked.
