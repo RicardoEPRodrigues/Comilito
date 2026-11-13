@@ -1,9 +1,18 @@
 <script lang="ts">
   // The Scenes tab: scene cards in collapsible groups. Drag a scene into the tapestry, or drop
   // a sound from the Library on a scene to add it there. The ⋯ menu (or right-click) has the rest.
-  import { Copy, Ellipsis, Pencil, Plus, Replace, Trash2, ArrowUpToLine } from "@lucide/svelte";
+  import { Copy, Ellipsis, FolderInput, FolderMinus, FolderPlus, Pencil, Plus, Replace, TextCursorInput, Trash2, ArrowUpToLine } from "@lucide/svelte";
   import { api } from "../lib/api";
-  import { addSceneOnTop, deleteScene, duplicateScene, newScene, switchTapestryTo } from "../lib/actions";
+  import {
+    addSceneOnTop,
+    deleteScene,
+    duplicateScene,
+    moveSceneToNewGroup,
+    newScene,
+    renameSceneGroup,
+    switchTapestryTo,
+    ungroupScenes,
+  } from "../lib/actions";
   import { focusOn, project, run, ui } from "../lib/store.svelte";
   import type { Scene } from "../lib/types";
   import { openMenu, type MenuItem } from "./ContextMenu.svelte";
@@ -37,8 +46,26 @@
       "separator",
       { label: "Edit", icon: Pencil, action: () => focusOn({ kind: "scene", id: scene.id }) },
       { label: "Duplicate", icon: Copy, action: () => duplicateScene(scene.id) },
+      {
+        label: "Move to group",
+        icon: FolderInput,
+        submenu: [
+          ...groups.map(([g]) => ({ label: g, checked: scene.group === g, action: () => run(api.sceneSetGroup(scene.id, g)) })),
+          { label: "Ungrouped", checked: !scene.group, action: () => run(api.sceneSetGroup(scene.id, null)) },
+          "separator",
+          { label: "New group…", icon: FolderPlus, action: () => moveSceneToNewGroup(scene.id) },
+        ],
+      },
       "separator",
       { label: "Delete…", icon: Trash2, danger: true, action: () => deleteScene(scene.id) },
+    ];
+  }
+
+  function groupMenu(group: string): MenuItem[] {
+    return [
+      { label: "New scene in this group", icon: Plus, action: () => newScene(group) },
+      { label: "Rename group", icon: TextCursorInput, action: () => renameSceneGroup(group) },
+      { label: "Ungroup…", icon: FolderMinus, action: () => ungroupScenes(group) },
     ];
   }
 
@@ -98,7 +125,7 @@
   {/if}
   {#each ungrouped as scene (scene.id)}{@render card(scene)}{/each}
   {#each groups as [group, scenes] (group)}
-    <GroupHeading id={`scene:${group}`} name={group} count={scenes.length}>
+    <GroupHeading id={`scene:${group}`} name={group} count={scenes.length} onmenu={(e) => openMenu(e, groupMenu(group), group)}>
       {#each scenes as scene (scene.id)}{@render card(scene)}{/each}
     </GroupHeading>
   {/each}

@@ -84,7 +84,7 @@ Stack indexes count from the bottom (0 = bottom), like `stack` in `comilito.json
 | Moving projects | `export_project(dest, include_audio)`, `import_project(path)`, `backups_folder`, `relink_from_folder(folder)`, `relink_sound(id, path)` |
 | Project settings | `set_master_volume(volume)`, `set_category_volume(category, volume)`, `set_project_defaults(defaults)`, `set_backup_settings(backups)`, `reset_project_defaults` |
 | Sounds | `add_sounds(category, folder, paths)` → new ids, `import_dropped_file` (raw file bytes; name, category and folder in headers), `update_sound(sound)`, `set_sound_category(id, category)`, `remove_sound(id, permanently)`, `preview_sound(id)`, `toggle_effect(id)` |
-| Scenes | `create_scene(name, group)`, `update_scene(scene)`, `duplicate_scene(id)`, `delete_scene(id)`, `set_layer_volume(scene_id, layer_index, volume)`, `add_sound_to_scene(scene_id, sound_id)`, `remove_sound_from_scene(scene_id, sound_id)`, `remove_missing_sounds` |
+| Scenes | `create_scene(name, group)`, `update_scene(scene)`, `duplicate_scene(id)`, `delete_scene(id)`, `scene_set_group(scene_id, group)`, `scene_group_rename(from, to)`, `scene_group_ungroup(name)`, `set_layer_volume(scene_id, layer_index, volume)`, `add_sound_to_scene(scene_id, sound_id)`, `remove_sound_from_scene(scene_id, sound_id)`, `remove_missing_sounds` |
 | Stack | `stack_insert(scene_id, index, mode)`, `stack_move(entry_id, index)`, `stack_remove(entry_id)`, `stack_set_enabled(entry_id, enabled)`, `stack_switch(scene_id)`, `scene_hotkey(scene_id)` |
 | Presets | `preset_save(name)`, `preset_load(preset_id)`, `preset_insert(preset_id, index)`, `preset_rename(preset_id, name)`, `preset_delete(preset_id)` |
 | Transport | `toggle_play`, `stop_all` |

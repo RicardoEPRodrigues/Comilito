@@ -127,6 +127,9 @@ export const api = {
   updateScene: (scene: Scene) => invoke<void>("update_scene", { scene }),
   duplicateScene: (id: string) => invoke<string>("duplicate_scene", { id }),
   deleteScene: (id: string) => invoke<void>("delete_scene", { id }),
+  sceneGroupRename: (from: string, to: string) => invoke<void>("scene_group_rename", { from, to }),
+  sceneSetGroup: (sceneId: string, group: string | null) => invoke<void>("scene_set_group", { sceneId, group }),
+  sceneGroupUngroup: (name: string) => invoke<void>("scene_group_ungroup", { name }),
   addSoundToScene: (sceneId: string, soundId: string) =>
     invoke<void>("add_sound_to_scene", { sceneId, soundId }),
   removeSoundFromScene: (sceneId: string, soundId: string) =>

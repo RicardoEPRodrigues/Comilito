@@ -30,6 +30,7 @@
   class="heading"
   class:over
   role="group"
+  oncontextmenu={(e) => onmenu?.(e)}
   ondragover={(e) => {
     if (!droppable) return;
     e.preventDefault();

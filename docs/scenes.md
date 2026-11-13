@@ -110,6 +110,7 @@ The stack is the focus, and it's driven mainly by drag and drop.
 |---|---|
 | Add a scene | drag it from the list into the stack, at any position (top, bottom, between two scenes) |
 | Add a sound to a scene | drag it from the Sounds tab onto the scene in the stack (music joins the playlist, ambience becomes a layer, effects go on the pad) |
+| Scene groups | ⋯ on a group heading (or right-click it): new scene in the group, rename, ungroup. A scene's ⋯ menu has *Move to group* |
 | Import audio files | drop them onto the window from the file manager; after choosing a category and folder, copies go into the project |
 | Remove a sound from a scene | Expand the entry in the stack and press ✕ next to the sound (it stays in the library) |
 | Reorder | drag an entry within the stack |

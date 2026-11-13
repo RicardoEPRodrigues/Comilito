@@ -188,6 +188,21 @@ export async function deletePresetGroup(group: string) {
   if (ok) await run(api.presetGroupDelete(group));
 }
 
+export async function renameSceneGroup(group: string) {
+  const name = await askText("Rename group", "Name", group);
+  if (name && name !== group) await run(api.sceneGroupRename(group, name));
+}
+
+export async function ungroupScenes(group: string) {
+  const ok = await confirmAction(`Ungroup “${group}”?`, "Its scenes are kept, without a group.", "Ungroup", false);
+  if (ok) await run(api.sceneGroupUngroup(group));
+}
+
+export async function moveSceneToNewGroup(sceneId: string) {
+  const name = await askText("New group", "Name");
+  if (name) await run(api.sceneSetGroup(sceneId, name));
+}
+
 // ---- Sounds -----------------------------------------------------------------------------------
 
 /** Opens the system file picker and copies the chosen files into the project. */

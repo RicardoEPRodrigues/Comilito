@@ -1035,6 +1035,58 @@ pub fn duplicate_scene(id: String, app: AppHandle, state: AppStateRef) -> Result
     Ok(new_scene_id)
 }
 
+/// Scene groups have no list of their own: a group is just the `group` name its scenes share.
+/// So renaming one renames it on every scene in it, and renaming it to an existing group's
+/// name merges the two (unlike preset groups, which can be empty and so are stored).
+#[tauri::command]
+pub fn scene_group_rename(from: String, to: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let to = to.trim().to_string();
+    if to.is_empty() {
+        return Err("the group needs a name".into());
+    }
+    let mut s = lock(&state)?;
+    for scene in &mut s.open_mut()?.project.scenes {
+        if scene.group.as_deref() == Some(from.as_str()) {
+            scene.group = Some(to.clone());
+        }
+    }
+    s.project_changed(Duration::ZERO);
+    emit_state(&app, &s, Vec::new());
+    Ok(())
+}
+
+/// Moves one scene into a group (or out of any group, with `None`).
+#[tauri::command]
+pub fn scene_set_group(scene_id: String, group: Option<String>, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let group = group.map(|g| g.trim().to_string()).filter(|g| !g.is_empty());
+    let mut s = lock(&state)?;
+    let open = s.open_mut()?;
+    let scene = open
+        .project
+        .scenes
+        .iter_mut()
+        .find(|sc| sc.id == scene_id)
+        .ok_or("that scene no longer exists")?;
+    scene.group = group;
+    s.project_changed(Duration::ZERO);
+    emit_state(&app, &s, Vec::new());
+    Ok(())
+}
+
+/// "Ungroup": the group's scenes are kept, without a group.
+#[tauri::command]
+pub fn scene_group_ungroup(name: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    for scene in &mut s.open_mut()?.project.scenes {
+        if scene.group.as_deref() == Some(name.as_str()) {
+            scene.group = None;
+        }
+    }
+    s.project_changed(Duration::ZERO);
+    emit_state(&app, &s, Vec::new());
+    Ok(())
+}
+
 /// Deletes a scene, and removes it from the stack and every preset.
 #[tauri::command]
 pub fn delete_scene(id: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
