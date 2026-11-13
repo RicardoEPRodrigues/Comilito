@@ -211,6 +211,58 @@ pub fn absolute_audio_path(dir: &Path, info: &FileInfo) -> PathBuf {
     info.path.split('/').fold(dir.to_path_buf(), |p, part| p.join(part))
 }
 
+/// File extensions treated as audio when scanning a project folder (what kira can decode).
+pub const AUDIO_EXTENSIONS: [&str; 5] = ["mp3", "ogg", "oga", "flac", "wav"];
+
+/// An audio file found in a project's `audio/<category>/` folder.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FoundAudio {
+    /// Relative to the project folder, with `/`, as stored in comilito.json.
+    pub path: String,
+    pub category: Category,
+    pub size: u64,
+}
+
+/// Every audio file under `dir/audio/<category>/` (subfolders included). Hidden files are
+/// skipped: sync tools and editors use them for temporary copies.
+pub fn scan_audio_files(dir: &Path) -> Vec<FoundAudio> {
+    let mut found = Vec::new();
+    for category in Category::ALL {
+        let mut to_visit = vec![dir.join("audio").join(category.folder_name())];
+        while let Some(folder) = to_visit.pop() {
+            let Ok(entries) = fs::read_dir(&folder) else {
+                continue;
+            };
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let name = entry.file_name().to_string_lossy().into_owned();
+                if name.starts_with('.') {
+                    continue;
+                }
+                let Ok(meta) = entry.metadata() else { continue };
+                if meta.is_dir() {
+                    to_visit.push(path);
+                    continue;
+                }
+                let is_audio = path
+                    .extension()
+                    .map(|e| e.to_string_lossy().to_lowercase())
+                    .is_some_and(|e| AUDIO_EXTENSIONS.contains(&e.as_str()));
+                if !is_audio {
+                    continue;
+                }
+                let Ok(relative) = path.strip_prefix(dir) else { continue };
+                found.push(FoundAudio {
+                    path: to_json_path(relative),
+                    category,
+                    size: meta.len(),
+                });
+            }
+        }
+    }
+    found
+}
+
 /// Ids of sounds whose audio file is missing from the project folder.
 pub fn missing_sounds(dir: &Path, project: &Project) -> Vec<String> {
     project
@@ -364,6 +416,28 @@ mod tests {
         assert_eq!(moved.sha256.as_deref(), Some("abc"));
         assert!(absolute_audio_path(&dir, &moved).is_file());
         assert!(!absolute_audio_path(&dir, &info).exists());
+    }
+
+    #[test]
+    fn scans_audio_files_by_category_folder() {
+        let root = TempDir::new();
+        let dir = create_project(&root.0, "P", ProjectDefaults::default()).unwrap();
+        fs::create_dir_all(dir.join("audio/ambience/forest")).unwrap();
+        fs::write(dir.join("audio/music/theme.MP3"), b"123").unwrap();
+        fs::write(dir.join("audio/ambience/forest/birds.ogg"), b"12345").unwrap();
+        fs::write(dir.join("audio/effects/notes.txt"), b"not audio").unwrap();
+        fs::write(dir.join("audio/effects/.door.wav.part"), b"temp").unwrap();
+        fs::write(dir.join("audio/effects/.hidden.wav"), b"temp").unwrap();
+
+        let mut found = scan_audio_files(&dir);
+        found.sort_by(|a, b| a.path.cmp(&b.path));
+        assert_eq!(
+            found,
+            vec![
+                FoundAudio { path: "audio/ambience/forest/birds.ogg".into(), category: Category::Ambience, size: 5 },
+                FoundAudio { path: "audio/music/theme.MP3".into(), category: Category::Music, size: 3 },
+            ]
+        );
     }
 
     #[test]

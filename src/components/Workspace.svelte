@@ -3,7 +3,7 @@
   //   header / library | stack | effects / mixer bar
   import { api } from "../lib/api";
   import { exportProject, relinkFromFolder } from "../lib/actions";
-  import { askText, run, setMode, ui } from "../lib/store.svelte";
+  import { ask, askText, run, setMode, ui } from "../lib/store.svelte";
   import ContextMenu from "./ContextMenu.svelte";
   import EffectsPad from "./EffectsPad.svelte";
   import Library from "./Library.svelte";
@@ -14,6 +14,18 @@
   // exists: App only shows this component when it does.
   const project = $derived(ui.snapshot!.project!);
   const missingCount = $derived(ui.snapshot!.missing.length);
+
+  async function removeMissing() {
+    const answer = await ask({
+      title: "Remove sounds with missing files?",
+      message: `${missingCount} sound(s) will be removed from the library and from every scene.`,
+      choices: [
+        { label: "Cancel", value: "cancel" },
+        { label: "Remove", value: "remove", danger: true, primary: true },
+      ],
+    });
+    if (answer?.choice === "remove") run(api.removeMissingSounds());
+  }
 
   async function rename() {
     const name = await askText("Rename project", "Name", project.name);
@@ -63,6 +75,7 @@
         audio file. They're marked ⚠ in the Sounds tab.
       </span>
       <button onclick={relinkFromFolder}>Find in a folder…</button>
+      <button onclick={removeMissing}>Remove them</button>
     </div>
   {/if}
 

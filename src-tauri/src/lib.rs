@@ -96,6 +96,8 @@ pub fn run() {
             commands::delete_scene,
             commands::set_layer_volume,
             commands::add_sound_to_scene,
+            commands::remove_sound_from_scene,
+            commands::remove_missing_sounds,
             commands::stack_insert,
             commands::stack_move,
             commands::stack_remove,
@@ -173,6 +175,7 @@ fn ticker(app: AppHandle) {
             let mut problems = Vec::new();
             let mut changed = false;
             let mut job = None;
+            let mut disk_changed = false;
             let backups_dir = s.backups_root();
 
             // Borrow the two fields separately (see `AppState::project_changed`).
@@ -194,6 +197,19 @@ fn ticker(app: AppHandle) {
                     if on_disk != open.known_file_time && !open.changed_on_disk {
                         open.changed_on_disk = true;
                         changed = true;
+                    }
+
+                    // Audio files added or removed outside the app (file manager, sync tool).
+                    let refresh = open.refresh_from_disk();
+                    if refresh.added > 0 {
+                        problems.push(format!(
+                            "Added {} new sound{} found in the project folder.",
+                            refresh.added,
+                            if refresh.added == 1 { "" } else { "s" }
+                        ));
+                    }
+                    if refresh.added > 0 || refresh.missing_changed {
+                        disk_changed = true;
                     }
                 }
 
@@ -224,6 +240,12 @@ fn ticker(app: AppHandle) {
                         size: sound.file.size,
                     });
                 }
+            }
+
+            if disk_changed {
+                // Marks the project for saving (new sounds) and re-applies the mix.
+                problems.extend(s.project_changed(Duration::from_millis(500)));
+                changed = true;
             }
 
             let snapshot = s.snapshot();

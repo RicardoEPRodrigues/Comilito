@@ -448,6 +448,21 @@ impl Project {
             .unwrap_or(false)
     }
 
+    /// Takes a sound out of one scene (its playlist, layers and effects pad).
+    pub fn remove_sound_from_scene(&mut self, scene_id: &str, sound_id: &str) {
+        if let Some(scene) = self.scenes.iter_mut().find(|s| s.id == scene_id) {
+            if let Some(music) = &mut scene.music {
+                music.tracks.retain(|t| t != sound_id);
+                // An emptied playlist means "no music" (lower music plays again).
+                if music.tracks.is_empty() {
+                    scene.music = None;
+                }
+            }
+            scene.ambience.retain(|l| l.sound != sound_id);
+            scene.effects.retain(|e| e != sound_id);
+        }
+    }
+
     /// Takes a sound out of the scene slots that don't hold `category`: music playlists only
     /// hold music, ambience layers only ambience, effects pads only effects.
     pub fn remove_sound_from_other_slots(&mut self, id: &str, category: Category) {
@@ -488,6 +503,22 @@ impl Project {
         self.stack.retain(|e| scene_ids.contains(&e.scene));
         for preset in &mut self.stack_presets {
             preset.stack.retain(|e| scene_ids.contains(&e.scene));
+        }
+    }
+}
+
+impl Sound {
+    /// A new library sound with no overrides (everything inherits the project defaults).
+    pub fn new(category: Category, name: String, file: FileInfo) -> Self {
+        Self {
+            id: new_id("snd"),
+            category,
+            name,
+            file,
+            volume: None,
+            looping: None,
+            fade_in_ms: None,
+            fade_out_ms: None,
         }
     }
 }

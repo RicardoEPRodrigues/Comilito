@@ -20,8 +20,10 @@ Each category has its own volume, and each sound has its own volume, loop and fa
 1. **Create a project** (one per campaign). It's a folder in `~/Documents/Comilito/`.
    Choose **Start from the sample** to get a few sounds and scenes to try things out.
 2. Switch to **Edit** mode (top bar). In **Sounds**, add music, ambience and effect files; they're
-   copied into the project. ▶ previews a sound; ✎ sets its volume, loop and fades. Drag a sound
-   onto another category's tab to move it there.
+   copied into the project. You can also drop files straight into the project's
+   `audio/music`, `audio/ambience` or `audio/effects` folder; they appear within seconds.
+   ▶ previews a sound; ✎ sets its volume, loop and fades. Drag a sound onto another
+   category's tab to move it there.
 3. In **Scenes**, create scenes: a music playlist, ambience layers (each with a volume and an
    optional role), effects for the pad, and optionally a hotkey.
 4. Back in **Play** mode, drag scenes into the **stack** (or double-click them). Scenes higher up

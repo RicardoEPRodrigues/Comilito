@@ -61,7 +61,12 @@ audio file found while fading to a mix) arrive as **`notice`** events.
 A background thread (`ticker` in `lib.rs`) runs four times a second: it advances music
 playlists, saves `comilito.json` one second after the last change, notices when another program
 changed the file (`changedOnDisk` in the snapshot), and emits `state-changed` when what's audible
-changed. It also does the slow jobs, one at a time and **with the state unlocked** so the UI
+changed. Every two seconds it also **rescans the project's `audio/` folders**
+(`OpenProject::refresh_from_disk`): audio files that appeared there (copied in with a file
+manager, or by a sync tool) become new sounds, in the category of their folder, once their size
+is the same on two scans in a row; sounds whose file disappeared are marked missing (not
+deleted). Polling was chosen over a file-watcher crate: three folders are cheap to scan, it
+behaves the same on every OS, and it needs no dependency. It also does the slow jobs, one at a time and **with the state unlocked** so the UI
 never waits: a backup every *N* minutes (when something changed), and hashing audio files that
 don't have a `sha256` yet (`hashingRemaining` in the snapshot). Before hashing it measures
 **loudness** of files that haven't been measured (`analyzingRemaining`), then re-applies the mix
@@ -79,7 +84,7 @@ Stack indexes count from the bottom (0 = bottom), like `stack` in `comilito.json
 | Moving projects | `export_project(dest, include_audio)`, `import_project(path)`, `backups_folder`, `relink_from_folder(folder)`, `relink_sound(id, path)` |
 | Project settings | `set_master_volume(volume)`, `set_category_volume(category, volume)`, `set_project_defaults(defaults)`, `set_backup_settings(backups)`, `reset_project_defaults` |
 | Sounds | `add_sounds(category, paths)`, `update_sound(sound)`, `set_sound_category(id, category)`, `remove_sound(id, permanently)`, `preview_sound(id)`, `toggle_effect(id)` |
-| Scenes | `create_scene(name, group)`, `update_scene(scene)`, `duplicate_scene(id)`, `delete_scene(id)`, `set_layer_volume(scene_id, layer_index, volume)`, `add_sound_to_scene(scene_id, sound_id)` |
+| Scenes | `create_scene(name, group)`, `update_scene(scene)`, `duplicate_scene(id)`, `delete_scene(id)`, `set_layer_volume(scene_id, layer_index, volume)`, `add_sound_to_scene(scene_id, sound_id)`, `remove_sound_from_scene(scene_id, sound_id)`, `remove_missing_sounds` |
 | Stack | `stack_insert(scene_id, index, mode)`, `stack_move(entry_id, index)`, `stack_remove(entry_id)`, `stack_set_enabled(entry_id, enabled)`, `stack_switch(scene_id)`, `scene_hotkey(scene_id)` |
 | Presets | `preset_save(name)`, `preset_load(preset_id)`, `preset_insert(preset_id, index)`, `preset_rename(preset_id, name)`, `preset_delete(preset_id)` |
 | Transport | `toggle_play`, `stop_all` |

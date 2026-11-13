@@ -18,6 +18,9 @@ Each project is a self-contained folder under `~/Documents/Comilito/` (the OS Do
 ```
 
 - Adding a sound **copies** the file into the project's `audio/<category>/` folder.
+- Audio files put into `audio/<category>/` (or its subfolders) outside the app are picked up
+  automatically as new sounds while the project is open. Deleting a file there marks its sound
+  as missing; the missing-audio banner offers to relink it or remove such sounds.
 - All paths in `comilito.json` are relative to the project folder.
 - Comilito lists projects by scanning `~/Documents/Comilito/` for folders containing `comilito.json`.
 - `comilito.json` is written atomically (temporary file, then rename) so that sync tools never

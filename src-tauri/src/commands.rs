@@ -357,16 +357,7 @@ pub fn add_sounds(
                     .file_stem()
                     .map(|n| n.to_string_lossy().into_owned())
                     .unwrap_or_else(|| "Sound".into());
-                open.project.sounds.push(Sound {
-                    id: new_id("snd"),
-                    category,
-                    name,
-                    file,
-                    volume: None,
-                    looping: None,
-                    fade_in_ms: None,
-                    fade_out_ms: None,
-                });
+                open.project.sounds.push(Sound::new(category, name, file));
             }
             Err(e) => problems.push(e),
         }
@@ -642,6 +633,42 @@ pub fn add_sound_to_scene(
     }
     let transition = millis(open.project.defaults.transition_ms.min(1000));
     let problems = s.project_changed(transition);
+    emit_state(&app, &s, problems);
+    Ok(())
+}
+
+/// The ✕ next to a sound in an expanded stack entry (Edit mode): takes it out of that scene.
+/// The sound stays in the library.
+#[tauri::command]
+pub fn remove_sound_from_scene(
+    scene_id: String,
+    sound_id: String,
+    app: AppHandle,
+    state: AppStateRef,
+) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    let open = s.open_mut()?;
+    let transition = open
+        .project
+        .scene(&scene_id)
+        .map(|sc| millis(open.project.scene_transition_ms(sc)))
+        .ok_or("that scene no longer exists")?;
+    open.project.remove_sound_from_scene(&scene_id, &sound_id);
+    let problems = s.project_changed(transition);
+    emit_state(&app, &s, problems);
+    Ok(())
+}
+
+/// Removes every sound whose audio file is missing (from the library and all scenes).
+/// For when files were deleted on purpose outside the app.
+#[tauri::command]
+pub fn remove_missing_sounds(app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    let open = s.open_mut()?;
+    let missing = std::mem::take(&mut open.missing);
+    open.project.sounds.retain(|snd| !missing.contains(&snd.id));
+    open.project.remove_dangling_references();
+    let problems = s.project_changed(Duration::from_millis(500));
     emit_state(&app, &s, problems);
     Ok(())
 }

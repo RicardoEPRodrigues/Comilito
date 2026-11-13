@@ -6,7 +6,8 @@
 //! deadlocks, for no real gain in an app this size.
 
 use std::{
-    path::PathBuf,
+    collections::{HashMap, HashSet},
+    path::{Path, PathBuf},
     time::{Duration, Instant, SystemTime},
 };
 
@@ -18,7 +19,7 @@ use crate::{
     bundle,
     mix::{TargetMix, target_mix},
     prefs::{self, Preferences},
-    project::Project,
+    project::{Project, Sound},
     storage,
 };
 
@@ -55,9 +56,56 @@ pub struct OpenProject {
     pub last_backup: Instant,
     /// Sounds whose loudness couldn't be measured (undecodable file), so we don't retry.
     pub analysis_failed: Vec<String>,
+    /// New audio files seen in the folder but not added yet, with their size. A file is only
+    /// added once its size is the same on two scans in a row, so we never pick up a file
+    /// that's still being copied or synced.
+    pub pending_files: HashMap<String, u64>,
+}
+
+/// What `refresh_from_disk` changed.
+#[derive(Debug, Default, PartialEq)]
+pub struct DiskRefresh {
+    pub added: usize,
+    pub missing_changed: bool,
 }
 
 impl OpenProject {
+    /// Compares the project's `audio/` folders with the library: audio files that appeared
+    /// become new sounds (category from their folder), and the list of sounds with a missing
+    /// file is brought up to date. A removed file only marks its sound as missing; it isn't
+    /// deleted, since a sync tool may just be replacing it.
+    pub fn refresh_from_disk(&mut self) -> DiskRefresh {
+        let found = storage::scan_audio_files(&self.dir);
+        let known: HashSet<String> = self.project.sounds.iter().map(|s| s.file.path.clone()).collect();
+
+        let mut result = DiskRefresh::default();
+        let mut still_pending = HashMap::new();
+        for file in found.into_iter().filter(|f| !known.contains(&f.path)) {
+            if self.pending_files.get(&file.path) != Some(&file.size) {
+                // First sighting, or still growing: look again next time.
+                still_pending.insert(file.path, file.size);
+                continue;
+            }
+            let Ok(info) = storage::file_info(&self.dir, Path::new(&file.path)) else {
+                continue;
+            };
+            let name = Path::new(&file.path)
+                .file_stem()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "Sound".into());
+            self.project.sounds.push(Sound::new(file.category, name, info));
+            result.added += 1;
+        }
+        self.pending_files = still_pending;
+
+        let missing = storage::missing_sounds(&self.dir, &self.project);
+        if missing != self.missing {
+            self.missing = missing;
+            result.missing_changed = true;
+        }
+        result
+    }
+
     /// The next sound that still needs its loudness measured, if any.
     pub fn next_to_analyze(&self) -> Option<&crate::project::Sound> {
         self.project.sounds.iter().find(|snd| {
@@ -126,6 +174,7 @@ impl AppState {
             changed_since_backup: false,
             last_backup: Instant::now(),
             analysis_failed: Vec::new(),
+            pending_files: HashMap::new(),
         });
         // The stack is restored but not started: the DM presses Space when ready.
         Ok(())
@@ -236,4 +285,68 @@ pub fn emit_state(app: &AppHandle, state: &AppState, problems: Vec<String>) {
     }
     // `let _ =` explicitly ignores the Result: if the window is gone there's no one to tell.
     let _ = app.emit("state-changed", state.snapshot());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{project::ProjectDefaults, storage::test_support::TempDir};
+
+    fn open_project(dir: PathBuf) -> OpenProject {
+        let project = storage::load_project(&dir).unwrap();
+        OpenProject {
+            mix: target_mix(&project),
+            missing: storage::missing_sounds(&dir, &project),
+            known_file_time: None,
+            dir,
+            project,
+            dirty_since: None,
+            changed_on_disk: false,
+            changed_since_backup: false,
+            last_backup: Instant::now(),
+            analysis_failed: Vec::new(),
+            pending_files: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn new_files_are_added_once_their_size_is_stable() {
+        let root = TempDir::new();
+        let dir = storage::create_project(&root.0, "P", ProjectDefaults::default()).unwrap();
+        let mut open = open_project(dir.clone());
+        let file = dir.join("audio/ambience/rain.ogg");
+
+        std::fs::write(&file, b"half").unwrap();
+        assert_eq!(open.refresh_from_disk().added, 0, "first sighting waits");
+        std::fs::write(&file, b"half copied").unwrap();
+        assert_eq!(open.refresh_from_disk().added, 0, "size changed, still waiting");
+        assert_eq!(open.refresh_from_disk().added, 1, "stable now");
+
+        let sound = &open.project.sounds[0];
+        assert_eq!(sound.name, "rain");
+        assert_eq!(sound.category, crate::project::Category::Ambience);
+        assert_eq!(open.refresh_from_disk().added, 0, "not added twice");
+    }
+
+    #[test]
+    fn removed_files_mark_sounds_missing_and_returning_files_unmark_them() {
+        let root = TempDir::new();
+        let dir = storage::create_project(&root.0, "P", ProjectDefaults::default()).unwrap();
+        let file = dir.join("audio/music/theme.mp3");
+        std::fs::write(&file, b"music").unwrap();
+        let mut open = open_project(dir.clone());
+        open.refresh_from_disk();
+        open.refresh_from_disk();
+        assert_eq!(open.project.sounds.len(), 1);
+
+        std::fs::remove_file(&file).unwrap();
+        let r = open.refresh_from_disk();
+        assert!(r.missing_changed);
+        assert_eq!(open.missing.len(), 1);
+        assert_eq!(open.project.sounds.len(), 1, "the sound is kept, only marked missing");
+
+        std::fs::write(&file, b"music").unwrap();
+        assert!(open.refresh_from_disk().missing_changed);
+        assert!(open.missing.is_empty());
+    }
 }
