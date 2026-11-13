@@ -17,13 +17,14 @@ use std::{
 };
 
 use tauri::{AppHandle, Emitter, State};
+use tauri_plugin_opener::OpenerExt;
 
 use crate::{
     bundle,
     prefs::Preferences,
     project::{
         BackupSettings, Category, Layer, Playlist, PresetEntry, ProjectDefaults, Scene, Sound, StackEntry,
-        StackPreset, new_id,
+        StackPreset, folder_of_path, new_id,
     },
     state::{AppState, OpenProject, Snapshot, emit_state},
     storage::{self, ProjectSummary},
@@ -42,6 +43,19 @@ fn lock<'a>(state: &'a AppStateRef) -> Result<MutexGuard<'a, AppState>, String> 
 
 fn millis(ms: u32) -> Duration {
     Duration::from_millis(ms as u64)
+}
+
+/// The current time as stored in comilito.json (RFC 3339, UTC).
+fn now() -> String {
+    storage::format_time(std::time::SystemTime::now())
+}
+
+/// Remembers that a sound was just used, for the Library's "Recent" list.
+fn touch(open: &mut OpenProject, sound_id: &str) {
+    if let Some(sound) = open.project.sound_mut(sound_id) {
+        sound.last_used = Some(now());
+        open.dirty_since.get_or_insert_with(std::time::Instant::now);
+    }
 }
 
 // ---- General --------------------------------------------------------------------------------
@@ -66,6 +80,38 @@ pub fn set_preferences(prefs: Preferences, state: AppStateRef) -> Result<(), Str
     let mut s = lock(&state)?;
     s.prefs = prefs;
     s.save_prefs()
+}
+
+// ---- Appearance -----------------------------------------------------------------------------
+
+#[tauri::command]
+pub fn desktop_appearance() -> crate::desktop::DesktopAppearance {
+    crate::desktop::read()
+}
+
+#[tauri::command]
+pub fn list_user_themes(state: AppStateRef) -> Result<Vec<crate::themes::Theme>, String> {
+    Ok(crate::themes::list(&lock(&state)?.config_dir))
+}
+
+#[tauri::command]
+pub fn save_user_theme(theme: crate::themes::Theme, state: AppStateRef) -> Result<(), String> {
+    crate::themes::save(&lock(&state)?.config_dir, &theme)
+}
+
+#[tauri::command]
+pub fn delete_user_theme(id: String, state: AppStateRef) -> Result<(), String> {
+    crate::themes::delete(&lock(&state)?.config_dir, &id)
+}
+
+#[tauri::command]
+pub fn import_theme(path: PathBuf, state: AppStateRef) -> Result<crate::themes::Theme, String> {
+    crate::themes::import(&lock(&state)?.config_dir, &path)
+}
+
+#[tauri::command]
+pub fn export_theme(theme: crate::themes::Theme, dest: PathBuf) -> Result<(), String> {
+    crate::themes::export(&theme, &dest)
 }
 
 // ---- Projects -------------------------------------------------------------------------------
@@ -262,7 +308,8 @@ pub fn relink_sound(id: String, path: PathBuf, app: AppHandle, state: AppStateRe
 fn relink(open: &mut OpenProject, id: &str, source: &std::path::Path) -> Result<(), String> {
     let sound = open.project.sound(id).ok_or("that sound no longer exists")?;
     let category = bundle::category_of_path(&sound.file.path, sound.category);
-    let file = storage::copy_audio_into_project(&open.dir, category, source)?;
+    let folder = folder_of_path(&sound.file.path);
+    let file = storage::copy_audio_into_project(&open.dir, category, &folder, source)?;
     if let Some(sound) = open.project.sound_mut(id) {
         sound.file = file;
     }
@@ -338,10 +385,12 @@ pub fn reset_project_defaults(app: AppHandle, state: AppStateRef) -> Result<(), 
 
 // ---- Sounds ---------------------------------------------------------------------------------
 
-/// Copies audio files into the project and adds them to the library.
+/// Copies audio files into the project (into a Library folder, if given) and adds them to
+/// the library.
 #[tauri::command]
 pub fn add_sounds(
     category: Category,
+    folder: Option<String>,
     paths: Vec<PathBuf>,
     app: AppHandle,
     state: AppStateRef,
@@ -349,9 +398,10 @@ pub fn add_sounds(
     let mut s = lock(&state)?;
     let open = s.open_mut()?;
     let mut problems = Vec::new();
+    let folder = folder.unwrap_or_default();
 
     for path in paths {
-        match storage::copy_audio_into_project(&open.dir, category, &path) {
+        match storage::copy_audio_into_project(&open.dir, category, &folder, &path) {
             Ok(file) => {
                 let name = path
                     .file_stem()
@@ -368,20 +418,36 @@ pub fn add_sounds(
     Ok(())
 }
 
-/// Updates a sound's name and settings. The file and category can't be changed this way.
+/// Updates sounds' names, settings, tags and favourite flags (one sound from the editor, or
+/// several from a bulk edit in the Library). Files, categories and folders can't be changed
+/// this way; see `move_sounds`.
 #[tauri::command]
-pub fn update_sound(sound: Sound, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+pub fn update_sounds(sounds: Vec<Sound>, app: AppHandle, state: AppStateRef) -> Result<(), String> {
     let mut s = lock(&state)?;
-    let existing = s
-        .open_mut()?
-        .project
-        .sound_mut(&sound.id)
-        .ok_or("that sound no longer exists")?;
-    existing.name = sound.name;
-    existing.volume = sound.volume.map(|v| v.clamp(0.0, 1.0));
-    existing.looping = sound.looping;
-    existing.fade_in_ms = sound.fade_in_ms;
-    existing.fade_out_ms = sound.fade_out_ms;
+    let open = s.open_mut()?;
+    for sound in sounds {
+        let Some(existing) = open.project.sound_mut(&sound.id) else {
+            continue;
+        };
+        let name = sound.name.trim();
+        if !name.is_empty() {
+            existing.name = name.to_string();
+        }
+        existing.volume = sound.volume.map(|v| v.clamp(0.0, 1.0));
+        existing.looping = sound.looping;
+        existing.fade_in_ms = sound.fade_in_ms;
+        existing.fade_out_ms = sound.fade_out_ms;
+        existing.favourite = sound.favourite;
+        // Tags are stored without `#`, trimmed, lower-case and without duplicates.
+        let mut tags: Vec<String> = sound
+            .tags
+            .iter()
+            .map(|t| t.trim().trim_start_matches('#').to_lowercase())
+            .filter(|t| !t.is_empty())
+            .collect();
+        tags.dedup();
+        existing.tags = tags;
+    }
     let problems = s.levels_changed();
     emit_state(&app, &s, problems);
     Ok(())
@@ -438,6 +504,7 @@ pub fn preview_sound(id: String, app: AppHandle, state: AppStateRef) -> Result<(
     let open = state_ref.open.as_ref().ok_or("no project is open")?;
     let sound = open.project.sound(&id).ok_or("that sound no longer exists")?;
     state_ref.engine.toggle_preview(&open.project, &open.dir, sound)?;
+    touch(s.open_mut()?, &id);
     emit_state(&app, &s, Vec::new());
     Ok(())
 }
@@ -449,52 +516,143 @@ pub fn toggle_effect(id: String, app: AppHandle, state: AppStateRef) -> Result<(
     let open = state_ref.open.as_ref().ok_or("no project is open")?;
     let sound = open.project.sound(&id).ok_or("that sound no longer exists")?;
     state_ref.engine.toggle_effect(&open.project, &open.dir, sound)?;
+    touch(s.open_mut()?, &id);
     emit_state(&app, &s, Vec::new());
     Ok(())
 }
 
-/// Moves a sound to another category: its file moves to that category's folder, and it's
-/// taken out of scene slots that don't take that category (a music sound turned into an
-/// effect leaves the playlists it was in).
+/// Moves sounds to a category and Library folder: their files move to
+/// `audio/<category>/<folder>/`, and they're taken out of scene slots that don't take that
+/// category (a music sound turned into an effect leaves the playlists it was in).
 #[tauri::command]
-pub fn set_sound_category(
-    id: String,
+pub fn move_sounds(
+    ids: Vec<String>,
     category: Category,
+    folder: String,
     app: AppHandle,
     state: AppStateRef,
 ) -> Result<(), String> {
     let mut s = lock(&state)?;
     let open = s.open_mut()?;
-    let sound = open.project.sound(&id).ok_or("that sound no longer exists")?;
-    if sound.category == category {
-        return Ok(());
-    }
-
     let mut problems = Vec::new();
-    let new_file = if open.missing.contains(&id) {
-        // No file to move; it will be found again by relinking.
-        None
-    } else {
-        match storage::move_audio_file(&open.dir, &sound.file, category) {
-            Ok(file) => Some(file),
-            Err(e) => {
-                problems.push(e);
-                None
+
+    for id in ids {
+        let Some(sound) = open.project.sound(&id) else { continue };
+        if sound.category == category && sound.folder() == folder {
+            continue;
+        }
+        let new_file = if open.missing.contains(&id) {
+            // No file to move; it will be found again by relinking.
+            None
+        } else {
+            match storage::move_audio_file(&open.dir, &sound.file, category, &folder) {
+                Ok(file) => Some(file),
+                Err(e) => {
+                    problems.push(e);
+                    continue;
+                }
+            }
+        };
+        if let Some(sound) = open.project.sound_mut(&id) {
+            sound.category = category;
+            if let Some(file) = new_file {
+                sound.file = file;
             }
         }
-    };
-    if let Some(sound) = open.project.sound_mut(&id) {
-        sound.category = category;
-        if let Some(file) = new_file {
-            sound.file = file;
-        }
+        open.project.remove_sound_from_other_slots(&id, category);
     }
-    open.project.remove_sound_from_other_slots(&id, category);
+    open.folders = storage::list_folders(&open.dir);
     s.engine.clear_cache();
 
     problems.extend(s.project_changed(Duration::from_millis(500)));
     emit_state(&app, &s, problems);
     Ok(())
+}
+
+// ---- Library folders ------------------------------------------------------------------------
+
+#[tauri::command]
+pub fn create_folder(category: Category, folder: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    let open = s.open_mut()?;
+    storage::create_folder(&open.dir, category, folder.trim())?;
+    open.folders = storage::list_folders(&open.dir);
+    emit_state(&app, &s, Vec::new());
+    Ok(())
+}
+
+/// Renames a Library folder and points every sound inside it at its new path.
+#[tauri::command]
+pub fn rename_folder(
+    category: Category,
+    from: String,
+    to: String,
+    app: AppHandle,
+    state: AppStateRef,
+) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    let open = s.open_mut()?;
+    let to = to.trim().trim_matches('/').to_string();
+    storage::rename_folder(&open.dir, category, &from, &to)?;
+    // The folder on disk now has its final name; rebuild each moved sound's stored path.
+    let old_prefix = format!("audio/{}/{}/", category.folder_name(), from);
+    let new_root = storage::category_folder_path(&open.dir, category, &to);
+    let new_prefix = format!(
+        "{}/",
+        storage::to_json_path(new_root.strip_prefix(&open.dir).unwrap_or(&new_root))
+    );
+    for sound in &mut open.project.sounds {
+        if let Some(rest) = sound.file.path.strip_prefix(&old_prefix) {
+            sound.file.path = format!("{new_prefix}{rest}");
+        }
+    }
+    open.folders = storage::list_folders(&open.dir);
+    s.engine.clear_cache();
+    let problems = s.project_changed(Duration::ZERO);
+    emit_state(&app, &s, problems);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_folder(category: Category, folder: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    let open = s.open_mut()?;
+    storage::delete_empty_folder(&open.dir, category, &folder)?;
+    open.folders = storage::list_folders(&open.dir);
+    emit_state(&app, &s, Vec::new());
+    Ok(())
+}
+
+/// Opens a Library folder (or the whole `audio/` folder) in the system file manager.
+#[tauri::command]
+pub fn open_audio_folder(
+    category: Option<Category>,
+    folder: Option<String>,
+    app: AppHandle,
+    state: AppStateRef,
+) -> Result<(), String> {
+    let s = lock(&state)?;
+    let dir = &s.open_ref()?.dir;
+    let path = match category {
+        Some(c) => storage::category_folder_path(dir, c, folder.as_deref().unwrap_or("")),
+        None => dir.join("audio"),
+    };
+    std::fs::create_dir_all(&path).map_err(|e| format!("could not create {}: {e}", path.display()))?;
+    app.opener()
+        .open_path(path.to_string_lossy(), None::<&str>)
+        .map_err(|e| format!("could not open the file manager: {e}"))
+}
+
+/// Shows a sound's file selected in the system file manager.
+#[tauri::command]
+pub fn reveal_sound(id: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let s = lock(&state)?;
+    let open = s.open_ref()?;
+    let sound = open.project.sound(&id).ok_or("that sound no longer exists")?;
+    let path = storage::absolute_audio_path(&open.dir, &sound.file);
+    app.opener()
+        .reveal_item_in_dir(&path)
+        .map_err(|e| format!("could not open the file manager: {e}"))
 }
 
 // ---- Scenes ---------------------------------------------------------------------------------
@@ -598,6 +756,7 @@ pub fn add_sound_to_scene(
         .sound(&sound_id)
         .ok_or("that sound no longer exists")?
         .category;
+    touch(open, &sound_id);
     let scene = open
         .project
         .scenes
@@ -832,11 +991,13 @@ pub fn stack_set_enabled(
 #[tauri::command]
 pub fn stack_switch(scene_id: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
     let mut s = lock(&state)?;
-    s.open_mut()?.project.stack = vec![StackEntry {
+    let project = &mut s.open_mut()?.project;
+    project.stack = vec![StackEntry {
         id: new_id("stk"),
         scene: scene_id,
         enabled: true,
     }];
+    project.stack_origin = None;
     let transition = top_transition(&s);
     let problems = s.project_changed(transition);
     emit_state(&app, &s, problems);
@@ -865,23 +1026,70 @@ pub fn scene_hotkey(scene_id: String, app: AppHandle, state: AppStateRef) -> Res
 
 // ---- Presets --------------------------------------------------------------------------------
 
+/// "Save as new preset": stores the current stack and makes it the stack's origin.
 #[tauri::command]
-pub fn preset_save(name: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+pub fn preset_save(name: String, group: Option<String>, app: AppHandle, state: AppStateRef) -> Result<String, String> {
+    let name = name.trim().to_string();
+    if name.is_empty() {
+        return Err("the preset needs a name".into());
+    }
     let mut s = lock(&state)?;
     let project = &mut s.open_mut()?.project;
-    let stack = project
-        .stack
-        .iter()
-        .map(|e| PresetEntry {
-            scene: e.scene.clone(),
-            enabled: e.enabled,
-        })
-        .collect();
+    let id = new_id("pre");
+    let group = group.map(|g| g.trim().to_string()).filter(|g| !g.is_empty());
+    if let Some(g) = &group
+        && !project.preset_groups.contains(g)
+    {
+        project.preset_groups.push(g.clone());
+    }
+    let stack = project.stack_as_preset_entries();
     project.stack_presets.push(StackPreset {
-        id: new_id("pre"),
+        id: id.clone(),
         name,
+        group,
         stack,
     });
+    project.stack_origin = Some(id.clone());
+    s.project_changed(Duration::ZERO);
+    emit_state(&app, &s, Vec::new());
+    Ok(id)
+}
+
+/// "Update <preset>": overwrites a preset with the current stack.
+#[tauri::command]
+pub fn preset_update(preset_id: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    let project = &mut s.open_mut()?.project;
+    let stack = project.stack_as_preset_entries();
+    let preset = project
+        .stack_presets
+        .iter_mut()
+        .find(|p| p.id == preset_id)
+        .ok_or("that preset no longer exists")?;
+    preset.stack = stack;
+    project.stack_origin = Some(preset_id);
+    s.project_changed(Duration::ZERO);
+    emit_state(&app, &s, Vec::new());
+    Ok(())
+}
+
+/// Replaces a preset's entries (editing a preset in place, decision 0017).
+#[tauri::command]
+pub fn preset_set_entries(
+    preset_id: String,
+    entries: Vec<PresetEntry>,
+    app: AppHandle,
+    state: AppStateRef,
+) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    let project = &mut s.open_mut()?.project;
+    let preset = project
+        .stack_presets
+        .iter_mut()
+        .find(|p| p.id == preset_id)
+        .ok_or("that preset no longer exists")?;
+    preset.stack = entries;
+    project.remove_dangling_references();
     s.project_changed(Duration::ZERO);
     emit_state(&app, &s, Vec::new());
     Ok(())
@@ -892,9 +1100,7 @@ fn preset_entries(s: &AppState, preset_id: &str) -> Result<Vec<StackEntry>, Stri
     let preset = s
         .open_ref()?
         .project
-        .stack_presets
-        .iter()
-        .find(|p| p.id == preset_id)
+        .preset(preset_id)
         .ok_or("that preset no longer exists")?;
     Ok(preset
         .stack
@@ -907,12 +1113,14 @@ fn preset_entries(s: &AppState, preset_id: &str) -> Result<Vec<StackEntry>, Stri
         .collect())
 }
 
-/// "Replace stack" with a preset.
+/// "Replace stack" with a preset (also used by "Revert to <preset>").
 #[tauri::command]
 pub fn preset_load(preset_id: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
     let mut s = lock(&state)?;
     let entries = preset_entries(&s, &preset_id)?;
-    s.open_mut()?.project.stack = entries;
+    let project = &mut s.open_mut()?.project;
+    project.stack = entries;
+    project.stack_origin = Some(preset_id);
     let transition = top_transition(&s);
     let problems = s.project_changed(transition);
     emit_state(&app, &s, problems);
@@ -939,6 +1147,16 @@ pub fn preset_insert(
     Ok(())
 }
 
+/// Finds a preset to change it.
+fn preset_mut<'a>(s: &'a mut AppState, preset_id: &str) -> Result<&'a mut StackPreset, String> {
+    s.open_mut()?
+        .project
+        .stack_presets
+        .iter_mut()
+        .find(|p| p.id == preset_id)
+        .ok_or_else(|| "that preset no longer exists".to_string())
+}
+
 #[tauri::command]
 pub fn preset_rename(
     preset_id: String,
@@ -946,15 +1164,50 @@ pub fn preset_rename(
     app: AppHandle,
     state: AppStateRef,
 ) -> Result<(), String> {
+    let name = name.trim().to_string();
+    if name.is_empty() {
+        return Err("the preset needs a name".into());
+    }
     let mut s = lock(&state)?;
-    let preset = s
-        .open_mut()?
-        .project
-        .stack_presets
-        .iter_mut()
-        .find(|p| p.id == preset_id)
-        .ok_or("that preset no longer exists")?;
-    preset.name = name;
+    preset_mut(&mut s, &preset_id)?.name = name;
+    s.project_changed(Duration::ZERO);
+    emit_state(&app, &s, Vec::new());
+    Ok(())
+}
+
+#[tauri::command]
+pub fn preset_duplicate(preset_id: String, app: AppHandle, state: AppStateRef) -> Result<String, String> {
+    let mut s = lock(&state)?;
+    let project = &mut s.open_mut()?.project;
+    let mut copy = project.preset(&preset_id).ok_or("that preset no longer exists")?.clone();
+    copy.id = new_id("pre");
+    copy.name = format!("{} (copy)", copy.name);
+    let id = copy.id.clone();
+    // Right after the original.
+    let index = project.stack_presets.iter().position(|p| p.id == preset_id).map_or(0, |i| i + 1);
+    project.stack_presets.insert(index, copy);
+    s.project_changed(Duration::ZERO);
+    emit_state(&app, &s, Vec::new());
+    Ok(id)
+}
+
+/// "Move to group": `None` (or an empty name) means Ungrouped.
+#[tauri::command]
+pub fn preset_set_group(
+    preset_id: String,
+    group: Option<String>,
+    app: AppHandle,
+    state: AppStateRef,
+) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    let group = group.map(|g| g.trim().to_string()).filter(|g| !g.is_empty());
+    let project = &mut s.open_mut()?.project;
+    if let Some(g) = &group
+        && !project.preset_groups.contains(g)
+    {
+        project.preset_groups.push(g.clone());
+    }
+    preset_mut(&mut s, &preset_id)?.group = group;
     s.project_changed(Duration::ZERO);
     emit_state(&app, &s, Vec::new());
     Ok(())
@@ -963,12 +1216,85 @@ pub fn preset_rename(
 #[tauri::command]
 pub fn preset_delete(preset_id: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
     let mut s = lock(&state)?;
-    s.open_mut()?
-        .project
-        .stack_presets
-        .retain(|p| p.id != preset_id);
+    let project = &mut s.open_mut()?.project;
+    project.stack_presets.retain(|p| p.id != preset_id);
+    project.remove_dangling_references();
     s.project_changed(Duration::ZERO);
     emit_state(&app, &s, Vec::new());
+    Ok(())
+}
+
+#[tauri::command]
+pub fn preset_group_create(name: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let name = name.trim().to_string();
+    if name.is_empty() {
+        return Err("the group needs a name".into());
+    }
+    let mut s = lock(&state)?;
+    let project = &mut s.open_mut()?.project;
+    if project.all_preset_groups().contains(&name) {
+        return Err(format!("there's already a group named \"{name}\""));
+    }
+    project.preset_groups.push(name);
+    s.project_changed(Duration::ZERO);
+    emit_state(&app, &s, Vec::new());
+    Ok(())
+}
+
+/// Renames a preset group (and every preset in it).
+#[tauri::command]
+pub fn preset_group_rename(from: String, to: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let to = to.trim().to_string();
+    if to.is_empty() {
+        return Err("the group needs a name".into());
+    }
+    let mut s = lock(&state)?;
+    let project = &mut s.open_mut()?.project;
+    if to != from && project.all_preset_groups().contains(&to) {
+        return Err(format!("there's already a group named \"{to}\""));
+    }
+    project.preset_groups = project.all_preset_groups();
+    for g in &mut project.preset_groups {
+        if *g == from {
+            *g = to.clone();
+        }
+    }
+    for preset in &mut project.stack_presets {
+        if preset.group.as_deref() == Some(from.as_str()) {
+            preset.group = Some(to.clone());
+        }
+    }
+    s.project_changed(Duration::ZERO);
+    emit_state(&app, &s, Vec::new());
+    Ok(())
+}
+
+/// Deletes a preset group. Its presets are kept, ungrouped.
+#[tauri::command]
+pub fn preset_group_delete(name: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    let project = &mut s.open_mut()?.project;
+    project.preset_groups.retain(|g| *g != name);
+    for preset in &mut project.stack_presets {
+        if preset.group.as_deref() == Some(name.as_str()) {
+            preset.group = None;
+        }
+    }
+    s.project_changed(Duration::ZERO);
+    emit_state(&app, &s, Vec::new());
+    Ok(())
+}
+
+/// "Clear tapestry": empties the stack (everything fades out).
+#[tauri::command]
+pub fn stack_clear(app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    let transition = top_transition(&s);
+    let project = &mut s.open_mut()?.project;
+    project.stack.clear();
+    project.stack_origin = None;
+    let problems = s.project_changed(transition);
+    emit_state(&app, &s, problems);
     Ok(())
 }
 

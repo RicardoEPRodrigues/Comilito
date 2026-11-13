@@ -16,7 +16,7 @@
 use serde::{Deserialize, Serialize};
 
 /// The save format version this build writes. See `storage::load_project` for migrations.
-pub const FORMAT_VERSION: u32 = 1;
+pub const FORMAT_VERSION: u32 = 2;
 
 /// The three kinds of sound. Each has its own mixer track and volume.
 ///
@@ -71,6 +71,14 @@ pub struct Project {
     pub stack: Vec<StackEntry>,
     #[serde(default)]
     pub stack_presets: Vec<StackPreset>,
+    /// Preset groups in display order. A group also exists while a preset names it; this
+    /// list adds the order and keeps groups that are still empty ("New group").
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub preset_groups: Vec<String>,
+    /// The preset the current stack was loaded from (or last saved to), to show
+    /// "From Forest Ambush · modified" and offer Update / Revert (decision 0017).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stack_origin: Option<String>,
     pub defaults: ProjectDefaults,
     #[serde(default)]
     pub backups: BackupSettings,
@@ -78,7 +86,7 @@ pub struct Project {
 
 /// One value per category. Generic over `T` (like a C# generic or C++ template) so the same
 /// shape serves the category volumes and the per-category sound defaults.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct PerCategory<T> {
     pub music: T,
     pub ambience: T,
@@ -125,6 +133,42 @@ pub struct Sound {
     pub fade_in_ms: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fade_out_ms: Option<u32>,
+    /// Free-form labels for searching ("forest", "combat"), without the `#`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
+    /// `skip_serializing_if = "std::ops::Not::not"` means "don't write it when false".
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub favourite: bool,
+    /// Where a downloaded sound came from (decision 0019).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<Source>,
+    /// When the sound was last previewed, played on the pad or added to a scene (RFC 3339),
+    /// for the Library's "Recent" list.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_used: Option<String>,
+}
+
+/// Provenance of a downloaded sound, so it can be opened or fetched again.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Source {
+    pub url: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// The site, e.g. "youtube" or the host name of a direct link.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub site: Option<String>,
+    pub downloaded_at: String,
+    /// The part of the original that was downloaded, in milliseconds.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range: Option<TimeRange>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TimeRange {
+    pub start_ms: u64,
+    pub end_ms: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -260,10 +304,12 @@ pub struct StackEntry {
 pub struct StackPreset {
     pub id: String,
     pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
     pub stack: Vec<PresetEntry>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PresetEntry {
     pub scene: String,
@@ -375,6 +421,8 @@ impl Project {
             scenes: Vec::new(),
             stack: Vec::new(),
             stack_presets: Vec::new(),
+            preset_groups: Vec::new(),
+            stack_origin: None,
             defaults,
             backups: BackupSettings::default(),
         }
@@ -392,6 +440,56 @@ impl Project {
 
     pub fn scene(&self, id: &str) -> Option<&Scene> {
         self.scenes.iter().find(|s| s.id == id)
+    }
+
+    pub fn preset(&self, id: &str) -> Option<&StackPreset> {
+        self.stack_presets.iter().find(|p| p.id == id)
+    }
+
+    /// The stack as preset entries (stack entries without their ids).
+    pub fn stack_as_preset_entries(&self) -> Vec<PresetEntry> {
+        self.stack
+            .iter()
+            .map(|e| PresetEntry {
+                scene: e.scene.clone(),
+                enabled: e.enabled,
+            })
+            .collect()
+    }
+
+    /// Where the current stack stands compared with the presets (decision 0017).
+    pub fn stack_status(&self) -> StackStatus {
+        if self.stack.is_empty() {
+            return StackStatus::Empty;
+        }
+        let current = self.stack_as_preset_entries();
+        if let Some(origin) = self.stack_origin.as_deref().and_then(|id| self.preset(id)) {
+            return if origin.stack == current {
+                StackStatus::Saved
+            } else {
+                StackStatus::Modified
+            };
+        }
+        // Not loaded from a preset, but it may happen to match one exactly.
+        if self.stack_presets.iter().any(|p| p.stack == current) {
+            StackStatus::Saved
+        } else {
+            StackStatus::Unsaved
+        }
+    }
+
+    /// Every preset group, in display order: the stored order first, then any group a
+    /// preset names that isn't in the list yet (for example, from a hand-edited file).
+    pub fn all_preset_groups(&self) -> Vec<String> {
+        let mut groups = self.preset_groups.clone();
+        for preset in &self.stack_presets {
+            if let Some(g) = &preset.group
+                && !groups.contains(g)
+            {
+                groups.push(g.clone());
+            }
+        }
+        groups
     }
 
     /// A sound's settings with project defaults filled in for anything it doesn't set.
@@ -504,6 +602,11 @@ impl Project {
         for preset in &mut self.stack_presets {
             preset.stack.retain(|e| scene_ids.contains(&e.scene));
         }
+        if let Some(origin) = &self.stack_origin
+            && self.preset(origin).is_none()
+        {
+            self.stack_origin = None;
+        }
     }
 }
 
@@ -519,8 +622,41 @@ impl Sound {
             looping: None,
             fade_in_ms: None,
             fade_out_ms: None,
+            tags: Vec::new(),
+            favourite: false,
+            source: None,
+            last_used: None,
         }
     }
+
+    /// The Library folder the sound's file is in: the path between `audio/<category>/` and
+    /// the file name, e.g. "Barovia" or "Barovia/Castle". Empty for the category's own folder.
+    pub fn folder(&self) -> String {
+        folder_of_path(&self.file.path)
+    }
+}
+
+/// See `Sound::folder`. Works on a stored path like `audio/music/Barovia/theme.ogg`.
+pub fn folder_of_path(path: &str) -> String {
+    let parts: Vec<&str> = path.split('/').collect();
+    // audio / <category> / folders... / file
+    if parts.len() <= 3 {
+        return String::new();
+    }
+    parts[2..parts.len() - 1].join("/")
+}
+
+/// How the current stack relates to the saved presets.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum StackStatus {
+    Empty,
+    /// Matches a preset exactly.
+    Saved,
+    /// Loaded from a preset (`stack_origin`) and changed since.
+    Modified,
+    /// Not from a preset and doesn't match one.
+    Unsaved,
 }
 
 /// A new random id with a short prefix that says what it is, e.g. `snd-3f2a…`.
@@ -594,6 +730,10 @@ mod tests {
             looping: Some(true),
             fade_in_ms: None,
             fade_out_ms: None,
+            tags: Vec::new(),
+            favourite: false,
+            source: None,
+            last_used: None,
         });
 
         let json = serde_json::to_string(&project).unwrap();
@@ -618,6 +758,10 @@ mod tests {
             looping: None,
             fade_in_ms: None,
             fade_out_ms: None,
+            tags: Vec::new(),
+            favourite: false,
+            source: None,
+            last_used: None,
         }
     }
 
@@ -686,5 +830,36 @@ mod tests {
         assert!(scene.ambience.is_empty());
         assert!(scene.effects.is_empty());
         assert!(project.stack.is_empty());
+    }
+
+    #[test]
+    fn folder_is_the_path_between_category_and_file() {
+        assert_eq!(folder_of_path("audio/music/theme.ogg"), "");
+        assert_eq!(folder_of_path("audio/music/Barovia/theme.ogg"), "Barovia");
+        assert_eq!(folder_of_path("audio/ambience/A/B/rain.ogg"), "A/B");
+    }
+
+    #[test]
+    fn stack_status_follows_the_origin_preset() {
+        let mut p = Project::new("Test", ProjectDefaults::default());
+        assert_eq!(p.stack_status(), StackStatus::Empty);
+        p.stack.push(StackEntry { id: "e1".into(), scene: "s1".into(), enabled: true });
+        assert_eq!(p.stack_status(), StackStatus::Unsaved);
+
+        p.stack_presets.push(StackPreset {
+            id: "pre-1".into(),
+            name: "P".into(),
+            group: None,
+            stack: vec![PresetEntry { scene: "s1".into(), enabled: true }],
+        });
+        assert_eq!(p.stack_status(), StackStatus::Saved, "matches a preset without an origin");
+
+        p.stack_origin = Some("pre-1".into());
+        p.stack[0].enabled = false;
+        assert_eq!(p.stack_status(), StackStatus::Modified);
+
+        p.stack_presets.clear();
+        p.remove_dangling_references();
+        assert_eq!(p.stack_origin, None, "a deleted origin preset is forgotten");
     }
 }

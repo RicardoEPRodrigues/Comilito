@@ -29,6 +29,14 @@ zip = { version = "9", default-features = false, features = ["deflate-flate2-zli
 sha2 = "0.11"
 tauri-plugin-opener = "2"
 ebur128 = "0.1"
+# kira decodes through symphonia. Enabling AAC in MP4 here turns it on for kira too (Cargo
+# builds one symphonia with every requested feature), so downloaded .m4a audio plays (0019).
+symphonia = { version = "0.6", default-features = false, features = ["aac", "isomp4"] }
+
+# Reading the desktop's accent colour from the XDG portal (desktop.rs). zbus is already in
+# the build through tauri-plugin-opener, so this adds no new code.
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = "5"
 
 # Optimize dependencies (kira, its decoders, ebur128...) even in debug builds: decoding and
 # measuring audio unoptimized is many times slower. Our own code stays unoptimized, so it

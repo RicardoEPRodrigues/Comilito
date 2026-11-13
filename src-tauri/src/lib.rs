@@ -1,6 +1,7 @@
 mod audio;
 mod bundle;
 mod commands;
+mod desktop;
 mod loudness;
 mod mix;
 mod prefs;
@@ -8,6 +9,7 @@ mod project;
 mod sample;
 mod state;
 mod storage;
+mod themes;
 
 use std::{
     path::PathBuf,
@@ -58,6 +60,8 @@ pub fn run() {
             // closure take ownership of what it uses.
             let handle = app.handle().clone();
             thread::spawn(move || ticker(handle));
+            let handle = app.handle().clone();
+            thread::spawn(move || desktop::watch(handle));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -65,6 +69,12 @@ pub fn run() {
             commands::get_state,
             commands::get_preferences,
             commands::set_preferences,
+            commands::desktop_appearance,
+            commands::list_user_themes,
+            commands::save_user_theme,
+            commands::delete_user_theme,
+            commands::import_theme,
+            commands::export_theme,
             commands::list_projects,
             commands::projects_folder,
             commands::create_project,
@@ -85,11 +95,16 @@ pub fn run() {
             commands::set_backup_settings,
             commands::reset_project_defaults,
             commands::add_sounds,
-            commands::update_sound,
+            commands::update_sounds,
             commands::remove_sound,
             commands::preview_sound,
             commands::toggle_effect,
-            commands::set_sound_category,
+            commands::move_sounds,
+            commands::create_folder,
+            commands::rename_folder,
+            commands::delete_folder,
+            commands::open_audio_folder,
+            commands::reveal_sound,
             commands::create_scene,
             commands::update_scene,
             commands::duplicate_scene,
@@ -105,10 +120,18 @@ pub fn run() {
             commands::stack_switch,
             commands::scene_hotkey,
             commands::preset_save,
+            commands::preset_update,
+            commands::preset_set_entries,
             commands::preset_load,
             commands::preset_insert,
             commands::preset_rename,
+            commands::preset_duplicate,
+            commands::preset_set_group,
             commands::preset_delete,
+            commands::preset_group_create,
+            commands::preset_group_rename,
+            commands::preset_group_delete,
+            commands::stack_clear,
             commands::toggle_play,
             commands::stop_all,
         ])

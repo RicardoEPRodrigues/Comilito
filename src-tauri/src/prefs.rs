@@ -49,17 +49,33 @@ pub struct Behaviour {
     /// falling back to all defaults).
     #[serde(default = "ask")]
     pub unsaved_changes: String,
+    /// Loading a preset over a tapestry that isn't saved in a preset: "ask" or "replace".
+    #[serde(default = "ask")]
+    pub replace_unsaved_tapestry: String,
 }
 
 fn ask() -> String {
     "ask".into()
 }
 
+/// Themes, accent colour and decoration (decision 0016, docs/preferences.md).
+/// `#[serde(default)]` on the struct fills any missing field from `Appearance::default()`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 pub struct Appearance {
-    /// "system", "light" or "dark".
+    /// "system": follow the desktop's light/dark (`light_theme` / `dark_theme`);
+    /// "fixed": always `theme`.
+    pub mode: String,
     pub theme: String,
+    pub light_theme: String,
+    pub dark_theme: String,
+    /// "theme", "desktop" or "custom".
+    pub accent: String,
+    pub custom_accent: String,
+    pub capitals: bool,
+    pub watermark: bool,
+    pub rules: bool,
+    pub blackletter: bool,
 }
 
 /// What a new project starts with. Changing these never touches existing projects.
@@ -100,6 +116,7 @@ impl Default for Behaviour {
             duplicate_in_stack: "ask".into(),
             remove_sound: "ask".into(),
             unsaved_changes: ask(),
+            replace_unsaved_tapestry: ask(),
         }
     }
 }
@@ -107,7 +124,37 @@ impl Default for Behaviour {
 impl Default for Appearance {
     fn default() -> Self {
         Self {
-            theme: "system".into(),
+            mode: "system".into(),
+            theme: "codex".into(),
+            light_theme: "codex".into(),
+            dark_theme: "ironwood".into(),
+            accent: "theme".into(),
+            custom_accent: "#7a4fb5".into(),
+            capitals: true,
+            watermark: true,
+            rules: true,
+            blackletter: true,
+        }
+    }
+}
+
+impl Appearance {
+    /// Preferences saved before themes existed had `theme: "system" | "light" | "dark"`.
+    fn migrate(&mut self) {
+        match self.theme.as_str() {
+            "system" => {
+                self.mode = "system".into();
+                self.theme = "codex".into();
+            }
+            "light" => {
+                self.mode = "fixed".into();
+                self.theme = "codex".into();
+            }
+            "dark" => {
+                self.mode = "fixed".into();
+                self.theme = "ironwood".into();
+            }
+            _ => {}
         }
     }
 }
@@ -138,10 +185,12 @@ impl NewProjectDefaults {
 /// Loads preferences from `config_dir`, or returns defaults if there are none yet
 /// (or the file is unreadable: preferences are never worth refusing to start over).
 pub fn load(config_dir: &Path) -> Preferences {
-    std::fs::read_to_string(config_dir.join(PREFS_FILE))
+    let mut prefs: Preferences = std::fs::read_to_string(config_dir.join(PREFS_FILE))
         .ok()
         .and_then(|text| serde_json::from_str(&text).ok())
-        .unwrap_or_default()
+        .unwrap_or_default();
+    prefs.appearance.migrate();
+    prefs
 }
 
 pub fn save(config_dir: &Path, prefs: &Preferences) -> Result<(), String> {
@@ -167,6 +216,16 @@ mod tests {
         assert_eq!(prefs.playback.stop_fade_ms, 2500, "kept, not reset to defaults");
         assert_eq!(prefs.behaviour.duplicate_in_stack, "move");
         assert_eq!(prefs.behaviour.unsaved_changes, "ask");
+    }
+
+    #[test]
+    fn old_theme_setting_is_migrated() {
+        let dir = TempDir::new();
+        std::fs::write(dir.0.join(PREFS_FILE), r#"{"formatVersion":1,"appearance":{"theme":"dark"}}"#).unwrap();
+        let prefs = load(&dir.0);
+        assert_eq!(prefs.appearance.mode, "fixed");
+        assert_eq!(prefs.appearance.theme, "ironwood");
+        assert!(prefs.appearance.capitals, "new fields get their defaults");
     }
 
     #[test]

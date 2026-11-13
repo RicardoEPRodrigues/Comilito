@@ -27,18 +27,13 @@ pub fn fill_sample_project(dir: &Path, sample_dir: &Path, project: &mut Project)
     let mut ids = Vec::new();
     for (file, category, name) in SOUNDS {
         let source = sample_dir.join(file);
-        let info = storage::copy_audio_into_project(dir, category, &source)
+        let info = storage::copy_audio_into_project(dir, category, "", &source)
             .map_err(|e| format!("could not copy the sample audio: {e}"))?;
         let id = new_id("snd");
+        // `..Sound::new(...)` fills in every field not listed from a fresh sound.
         project.sounds.push(Sound {
             id: id.clone(),
-            category,
-            name: name.to_string(),
-            file: info,
-            volume: None,
-            looping: None,
-            fade_in_ms: None,
-            fade_out_ms: None,
+            ..Sound::new(category, name.to_string(), info)
         });
         ids.push(id);
     }
@@ -101,6 +96,7 @@ pub fn fill_sample_project(dir: &Path, sample_dir: &Path, project: &mut Project)
     project.stack_presets.push(StackPreset {
         id: new_id("pre"),
         name: "Battle in the rain".to_string(),
+        group: None,
         stack: [&nocturne, &rainy, &combat]
             .iter()
             .map(|s| PresetEntry {

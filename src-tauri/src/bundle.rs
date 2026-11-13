@@ -220,17 +220,11 @@ mod tests {
         let dir = storage::create_project(root, "Strahd", ProjectDefaults::default()).unwrap();
         let source = root.join("rain.ogg");
         fs::write(&source, b"fake rain audio").unwrap();
-        let file = storage::copy_audio_into_project(&dir, Category::Ambience, &source).unwrap();
+        let file = storage::copy_audio_into_project(&dir, Category::Ambience, "", &source).unwrap();
         let mut project = storage::load_project(&dir).unwrap();
         project.sounds.push(Sound {
             id: "snd-rain".into(),
-            category: Category::Ambience,
-            name: "Rain".into(),
-            file,
-            volume: None,
-            looping: None,
-            fade_in_ms: None,
-            fade_out_ms: None,
+            ..Sound::new(Category::Ambience, "Rain".into(), file)
         });
         storage::save_project(&dir, &project).unwrap();
         (dir, project)

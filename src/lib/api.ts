@@ -52,15 +52,18 @@ export const api = {
   resetProjectDefaults: () => invoke<void>("reset_project_defaults"),
 
   // Sounds
-  addSounds: (category: Category, paths: string[]) =>
-    invoke<void>("add_sounds", { category, paths }),
-  updateSound: (sound: Sound) => invoke<void>("update_sound", { sound }),
+  addSounds: (category: Category, paths: string[], folder: string | null = null) =>
+    invoke<void>("add_sounds", { category, folder, paths }),
+  updateSound: (sound: Sound) => invoke<void>("update_sounds", { sounds: [sound] }),
+  updateSounds: (sounds: Sound[]) => invoke<void>("update_sounds", { sounds }),
   removeSound: (id: string, permanently: boolean) =>
     invoke<void>("remove_sound", { id, permanently }),
   previewSound: (id: string) => invoke<void>("preview_sound", { id }),
   toggleEffect: (id: string) => invoke<void>("toggle_effect", { id }),
   setSoundCategory: (id: string, category: Category) =>
-    invoke<void>("set_sound_category", { id, category }),
+    invoke<void>("move_sounds", { ids: [id], category, folder: "" }),
+  moveSounds: (ids: string[], category: Category, folder: string) =>
+    invoke<void>("move_sounds", { ids, category, folder }),
 
   // Scenes
   createScene: (name: string, group: string | null) =>

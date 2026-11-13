@@ -19,7 +19,7 @@ use crate::{
     bundle,
     mix::{TargetMix, target_mix},
     prefs::{self, Preferences},
-    project::{Project, Sound},
+    project::{PerCategory, Project, Sound, StackStatus},
     storage,
 };
 
@@ -56,6 +56,8 @@ pub struct OpenProject {
     pub last_backup: Instant,
     /// Sounds whose loudness couldn't be measured (undecodable file), so we don't retry.
     pub analysis_failed: Vec<String>,
+    /// The Library folders on disk (subfolders of `audio/<category>/`).
+    pub folders: PerCategory<Vec<String>>,
     /// New audio files seen in the folder but not added yet, with their size. A file is only
     /// added once its size is the same on two scans in a row, so we never pick up a file
     /// that's still being copied or synced.
@@ -103,6 +105,11 @@ impl OpenProject {
             self.missing = missing;
             result.missing_changed = true;
         }
+        let folders = storage::list_folders(&self.dir);
+        if folders != self.folders {
+            self.folders = folders;
+            result.missing_changed = true;
+        }
         result
     }
 
@@ -131,6 +138,10 @@ pub struct Snapshot {
     pub hashing_remaining: usize,
     /// How many sounds still wait for their loudness to be measured.
     pub analyzing_remaining: usize,
+    pub folders: PerCategory<Vec<String>>,
+    pub stack_status: StackStatus,
+    /// Preset groups in display order (including empty ones).
+    pub preset_groups: Vec<String>,
 }
 
 impl AppState {
@@ -163,7 +174,9 @@ impl AppState {
         self.engine.apply_levels(&project, Duration::ZERO);
         let missing = storage::missing_sounds(&dir, &project);
         let mix = target_mix(&project);
+        let folders = storage::list_folders(&dir);
         self.open = Some(OpenProject {
+            folders,
             known_file_time: storage::project_file_modified(&dir),
             dir,
             project,
@@ -257,6 +270,9 @@ impl AppState {
                             && !open.analysis_failed.contains(&snd.id)
                     })
                     .count(),
+                folders: open.folders.clone(),
+                stack_status: open.project.stack_status(),
+                preset_groups: open.project.all_preset_groups(),
             },
             None => Snapshot {
                 project: None,
@@ -267,6 +283,9 @@ impl AppState {
                 changed_on_disk: false,
                 hashing_remaining: 0,
                 analyzing_remaining: 0,
+                folders: PerCategory::default(),
+                stack_status: StackStatus::Empty,
+                preset_groups: Vec::new(),
             },
         }
     }
@@ -306,6 +325,7 @@ mod tests {
             last_backup: Instant::now(),
             analysis_failed: Vec::new(),
             pending_files: HashMap::new(),
+            folders: PerCategory::default(),
         }
     }
 
