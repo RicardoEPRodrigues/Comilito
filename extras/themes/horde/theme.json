@@ -1,0 +1,29 @@
+{
+  "id": "",
+  "name": "Horde",
+  "dark": true,
+  "colors": {
+    "accent": "#d0301f",
+    "bg": "#1c1412",
+    "danger": "#ff7a6b",
+    "fx-bg": "#150e0c",
+    "gold": "#a0703c",
+    "header-bg": "#6e1610",
+    "header-text": "#f3e3c8",
+    "mixer-bg": "#0c0807",
+    "mixer-text": "#efe2cc",
+    "muted": "#a8907a",
+    "rule": "#4d3226",
+    "side-bg": "#150e0c",
+    "side-muted": "#a08872",
+    "side-text": "#efe2cc",
+    "surface": "#2a1c18",
+    "text": "#efe2cc",
+    "track": "#3d2a22",
+    "warn": "#e0a43a"
+  },
+  "fonts": { "display": "New Rocker", "body": "Inter" },
+  "watermark": "watermark.png",
+  "fontFiles": { "New Rocker": "fonts/NewRocker-Regular.woff2" },
+  "licences": ["fonts/OFL.txt"]
+}

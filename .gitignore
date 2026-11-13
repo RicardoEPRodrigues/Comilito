@@ -19,3 +19,4 @@ Thumbs.db
 # Local test data
 *.comilito
 /test-audio/
+extras/themes/dist/

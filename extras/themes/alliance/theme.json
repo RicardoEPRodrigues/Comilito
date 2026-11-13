@@ -1,0 +1,29 @@
+{
+  "id": "",
+  "name": "Alliance",
+  "dark": false,
+  "colors": {
+    "accent": "#2456b0",
+    "bg": "#f1eee4",
+    "danger": "#b3261e",
+    "fx-bg": "#e9e9e2",
+    "gold": "#c4a04a",
+    "header-bg": "#14285a",
+    "header-text": "#f4ead0",
+    "mixer-bg": "#0f1a33",
+    "mixer-text": "#f1eee4",
+    "muted": "#5b6581",
+    "rule": "#c9b47c",
+    "side-bg": "#e3e5e6",
+    "side-muted": "#5b6581",
+    "side-text": "#16213d",
+    "surface": "#fbfaf5",
+    "text": "#16213d",
+    "track": "#d6d8d3",
+    "warn": "#a8620e"
+  },
+  "fonts": { "display": "Cinzel Decorative", "body": "Inter" },
+  "watermark": "watermark.png",
+  "fontFiles": { "Cinzel Decorative": "fonts/CinzelDecorative-Regular.woff2" },
+  "licences": ["fonts/OFL.txt"]
+}
