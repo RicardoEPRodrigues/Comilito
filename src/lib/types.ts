@@ -129,6 +129,7 @@ export interface Snapshot {
   mix: TargetMix;
   playback: PlaybackInfo;
   changedOnDisk: boolean;
+  hashingRemaining: number;
 }
 
 export interface ProjectSummary {

@@ -15,6 +15,7 @@ use tauri::{AppHandle, Emitter};
 
 use crate::{
     audio::{AudioEngine, PlaybackInfo, VOLUME_SMOOTHING},
+    bundle,
     mix::{TargetMix, target_mix},
     prefs::{self, Preferences},
     project::Project,
@@ -63,6 +64,8 @@ pub struct Snapshot {
     pub mix: TargetMix,
     pub playback: PlaybackInfo,
     pub changed_on_disk: bool,
+    /// How many sounds still wait for their sha256 (computed in the background).
+    pub hashing_remaining: usize,
 }
 
 impl AppState {
@@ -71,6 +74,12 @@ impl AppState {
             .projects_folder
             .clone()
             .unwrap_or_else(|| self.default_projects_root.clone())
+    }
+
+    /// `<projects folder>/Backups` (decision 0007). Outside every project folder, so backups
+    /// never end up inside exports.
+    pub fn backups_root(&self) -> PathBuf {
+        self.projects_root().join("Backups")
     }
 
     /// The open project, or an error for commands that need one.
@@ -104,9 +113,17 @@ impl AppState {
         Ok(())
     }
 
-    /// Saves (if needed) and closes the open project, stopping all its sound.
+    /// Saves (if needed), backs up (if anything changed) and closes the open project,
+    /// stopping all its sound.
     pub fn close_project(&mut self) -> Result<(), String> {
         self.save_if_dirty()?;
+        let backups_dir = self.backups_root();
+        if let Some(open) = &self.open
+            && open.changed_since_backup
+            && let Err(e) = bundle::write_backup(&open.dir, &open.project, &backups_dir)
+        {
+            eprintln!("backup on close failed: {e}");
+        }
         self.engine.stop_all(Duration::from_millis(200));
         self.engine.clear_cache();
         self.open = None;
@@ -157,6 +174,12 @@ impl AppState {
                 mix: open.mix.clone(),
                 playback: self.engine.playback_info(&open.mix),
                 changed_on_disk: open.changed_on_disk,
+                hashing_remaining: open
+                    .project
+                    .sounds
+                    .iter()
+                    .filter(|snd| snd.file.sha256.is_none() && !open.missing.contains(&snd.id))
+                    .count(),
             },
             None => Snapshot {
                 project: None,
@@ -165,6 +188,7 @@ impl AppState {
                 mix: TargetMix::default(),
                 playback: self.engine.playback_info(&TargetMix::default()),
                 changed_on_disk: false,
+                hashing_remaining: 0,
             },
         }
     }

@@ -1,6 +1,6 @@
 // User actions that need a question first (or are used from several components).
 
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { api } from "./api";
 import { ask, askText, project, run, sceneById, soundById, ui } from "./store.svelte";
 import type { Category } from "./types";
@@ -74,7 +74,7 @@ export async function addSoundFiles(category: Category) {
   const picked = await open({
     multiple: true,
     title: "Add sounds",
-    filters: [{ name: "Audio", extensions: ["mp3", "ogg", "oga", "flac", "wav"] }],
+    filters: [{ name: "Audio", extensions: AUDIO_EXTENSIONS }],
   });
   // `open` returns null when cancelled, otherwise an array of paths (because multiple: true).
   if (!picked || picked.length === 0) return;
@@ -125,4 +125,50 @@ export async function savePreset() {
 export async function renamePreset(presetId: string, current: string) {
   const name = await askText("Rename preset", "Name", current);
   if (name) await run(api.presetRename(presetId, name));
+}
+
+const COMILITO_FILTER = [{ name: "Comilito project", extensions: ["comilito"] }];
+const AUDIO_EXTENSIONS = ["mp3", "ogg", "oga", "flac", "wav"];
+
+/** Export as a .comilito zip, asking first whether to include the audio. */
+export async function exportProject() {
+  const p = project();
+  if (!p) return;
+  const answer = await ask({
+    title: "Export project",
+    message:
+      "With audio: one self-contained file.\nWithout audio: a small file with only the settings; " +
+      "on import you'll be asked where the audio is.",
+    choices: [
+      { label: "Cancel", value: "cancel" },
+      { label: "Without audio", value: "without" },
+      { label: "With audio", value: "with", primary: true },
+    ],
+  });
+  if (!answer || answer.choice === "cancel") return;
+  const dest = await save({ title: "Export project", defaultPath: `${p.name}.comilito`, filters: COMILITO_FILTER });
+  if (dest) await run(api.exportProject(dest, answer.choice === "with"));
+}
+
+export async function importProject() {
+  const path = await open({ title: "Import project", filters: COMILITO_FILTER });
+  if (typeof path === "string") await run(api.importProject(path));
+}
+
+/** A backup is imported like any export, as a new project (the current one is untouched). */
+export async function restoreBackup() {
+  const folder = await run(api.backupsFolder());
+  const path = await open({ title: "Restore a backup (opens as a copy)", defaultPath: folder, filters: COMILITO_FILTER });
+  if (typeof path === "string") await run(api.importProject(path));
+}
+
+export async function relinkFromFolder() {
+  const folder = await open({ title: "Folder to search for the missing audio", directory: true });
+  if (typeof folder === "string") await run(api.relinkFromFolder(folder));
+}
+
+export async function relinkOne(soundId: string) {
+  const name = soundById(soundId)?.name ?? "sound";
+  const path = await open({ title: `Locate the audio for "${name}"`, filters: [{ name: "Audio", extensions: AUDIO_EXTENSIONS }] });
+  if (typeof path === "string") await run(api.relinkSound(soundId, path));
 }

@@ -16,15 +16,16 @@ use std::{
     time::Duration,
 };
 
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Emitter, State};
 
 use crate::{
+    bundle,
     prefs::Preferences,
     project::{
         BackupSettings, Category, PresetEntry, ProjectDefaults, Scene, Sound, StackEntry,
         StackPreset, new_id,
     },
-    state::{AppState, Snapshot, emit_state},
+    state::{AppState, OpenProject, Snapshot, emit_state},
     storage::{self, ProjectSummary},
 };
 
@@ -144,6 +145,87 @@ pub fn rename_project(name: String, app: AppHandle, state: AppStateRef) -> Resul
     s.open_mut()?.project.name = name;
     s.project_changed(Duration::ZERO);
     emit_state(&app, &s, Vec::new());
+    Ok(())
+}
+
+/// Exports the open project as a `.comilito` zip, with or without its audio.
+#[tauri::command]
+pub fn export_project(
+    dest: PathBuf,
+    include_audio: bool,
+    app: AppHandle,
+    state: AppStateRef,
+) -> Result<(), String> {
+    let s = lock(&state)?;
+    let open = s.open_ref()?;
+    bundle::export_zip(&open.dir, &open.project, &dest, include_audio)?;
+    let _ = app.emit("notice", format!("Exported to {}", dest.display()));
+    Ok(())
+}
+
+/// Unpacks a `.comilito` zip (an export or a backup) into a new project folder and opens it.
+#[tauri::command]
+pub fn import_project(path: PathBuf, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    let dir = bundle::import_zip(&path, &s.projects_root())?;
+    s.open_project(dir)?;
+    emit_state(&app, &s, Vec::new());
+    Ok(())
+}
+
+#[tauri::command]
+pub fn backups_folder(state: AppStateRef) -> Result<PathBuf, String> {
+    Ok(lock(&state)?.backups_root())
+}
+
+/// Looks for every missing sound's file (same name) under `folder`, and copies the matches
+/// into the project. One folder can fix many sounds at once.
+#[tauri::command]
+pub fn relink_from_folder(folder: PathBuf, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    let open = s.open_mut()?;
+    let mut fixed = 0;
+    let mut problems = Vec::new();
+
+    for id in open.missing.clone() {
+        let Some(sound) = open.project.sound(&id) else { continue };
+        let file_name = sound.file.path.rsplit('/').next().unwrap_or_default().to_string();
+        let candidates = bundle::find_by_name(&folder, &file_name);
+        let Some(found) = bundle::best_candidate(candidates, sound.file.size, sound.file.sha256.as_deref()) else {
+            continue;
+        };
+        match relink(open, &id, &found) {
+            Ok(()) => fixed += 1,
+            Err(e) => problems.push(e),
+        }
+    }
+
+    let still = s.open_ref()?.missing.len();
+    problems.push(format!("Relinked {fixed} sound(s); {still} still missing."));
+    problems.extend(s.project_changed(Duration::ZERO));
+    emit_state(&app, &s, problems);
+    Ok(())
+}
+
+/// Points one missing sound at a file the user picked.
+#[tauri::command]
+pub fn relink_sound(id: String, path: PathBuf, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    relink(s.open_mut()?, &id, &path)?;
+    let problems = s.project_changed(Duration::ZERO);
+    emit_state(&app, &s, problems);
+    Ok(())
+}
+
+/// Copies `source` into the project for sound `id` and updates its file info.
+fn relink(open: &mut OpenProject, id: &str, source: &std::path::Path) -> Result<(), String> {
+    let sound = open.project.sound(id).ok_or("that sound no longer exists")?;
+    let category = bundle::category_of_path(&sound.file.path, sound.category);
+    let file = storage::copy_audio_into_project(&open.dir, category, source)?;
+    if let Some(sound) = open.project.sound_mut(id) {
+        sound.file = file;
+    }
+    open.missing.retain(|m| m != id);
     Ok(())
 }
 

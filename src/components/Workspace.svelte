@@ -2,6 +2,7 @@
   // The main screen for an open project (layout from docs/scenes.md "UI layout"):
   //   header / library | stack | effects / mixer bar
   import { api } from "../lib/api";
+  import { exportProject, relinkFromFolder } from "../lib/actions";
   import { askText, run, ui } from "../lib/store.svelte";
   import ContextMenu from "./ContextMenu.svelte";
   import EffectsPad from "./EffectsPad.svelte";
@@ -32,6 +33,12 @@
     </div>
 
     <div class="spacer"></div>
+    {#if ui.snapshot!.hashingRemaining > 0}
+      <span class="muted" title="Fingerprinting audio files to find them again if they go missing">
+        Hashing {ui.snapshot!.hashingRemaining} file{ui.snapshot!.hashingRemaining === 1 ? "" : "s"}…
+      </span>
+    {/if}
+    <button onclick={exportProject}>Export…</button>
     <button onclick={() => (ui.editing = { kind: "projectSettings" })}>Project settings</button>
     <button onclick={() => (ui.editing = { kind: "preferences" })}>Preferences</button>
     <button onclick={() => run(api.closeProject())}>Close</button>
@@ -48,8 +55,9 @@
     <div class="banner">
       <span>
         {missingCount} sound{missingCount === 1 ? "" : "s"} can't find {missingCount === 1 ? "its" : "their"}
-        audio file. They're marked ⚠ in the library.
+        audio file. They're marked ⚠ in the Sounds tab.
       </span>
+      <button onclick={relinkFromFolder}>Find in a folder…</button>
     </div>
   {/if}
 

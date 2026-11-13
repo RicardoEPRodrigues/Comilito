@@ -1,4 +1,5 @@
 mod audio;
+mod bundle;
 mod commands;
 mod mix;
 mod prefs;
@@ -7,6 +8,7 @@ mod state;
 mod storage;
 
 use std::{
+    path::PathBuf,
     sync::Mutex,
     thread,
     time::{Duration, Instant},
@@ -14,7 +16,7 @@ use std::{
 
 use audio::AudioEngine;
 use state::{AppState, SAVE_DELAY, emit_state};
-use tauri::{AppHandle, Manager, RunEvent};
+use tauri::{AppHandle, Emitter, Manager, RunEvent};
 
 // On Android this function becomes the app's entry point; on desktop main.rs calls it.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -59,6 +61,11 @@ pub fn run() {
             commands::reload_project,
             commands::keep_my_version,
             commands::rename_project,
+            commands::export_project,
+            commands::import_project,
+            commands::backups_folder,
+            commands::relink_from_folder,
+            commands::relink_sound,
             commands::set_master_volume,
             commands::set_category_volume,
             commands::set_project_defaults,
@@ -105,56 +112,142 @@ pub fn run() {
     });
 }
 
+/// Slow work the ticker found to do. It's done *after* unlocking the state, so a big
+/// backup or hash never freezes the UI or the commands.
+enum SlowJob {
+    Backup {
+        dir: PathBuf,
+        project: Box<project::Project>,
+        backups_dir: PathBuf,
+    },
+    Hash {
+        sound_id: String,
+        path: PathBuf,
+        size: u64,
+    },
+}
+
 /// Runs forever on its own thread, a few times per second:
 /// - moves music playlists to the next track when one ends,
 /// - saves the project a moment after the last change,
 /// - notices when comilito.json was changed by another program,
+/// - makes backups every N minutes and hashes audio files, one at a time, off the lock,
 /// - tells the UI when what's audible changed.
 fn ticker(app: AppHandle) {
     const TICK: Duration = Duration::from_millis(250);
     const DISK_CHECK: Duration = Duration::from_secs(2);
     let mut last_disk_check = Instant::now();
     let mut last_info = None;
+    let mut last_hashing_remaining = 0;
 
     loop {
         thread::sleep(TICK);
         let state = app.state::<Mutex<AppState>>();
-        let Ok(mut s) = state.lock() else {
-            return;
+
+        // ---- Quick work, with the state locked ----
+        let job = {
+            let Ok(mut s) = state.lock() else {
+                return;
+            };
+            let mut problems = Vec::new();
+            let mut changed = false;
+            let mut job = None;
+            let backups_dir = s.backups_root();
+
+            // Borrow the two fields separately (see `AppState::project_changed`).
+            let s_ref = &mut *s;
+            if let Some(open) = &mut s_ref.open {
+                problems.extend(s_ref.engine.tick(&open.project, &open.dir, &open.mix));
+
+                if open.dirty_since.is_some_and(|t| t.elapsed() >= SAVE_DELAY) {
+                    if let Err(e) = storage::save_project(&open.dir, &open.project) {
+                        problems.push(format!("could not save: {e}"));
+                    }
+                    open.dirty_since = None;
+                    open.known_file_time = storage::project_file_modified(&open.dir);
+                }
+
+                if last_disk_check.elapsed() >= DISK_CHECK {
+                    last_disk_check = Instant::now();
+                    let on_disk = storage::project_file_modified(&open.dir);
+                    if on_disk != open.known_file_time && !open.changed_on_disk {
+                        open.changed_on_disk = true;
+                        changed = true;
+                    }
+                }
+
+                let interval = Duration::from_secs(open.project.backups.interval_minutes.max(1) as u64 * 60);
+                if open.changed_since_backup && open.last_backup.elapsed() >= interval {
+                    open.changed_since_backup = false;
+                    open.last_backup = Instant::now();
+                    job = Some(SlowJob::Backup {
+                        dir: open.dir.clone(),
+                        project: Box::new(open.project.clone()),
+                        backups_dir,
+                    });
+                } else if let Some(sound) = open
+                    .project
+                    .sounds
+                    .iter()
+                    .find(|snd| snd.file.sha256.is_none() && !open.missing.contains(&snd.id))
+                {
+                    job = Some(SlowJob::Hash {
+                        sound_id: sound.id.clone(),
+                        path: storage::absolute_audio_path(&open.dir, &sound.file),
+                        size: sound.file.size,
+                    });
+                }
+            }
+
+            let snapshot = s.snapshot();
+            if last_info.as_ref() != Some(&snapshot.playback)
+                || last_hashing_remaining != snapshot.hashing_remaining
+            {
+                last_info = Some(snapshot.playback);
+                last_hashing_remaining = snapshot.hashing_remaining;
+                changed = true;
+            }
+            if changed || !problems.is_empty() {
+                emit_state(&app, &s, problems);
+            }
+            job
+            // The lock guard `s` is dropped here, at the end of the block.
         };
-        let mut problems = Vec::new();
-        let mut changed = false;
 
-        // Borrow the two fields separately (see `AppState::project_changed`).
-        let s_ref = &mut *s;
-        if let Some(open) = &mut s_ref.open {
-            problems.extend(s_ref.engine.tick(&open.project, &open.dir, &open.mix));
-
-            if open.dirty_since.is_some_and(|t| t.elapsed() >= SAVE_DELAY) {
-                if let Err(e) = storage::save_project(&open.dir, &open.project) {
-                    problems.push(format!("could not save: {e}"));
-                }
-                open.dirty_since = None;
-                open.known_file_time = storage::project_file_modified(&open.dir);
-            }
-
-            if last_disk_check.elapsed() >= DISK_CHECK {
-                last_disk_check = Instant::now();
-                let on_disk = storage::project_file_modified(&open.dir);
-                if on_disk != open.known_file_time && !open.changed_on_disk {
-                    open.changed_on_disk = true;
-                    changed = true;
+        // ---- Slow work, with the state unlocked ----
+        match job {
+            Some(SlowJob::Backup { dir, project, backups_dir }) => {
+                if let Err(e) = bundle::write_backup(&dir, &project, &backups_dir) {
+                    let _ = app.emit("notice", format!("Backup failed: {e}"));
                 }
             }
-        }
-
-        let info = s.snapshot().playback;
-        if last_info.as_ref() != Some(&info) {
-            last_info = Some(info);
-            changed = true;
-        }
-        if changed || !problems.is_empty() {
-            emit_state(&app, &s, problems);
+            Some(SlowJob::Hash { sound_id, path, size }) => {
+                let result = bundle::sha256_file(&path);
+                // Lock again only to store the result, and only if the sound still refers to
+                // the same file (it may have been removed or relinked meanwhile).
+                if let Ok(mut s) = state.lock()
+                    && let Some(open) = &mut s.open
+                {
+                    match result {
+                        Ok(hash) => {
+                            if let Some(sound) = open.project.sound_mut(&sound_id)
+                                && sound.file.size == size
+                                && sound.file.sha256.is_none()
+                            {
+                                sound.file.sha256 = Some(hash);
+                                open.dirty_since.get_or_insert_with(Instant::now);
+                            }
+                        }
+                        // Unreadable: treat it as missing so we don't retry forever.
+                        Err(_) => {
+                            if !open.missing.contains(&sound_id) {
+                                open.missing.push(sound_id);
+                            }
+                        }
+                    }
+                }
+            }
+            None => {}
         }
     }
 }

@@ -1,7 +1,7 @@
 <script lang="ts">
   // The project's sounds, one tab per category. Preview with ▶; add/edit/remove in Edit mode.
   import { api } from "../lib/api";
-  import { addSoundFiles, removeSound } from "../lib/actions";
+  import { addSoundFiles, relinkOne, removeSound } from "../lib/actions";
   import { run, ui } from "../lib/store.svelte";
   import { CATEGORIES, type Category } from "../lib/types";
 
@@ -44,6 +44,9 @@
           {#if missing.has(sound.id)}<span title="Audio file is missing">⚠</span>{/if}
           {sound.name}
         </span>
+        {#if missing.has(sound.id)}
+          <button class="icon" title="Locate the audio file" onclick={() => relinkOne(sound.id)}>📂</button>
+        {/if}
         {#if ui.mode === "edit"}
           <button class="icon" title="Edit" onclick={() => (ui.editing = { kind: "sound", id: sound.id })}>✎</button>
           <button class="icon danger" title="Remove" onclick={() => removeSound(sound.id)}>🗑</button>

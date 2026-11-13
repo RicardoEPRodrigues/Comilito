@@ -1,6 +1,6 @@
 # Save format
 
-> Status: draft. See decisions [0005](decisions/0005-storage-location-and-hashing.md) and
+> Status: implemented (format version 1). See decisions [0005](decisions/0005-storage-location-and-hashing.md) and
 > [0006](decisions/0006-project-folders.md).
 
 ## Projects are folders
@@ -80,7 +80,8 @@ a zip of the project folder with the same layout. Export offers one choice:
 - **Without audio:** only `comilito.json` is zipped.
 
 Import unpacks the zip into a new folder under `~/Documents/Comilito/` (renamed if that name
-already exists). The zip can then be deleted, so nothing is stored twice.
+already exists). The zip can then be deleted, so nothing is stored twice. Only `comilito.json`
+and files under `audio/` are extracted, and paths that would escape the new folder are refused.
 
 ### Missing files
 
@@ -112,5 +113,7 @@ Removing a sound asks whether to move its audio to the system trash (default) or
 
 - The app stays usable, and a status indicator shows progress.
 - Results are stored with the file's size and modification time, and recomputed only if the file changes.
-- Quitting during hashing shows a warning. Unfinished work resumes on next launch.
-- An export waits for any hashes it still needs, with progress shown.
+- Unfinished work simply resumes on the next launch (sounds without `sha256` are picked up again).
+  The quit warning from decision 0005 isn't implemented yet: quitting mid-hash loses nothing.
+- Export doesn't wait for hashes: relinking matches by file name and size first, and only needs
+  the hash to choose between several same-sized files with the same name.

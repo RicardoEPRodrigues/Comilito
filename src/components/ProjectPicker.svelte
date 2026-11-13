@@ -2,6 +2,7 @@
   // The first screen: pick a project from the projects folder, or create one.
   import { onMount } from "svelte";
   import { api } from "../lib/api";
+  import { importProject, restoreBackup } from "../lib/actions";
   import { askText, run, ui } from "../lib/store.svelte";
   import type { ProjectSummary } from "../lib/types";
 
@@ -49,6 +50,8 @@
 
     <div class="actions">
       <button class="primary" onclick={create}>+ New project</button>
+      <button onclick={importProject}>Import…</button>
+      <button onclick={restoreBackup}>Restore backup…</button>
       <button onclick={() => (ui.editing = { kind: "preferences" })}>Preferences</button>
       <button class="icon" onclick={refresh} title="Refresh">⟳</button>
     </div>

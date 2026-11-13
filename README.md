@@ -44,7 +44,9 @@ See [docs/architecture.md](docs/architecture.md) and [docs/decisions/](docs/deci
 
 ## Status
 
-Early development: the app skeleton runs, but no audio features yet.
+First version: projects, a sound library, scenes, the scene stack with ducking and roles,
+presets, an effects pad, export/import, relinking missing audio, hashing and automatic backups.
+Not yet: choosing the audio output device, and a warning when quitting during hashing.
 
 ## Development
 

@@ -32,6 +32,12 @@ export const api = {
   reloadProject: () => invoke<void>("reload_project"),
   keepMyVersion: () => invoke<void>("keep_my_version"),
   renameProject: (name: string) => invoke<void>("rename_project", { name }),
+  exportProject: (dest: string, includeAudio: boolean) =>
+    invoke<void>("export_project", { dest, includeAudio }),
+  importProject: (path: string) => invoke<void>("import_project", { path }),
+  backupsFolder: () => invoke<string>("backups_folder"),
+  relinkFromFolder: (folder: string) => invoke<void>("relink_from_folder", { folder }),
+  relinkSound: (id: string, path: string) => invoke<void>("relink_sound", { id, path }),
 
   // Project settings
   setMasterVolume: (volume: number) => invoke<void>("set_master_volume", { volume }),

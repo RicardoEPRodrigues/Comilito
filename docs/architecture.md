@@ -61,7 +61,9 @@ audio file found while fading to a mix) arrive as **`notice`** events.
 A background thread (`ticker` in `lib.rs`) runs four times a second: it advances music
 playlists, saves `comilito.json` one second after the last change, notices when another program
 changed the file (`changedOnDisk` in the snapshot), and emits `state-changed` when what's audible
-changed.
+changed. It also does the slow jobs, one at a time and **with the state unlocked** so the UI
+never waits: a backup every *N* minutes (when something changed), and hashing audio files that
+don't have a `sha256` yet (`hashingRemaining` in the snapshot).
 
 ## Command surface
 
@@ -72,6 +74,7 @@ Stack indexes count from the bottom (0 = bottom), like `stack` in `comilito.json
 |------|----------|
 | General | `app_version`, `get_state`, `get_preferences`, `set_preferences(prefs)` |
 | Projects | `list_projects`, `projects_folder`, `create_project(name)`, `open_project(path)`, `close_project`, `reload_project`, `keep_my_version`, `rename_project(name)` |
+| Moving projects | `export_project(dest, include_audio)`, `import_project(path)`, `backups_folder`, `relink_from_folder(folder)`, `relink_sound(id, path)` |
 | Project settings | `set_master_volume(volume)`, `set_category_volume(category, volume)`, `set_project_defaults(defaults)`, `set_backup_settings(backups)`, `reset_project_defaults` |
 | Sounds | `add_sounds(category, paths)`, `update_sound(sound)`, `remove_sound(id, permanently)`, `preview_sound(id)`, `play_effect(id)` |
 | Scenes | `create_scene(name, group)`, `update_scene(scene)`, `duplicate_scene(id)`, `delete_scene(id)`, `set_layer_volume(scene_id, layer_index, volume)` |
@@ -126,6 +129,7 @@ src-tauri/
     project.rs       Data model (serde structs mirroring comilito.json)
     storage.rs       Project folders: list/create/load/save, copying audio in
     prefs.rs         App preferences (preferences.json)
+    bundle.rs        .comilito zips (export, import, backups), sha256, finding missing files
 docs/
 ```
 
