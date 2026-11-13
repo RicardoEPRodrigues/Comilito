@@ -7,11 +7,14 @@
   import type { Preferences } from "../lib/types";
   import { CATEGORIES } from "../lib/types";
   import DefaultsForm from "./DefaultsForm.svelte";
+  import { closeEditor, fingerprint } from "../lib/unsaved";
   import Modal from "./Modal.svelte";
 
   let { onclose }: { onclose: () => void } = $props();
 
   let draft = $state<Preferences | null>(ui.prefs ? structuredClone($state.snapshot(ui.prefs)) : null);
+  const initial = fingerprint(ui.prefs);
+  const dirty = $derived(fingerprint($state.snapshot(draft)) !== initial);
 
   async function chooseFolder() {
     const folder = await open({ directory: true, title: "Projects folder" });
@@ -33,7 +36,7 @@
   const pct = (v: number) => Math.round(v * 100);
 </script>
 
-<Modal title="Preferences" {onclose}>
+<Modal title="Preferences" onclose={() => closeEditor(dirty, save, onclose)}>
   {#if draft}
     <section>
       <h2>Playback</h2>
@@ -66,6 +69,14 @@
         <select bind:value={draft.behaviour.removeSound}>
           <option value="ask">Ask</option>
           <option value="trash">Move to trash (still asks if scenes use it)</option>
+        </select>
+      </label>
+      <label class="row">
+        <span>Closing a window with unsaved changes</span>
+        <select bind:value={draft.behaviour.unsavedChanges}>
+          <option value="ask">Ask</option>
+          <option value="save">Save the changes</option>
+          <option value="discard">Discard the changes</option>
         </select>
       </label>
     </section>

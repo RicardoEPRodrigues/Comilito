@@ -68,6 +68,7 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 |---|---|
 | When adding a scene that's already in the stack | ask (other choices: always move, always duplicate) |
 | When removing a sound | ask (other choices: always move to trash) |
+| Closing a window with unsaved changes (✕ or Esc) | ask (other choices: save, discard). The window's Cancel button always discards. |
 | Warn when quitting during hashing or backup | on |
 
 ### Appearance
@@ -90,7 +91,7 @@ App `preferences.json`:
   "formatVersion": 1,
   "projectsFolder": "~/Documents/Comilito",
   "playback": { "outputDevice": null, "pauseFadeMs": 300, "stopFadeMs": 1000, "startPaused": true },
-  "behaviour": { "duplicateInStack": "ask", "removeSound": "ask", "warnOnQuitWhileBusy": true },
+  "behaviour": { "duplicateInStack": "ask", "removeSound": "ask", "unsavedChanges": "ask" },
   "appearance": { "theme": "system" },
   "newProjectDefaults": { "...": "same shape as a project's defaults + backups" }
 }

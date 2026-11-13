@@ -5,12 +5,15 @@
   import { ask, project, run } from "../lib/store.svelte";
   import type { BackupSettings, ProjectDefaults } from "../lib/types";
   import DefaultsForm from "./DefaultsForm.svelte";
+  import { closeEditor, fingerprint } from "../lib/unsaved";
   import Modal from "./Modal.svelte";
 
   let { onclose }: { onclose: () => void } = $props();
 
   let defaults = $state<ProjectDefaults>(structuredClone($state.snapshot(project()!.defaults)));
   let backups = $state<BackupSettings>(structuredClone($state.snapshot(project()!.backups)));
+  const initial = fingerprint([project()!.defaults, project()!.backups]);
+  const dirty = $derived(fingerprint([$state.snapshot(defaults), $state.snapshot(backups)]) !== initial);
 
   async function save() {
     await run(api.setProjectDefaults($state.snapshot(defaults)));
@@ -33,7 +36,7 @@
   }
 </script>
 
-<Modal title="Project settings" {onclose}>
+<Modal title="Project settings" onclose={() => closeEditor(dirty, save, onclose)}>
   <p class="muted">
     Scenes and sounds use these unless they set their own value. Changing one here updates
     everything that inherits it.

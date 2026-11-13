@@ -143,7 +143,11 @@ export interface Preferences {
   formatVersion: number;
   projectsFolder: string | null;
   playback: { pauseFadeMs: number; stopFadeMs: number };
-  behaviour: { duplicateInStack: "ask" | "move" | "duplicate"; removeSound: "ask" | "trash" };
+  behaviour: {
+    duplicateInStack: "ask" | "move" | "duplicate";
+    removeSound: "ask" | "trash";
+    unsavedChanges: "ask" | "save" | "discard";
+  };
   appearance: { theme: "system" | "light" | "dark" };
   newProjectDefaults: {
     masterVolume: number;

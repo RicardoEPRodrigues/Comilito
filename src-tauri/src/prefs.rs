@@ -43,6 +43,16 @@ pub struct Behaviour {
     pub duplicate_in_stack: String,
     /// "ask" or "trash". Handled by the UI.
     pub remove_sound: String,
+    /// Closing an editor with unsaved changes: "ask", "save" or "discard". Handled by the UI.
+    /// `default = ...` names a function that gives the value when the field is missing, so
+    /// preferences saved before this setting existed still load (instead of failing and
+    /// falling back to all defaults).
+    #[serde(default = "ask")]
+    pub unsaved_changes: String,
+}
+
+fn ask() -> String {
+    "ask".into()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,6 +99,7 @@ impl Default for Behaviour {
         Self {
             duplicate_in_stack: "ask".into(),
             remove_sound: "ask".into(),
+            unsaved_changes: ask(),
         }
     }
 }
@@ -144,6 +155,19 @@ pub fn save(config_dir: &Path, prefs: &Preferences) -> Result<(), String> {
 mod tests {
     use super::*;
     use crate::storage::test_support::TempDir;
+
+    #[test]
+    fn older_preferences_without_new_fields_still_load() {
+        let dir = TempDir::new();
+        let old = r#"{"formatVersion":1,"playback":{"pauseFadeMs":300,"stopFadeMs":2500},
+            "behaviour":{"duplicateInStack":"move","removeSound":"ask"}}"#;
+        std::fs::write(dir.0.join(PREFS_FILE), old).unwrap();
+
+        let prefs = load(&dir.0);
+        assert_eq!(prefs.playback.stop_fade_ms, 2500, "kept, not reset to defaults");
+        assert_eq!(prefs.behaviour.duplicate_in_stack, "move");
+        assert_eq!(prefs.behaviour.unsaved_changes, "ask");
+    }
 
     #[test]
     fn missing_file_gives_defaults_and_saving_round_trips() {

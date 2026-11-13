@@ -4,6 +4,7 @@
   import { api } from "../lib/api";
   import { project, run, soundById } from "../lib/store.svelte";
   import { ROLES, type Category, type Role, type Scene } from "../lib/types";
+  import { closeEditor, fingerprint } from "../lib/unsaved";
   import Modal from "./Modal.svelte";
   import OverrideField from "./OverrideField.svelte";
 
@@ -12,6 +13,9 @@
   // Copying `original` once is the point: the draft must not follow later changes.
   // svelte-ignore state_referenced_locally
   let draft = $state<Scene>(structuredClone($state.snapshot(original)));
+  // svelte-ignore state_referenced_locally
+  const initial = fingerprint($state.snapshot(original));
+  const dirty = $derived(fingerprint($state.snapshot(draft)) !== initial);
 
   const p = $derived(project()!);
   const groups = $derived([...new Set(p.scenes.map((s) => s.group).filter(Boolean))] as string[]);
@@ -69,7 +73,8 @@
   }
 </script>
 
-<Modal title="Edit scene" {onclose} wide>
+<!-- ✕ and Esc go through closeEditor (may ask about unsaved changes); Cancel just closes. -->
+<Modal title="Edit scene" onclose={() => closeEditor(dirty, save, onclose)} wide>
   <div class="grid">
     <label>
       <span>Name</span>
