@@ -4,6 +4,7 @@
 //
 // User themes have the same shape and are stored by Rust (src-tauri/src/themes.rs).
 
+import { api } from "./api";
 import type { Appearance, DesktopAppearance, Theme } from "./types";
 
 /** Every colour token, with what it's for (shown in the theme editor). */
@@ -147,6 +148,55 @@ export function applyTheme(theme: Theme, appearance: Appearance, desktop: Deskto
   root.classList.toggle("no-watermark", !appearance.watermark);
   root.classList.toggle("no-rules", !appearance.rules);
   root.classList.toggle("no-blackletter", !appearance.blackletter);
+}
+
+// ---- Files a theme brings with it (decision 0025) ---------------------------------------------
+// A user theme can come with font files and its own watermark. Rust stores them and hands us
+// their bytes; here they become a FontFace (fonts) or a blob: URL (the watermark). Each file is
+// loaded once per run and cached: the same name always means the same bytes (it's a hash).
+
+const loadedFonts = new Map<string, Promise<void>>();
+const watermarkUrls = new Map<string, Promise<string>>();
+
+const IMAGE_TYPES: Record<string, string> = { png: "image/png", webp: "image/webp", svg: "image/svg+xml" };
+
+function loadFont(family: string, file: string): Promise<void> {
+  const key = `${family}\n${file}`;
+  let loading = loadedFonts.get(key);
+  if (!loading) {
+    loading = api.readThemeAsset(file).then(async (bytes) => {
+      const face = new FontFace(family, bytes);
+      await face.load();
+      // Once added, everything already styled with this family re-renders in it.
+      document.fonts.add(face);
+    });
+    // A font that fails to load shouldn't stop the others, and shouldn't be retried forever.
+    loading.catch((e) => console.warn(`theme font ${family} didn't load:`, e));
+    loadedFonts.set(key, loading);
+  }
+  return loading;
+}
+
+function watermarkUrl(file: string): Promise<string> {
+  let url = watermarkUrls.get(file);
+  if (!url) {
+    const type = IMAGE_TYPES[file.split(".").pop() ?? ""] ?? "application/octet-stream";
+    url = api.readThemeAsset(file).then((bytes) => URL.createObjectURL(new Blob([bytes], { type })));
+    watermarkUrls.set(file, url);
+  }
+  return url;
+}
+
+/** Loads a theme's own fonts and returns its watermark's URL (null: use the horse). */
+export async function loadThemeFiles(theme: Theme): Promise<string | null> {
+  for (const [family, file] of Object.entries(theme.fontFiles ?? {})) void loadFont(family, file);
+  if (!theme.watermark) return null;
+  try {
+    return await watermarkUrl(theme.watermark);
+  } catch (e) {
+    console.warn("theme watermark didn't load:", e);
+    return null;
+  }
 }
 
 /** CSS font-family for a font name. The bundled Inter registers itself as "Inter Variable". */

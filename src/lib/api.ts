@@ -39,6 +39,7 @@ export const api = {
   deleteUserTheme: (id: string) => invoke<void>("delete_user_theme", { id }),
   importTheme: (path: string) => invoke<Theme>("import_theme", { path }),
   exportTheme: (theme: Theme, dest: string) => invoke<void>("export_theme", { theme, dest }),
+  readThemeAsset: (name: string) => invoke<ArrayBuffer>("read_theme_asset", { name }),
 
   // Projects
   listProjects: () => invoke<ProjectSummary[]>("list_projects"),

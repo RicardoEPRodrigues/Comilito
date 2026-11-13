@@ -5,7 +5,7 @@
   import { open, save } from "@tauri-apps/plugin-dialog";
   import { api } from "../lib/api";
   import { confirmAction, refreshUserThemes, run, ui } from "../lib/store.svelte";
-  import { BUILT_IN_THEMES, activeTheme, findTheme } from "../lib/themes";
+  import { BUILT_IN_THEMES, activeTheme, findTheme, loadThemeFiles } from "../lib/themes";
   import type { Appearance, Theme } from "../lib/types";
   import ThemeEditor from "./ThemeEditor.svelte";
 
@@ -14,6 +14,12 @@
   const themes = $derived([...BUILT_IN_THEMES, ...ui.userThemes]);
   const current = $derived(activeTheme(appearance, ui.desktop, ui.userThemes));
   let editing = $state<Theme | null>(null);
+
+  // Each card shows the theme's name in its display font, so load the fonts user themes bring
+  // with them (not only the active theme's). Already-loaded fonts are cached.
+  $effect(() => {
+    for (const t of ui.userThemes) void loadThemeFiles(t);
+  });
 
   /** Picking a theme: the fixed theme, and the light or dark one when following the desktop. */
   function pick(theme: Theme) {
@@ -45,12 +51,14 @@
   }
 
   async function exportTheme(theme: Theme) {
-    const dest = await save({ title: "Export theme", defaultPath: `${theme.name}.comilito-theme.json`, filters: [{ name: "Comilito theme", extensions: ["json"] }] });
+    // A .comilito-theme is a zip: the theme plus any fonts and watermark it uses (decision 0025).
+    const dest = await save({ title: "Export theme", defaultPath: `${theme.name}.comilito-theme`, filters: [{ name: "Comilito theme", extensions: ["comilito-theme"] }] });
     if (dest) await run(api.exportTheme($state.snapshot(theme), dest));
   }
 
   async function importTheme() {
-    const path = await open({ title: "Import a theme", filters: [{ name: "Comilito theme", extensions: ["json"] }] });
+    // Plain .json themes from older versions still import.
+    const path = await open({ title: "Import a theme", filters: [{ name: "Comilito theme", extensions: ["comilito-theme", "json"] }] });
     if (typeof path !== "string") return;
     const theme = await run(api.importTheme(path));
     if (theme) {

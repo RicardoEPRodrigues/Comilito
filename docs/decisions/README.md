@@ -22,7 +22,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0013](0013-plain-svelte-not-sveltekit.md) | Plain Svelte with Vite instead of SvelteKit | Accepted | 2026-11-12 |
 | [0014](0014-html5-drag-and-drop.md) | Hand-written HTML5 drag and drop for the stack | Accepted (file drops on Linux: 0022) | 2026-11-13 |
 | [0015](0015-loudness-normalization.md) | Loudness normalization with EBU R128 | Accepted | 2026-11-13 |
-| [0016](0016-themes-and-desktop-accent.md) | Switchable themes, custom themes and the desktop accent colour | Accepted | 2026-11-13 |
+| [0016](0016-themes-and-desktop-accent.md) | Switchable themes, custom themes and the desktop accent colour | Accepted (theme files: 0025) | 2026-11-13 |
 | [0017](0017-library-drawer-and-presets-tab.md) | Presets get their own tab; sounds become a collapsible Library drawer | Partly proposed | 2026-11-13 |
 | [0018](0018-library-workspace.md) | A full-screen Library workspace for editing sounds | Accepted | 2026-11-13 |
 | [0019](0019-download-audio-from-urls.md) | Download audio from video sites and direct URLs (no streaming) | Accepted | 2026-11-13 |
@@ -31,6 +31,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0022](0022-dropping-files-onto-the-window.md) | Import audio by dropping files onto the window | Accepted | 2026-11-13 |
 | [0023](0023-home-screen-and-projects-folder.md) | Home screen, recent projects and moving the projects folder | Accepted | 2026-11-13 |
 | [0024](0024-background-move-and-window-state.md) | Move the projects folder in the background; remember the window size | Accepted | 2026-11-13 |
+| [0025](0025-theme-packages.md) | Themes can bring a watermark and fonts, shared as `.comilito-theme` packages | Accepted | 2026-11-13 |
 
 ## Template
 

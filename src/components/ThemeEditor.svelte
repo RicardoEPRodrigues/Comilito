@@ -24,7 +24,13 @@
     return draft.colors[key] ?? base.colors[key];
   }
 
-  const readability = $derived(contrast(colour("text"), colour("bg")));
+  // Fonts the theme brought with it (decision 0025) are offered next to the bundled ones,
+  // so editing an imported theme doesn't lose them.
+  const ownFonts = $derived(Object.keys(draft.fontFiles ?? {}));
+  const displayFonts = $derived([...ownFonts, ...DISPLAY_FONTS.filter((f) => !ownFonts.includes(f))]);
+  const bodyFonts = $derived([...ownFonts, ...BODY_FONTS.filter((f) => !ownFonts.includes(f))]);
+
+  const readability =$derived(contrast(colour("text"), colour("bg")));
 
   async function save() {
     const t = $state.snapshot(draft);
@@ -44,13 +50,13 @@
     <label class="field">
       <span class="caps">Display font</span>
       <select bind:value={draft.fonts.display}>
-        {#each DISPLAY_FONTS as f (f)}<option value={f}>{f}</option>{/each}
+        {#each displayFonts as f (f)}<option value={f}>{f}</option>{/each}
       </select>
     </label>
     <label class="field">
       <span class="caps">Body font</span>
       <select bind:value={draft.fonts.body}>
-        {#each BODY_FONTS as f (f)}<option value={f}>{f === "system-ui" ? "System" : f}</option>{/each}
+        {#each bodyFonts as f (f)}<option value={f}>{f === "system-ui" ? "System" : f}</option>{/each}
       </select>
     </label>
     <label class="switch dark"><input type="checkbox" bind:checked={draft.dark} />Dark theme</label>

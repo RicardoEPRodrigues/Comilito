@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { api } from "./lib/api";
   import { init, leaveFocus, notify, project, run, ui } from "./lib/store.svelte";
-  import { activeTheme, applyTheme } from "./lib/themes";
+  import { activeTheme, applyTheme, loadThemeFiles } from "./lib/themes";
   import ProjectPicker from "./components/ProjectPicker.svelte";
   import Workspace from "./components/Workspace.svelte";
   import Dialog from "./components/Dialog.svelte";
@@ -27,6 +27,10 @@
     return () => media.removeEventListener("change", onChange);
   });
 
+  /** Counts theme-file loads, so only the latest one is used. A plain variable (not $state):
+   *  the effect below must not re-run when it changes. */
+  let themeFilesRequest = 0;
+
   // Apply the theme whenever anything it depends on changes: the preferences, the desktop's
   // accent or light/dark, the user's themes. `$effect` tracks what it reads and re-runs.
   $effect(() => {
@@ -36,6 +40,12 @@
     const appearance = ui.previewAppearance ?? ui.prefs.appearance;
     const theme = ui.previewTheme ?? activeTheme(appearance, ui.desktop, ui.userThemes);
     applyTheme(theme, appearance, ui.desktop);
+    // Fonts and the watermark load in the background. If the theme changes again before
+    // they arrive, the older result is dropped.
+    const request = ++themeFilesRequest;
+    loadThemeFiles(theme).then((url) => {
+      if (request === themeFilesRequest) ui.themeWatermark = url;
+    });
   });
 
   /** "Open the last project at start" (the home screen's switch). If it fails (moved or

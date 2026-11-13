@@ -112,8 +112,19 @@ pub fn import_theme(path: PathBuf, state: AppStateRef) -> Result<crate::themes::
 }
 
 #[tauri::command]
-pub fn export_theme(theme: crate::themes::Theme, dest: PathBuf) -> Result<(), String> {
-    crate::themes::export(&theme, &dest)
+pub fn export_theme(theme: crate::themes::Theme, dest: PathBuf, state: AppStateRef) -> Result<(), String> {
+    // Clone the path so the state lock is released before the (slower) file work.
+    let config_dir = lock(&state)?.config_dir.clone();
+    crate::themes::export(&config_dir, &theme, &dest)
+}
+
+/// A file a user theme brought with it (a font or its watermark), as raw bytes.
+/// `ipc::Response` sends them as binary, which arrives in JavaScript as an `ArrayBuffer`
+/// instead of a (much bigger, slower) JSON array of numbers.
+#[tauri::command]
+pub fn read_theme_asset(name: String, state: AppStateRef) -> Result<tauri::ipc::Response, String> {
+    let config_dir = lock(&state)?.config_dir.clone();
+    crate::themes::read_asset(&config_dir, &name).map(tauri::ipc::Response::new)
 }
 
 // ---- Projects -------------------------------------------------------------------------------

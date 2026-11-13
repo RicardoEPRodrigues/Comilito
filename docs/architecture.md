@@ -88,6 +88,7 @@ Stack indexes count from the bottom (0 = bottom), like `stack` in `comilito.json
 | Stack | `stack_insert(scene_id, index, mode)`, `stack_move(entry_id, index)`, `stack_remove(entry_id)`, `stack_set_enabled(entry_id, enabled)`, `stack_switch(scene_id)`, `scene_hotkey(scene_id)` |
 | Presets | `preset_save(name)`, `preset_load(preset_id)`, `preset_insert(preset_id, index)`, `preset_rename(preset_id, name)`, `preset_delete(preset_id)` |
 | Transport | `toggle_play`, `stop_all` |
+| Appearance | `desktop_appearance`, `list_user_themes`, `save_user_theme(theme)`, `delete_user_theme(id)`, `import_theme(path)` (a `.comilito-theme` package or a plain `.json`), `export_theme(theme, dest)` (writes a package), `read_theme_asset(name)` → raw bytes of a font or watermark a theme brought ([themes.md](themes.md)) |
 
 Events from Rust to UI: `state-changed` (a `Snapshot`), `notice` (a message string),
 `projects-move-progress` and `projects-moved` (moving the projects folder, decision 0024), plus

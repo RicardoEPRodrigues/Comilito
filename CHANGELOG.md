@@ -28,6 +28,10 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
   updates itself) or from direct audio links, optionally only part of a long video.
 - **Cropping** sounds on their waveform, saving a copy or replacing the original.
 - **Themes:** Codex, Ironwood and Hearth, your own themes, and the desktop's accent colour.
+- **Themes can bring their own woodcut and fonts.** Themes are now shared as `.comilito-theme`
+  files, which can include a watermark (drawn in the theme's gold, in place of the skeletal
+  horse), font files and their licences. Theme files exported earlier (`.json`) still import.
+- Two optional, unbundled themes in `extras/themes/`: **Horde** and **Alliance**.
 - **Dropping audio files** from the file manager onto the window imports copies of them.
 - **Scene groups** can be renamed and ungrouped from their ⋯ menu (or right-click), and scenes
   moved between groups.

@@ -236,6 +236,12 @@ export interface Theme {
   dark: boolean;
   colors: Record<string, string>;
   fonts: { display: string; body: string };
+  /** Files a user theme brought with it (decision 0025), by their stored name
+   *  (`<sha256>.<ext>`); read them with `api.readThemeAsset`. */
+  watermark?: string;
+  /** Font family → font file, for fonts that come with the theme. */
+  fontFiles?: Record<string, string>;
+  licences?: string[];
 }
 
 export interface DesktopAppearance {

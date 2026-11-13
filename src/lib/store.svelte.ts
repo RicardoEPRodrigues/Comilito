@@ -124,6 +124,8 @@ export const ui = $state({
   notices: [] as Notice[],
   desktop: null as DesktopAppearance | null,
   userThemes: [] as Theme[],
+  /** The active theme's own watermark as a blob: URL, or null for the skeletal horse. */
+  themeWatermark: null as string | null,
   downloads: [] as DownloadJob[],
   tools: null as ToolsStatus | null,
   toolsProgress: null as InstallProgress | null,
