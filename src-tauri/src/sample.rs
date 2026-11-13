@@ -77,8 +77,10 @@ pub fn fill_sample_project(dir: &Path, sample_dir: &Path, project: &mut Project)
     }];
     rainy.effects = vec![bell.clone()];
 
-    // The drummer takes over the foreground, so the rain below drops to the duck level.
+    // The drummer takes over the foreground, so the rain below drops to the duck level,
+    // and the nocturne below pauses: a battle shouldn't have a piano under it.
     let mut combat = scene("Combat", "3");
+    combat.blocks_music = true;
     combat.ambience = vec![Layer {
         sound: drummer.clone(),
         volume: Some(0.9),
@@ -141,6 +143,19 @@ mod tests {
         let mix = target_mix(&project);
         assert!(mix.music_entry.is_some());
         assert_eq!(mix.ambience.len(), 1);
+
+        // Loading the preset puts Combat on top, which silences the nocturne.
+        project.stack = project.stack_presets[0]
+            .stack
+            .iter()
+            .enumerate()
+            .map(|(i, e)| StackEntry {
+                id: format!("e{i}"),
+                scene: e.scene.clone(),
+                enabled: e.enabled,
+            })
+            .collect();
+        assert_eq!(target_mix(&project).music_entry, None);
     }
 
     #[test]
