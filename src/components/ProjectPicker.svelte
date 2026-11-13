@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
   import { api } from "../lib/api";
   import { importProject, restoreBackup } from "../lib/actions";
-  import { askText, run, ui } from "../lib/store.svelte";
+  import { ask, run, ui } from "../lib/store.svelte";
   import type { ProjectSummary } from "../lib/types";
 
   let projects = $state<ProjectSummary[]>([]);
@@ -21,8 +21,22 @@
   });
 
   async function create() {
-    const name = await askText("New project", "Name (for example the campaign)");
-    if (name) await run(api.createProject(name));
+    const answer = await ask({
+      title: "New project",
+      message:
+        "Start empty, or from the sample: a few sounds and three scenes (music, rain, combat) " +
+        "already in the stack, to try things out.",
+      input: { label: "Name (for example the campaign)", value: "" },
+      choices: [
+        { label: "Cancel", value: "cancel" },
+        { label: "Start from the sample", value: "sample" },
+        { label: "Empty project", value: "empty", primary: true },
+      ],
+    });
+    if (!answer || answer.choice === "cancel") return;
+    const name = answer.text.trim() || (answer.choice === "sample" ? "Sample project" : "");
+    if (!name) return;
+    await run(api.createProject(name, answer.choice === "sample"));
   }
 </script>
 

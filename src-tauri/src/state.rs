@@ -32,6 +32,8 @@ pub struct AppState {
     pub config_dir: PathBuf,
     /// `~/Documents/Comilito`, used unless the preferences say otherwise.
     pub default_projects_root: PathBuf,
+    /// The bundled sample audio, if it was found at startup.
+    pub sample_dir: Option<PathBuf>,
     pub open: Option<OpenProject>,
 }
 

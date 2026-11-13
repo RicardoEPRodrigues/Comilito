@@ -18,6 +18,7 @@ Each category has its own volume, and each sound has its own volume, loop and fa
 ## Using Comilito
 
 1. **Create a project** (one per campaign). It's a folder in `~/Documents/Comilito/`.
+   Choose **Start from the sample** to get a few sounds and scenes to try things out.
 2. Switch to **Edit** mode (top bar). In **Sounds**, add music, ambience and effect files; they're
    copied into the project. ▶ previews a sound; ✎ sets its volume, loop and fades.
 3. In **Scenes**, create scenes: a music playlist, ambience layers (each with a volume and an
@@ -98,4 +99,5 @@ Other commands:
 ## Acknowledgements
 
 Inspired by [Ascapes Mixer](https://github.com/ilyaly/ascapes-mixer) by ilyaly (MIT).
-Comilito is an independent implementation, not a fork.
+Comilito is an independent implementation, not a fork. Sample audio credits and other
+acknowledgements are in [CREDITS.md](CREDITS.md) and the app's About window.

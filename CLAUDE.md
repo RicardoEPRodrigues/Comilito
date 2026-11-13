@@ -47,4 +47,6 @@ it's small, maintained and cross-platform. Prefer the standard library and Tauri
 
 - Commit in small, logical steps with clear messages (imperative mood: "Add mixer track model").
 - Don't commit generated output (`target/`, `node_modules/`, `dist/`, build artifacts) or audio test files larger than a few hundred KB.
+  Exception: the bundled sample audio in `src-tauri/resources/sample/`, re-encoded to keep it
+  small (a few MB in total) and credited in [CREDITS.md](CREDITS.md) with its licence.
 - Do not push unless asked.

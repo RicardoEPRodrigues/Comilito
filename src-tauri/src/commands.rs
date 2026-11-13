@@ -81,15 +81,31 @@ pub fn projects_folder(state: AppStateRef) -> Result<PathBuf, String> {
     Ok(lock(&state)?.projects_root())
 }
 
+/// Creates a project folder and opens it. With `sample`, it starts with the bundled sample
+/// sounds and scenes (see sample.rs) instead of empty.
 #[tauri::command]
-pub fn create_project(name: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+pub fn create_project(
+    name: String,
+    sample: bool,
+    app: AppHandle,
+    state: AppStateRef,
+) -> Result<(), String> {
     let mut s = lock(&state)?;
+    // Check before creating anything, so a failure doesn't leave an empty folder behind.
+    let sample_dir = match (sample, &s.sample_dir) {
+        (true, None) => return Err("the sample audio wasn't found in this installation".into()),
+        (true, Some(d)) => Some(d.clone()),
+        (false, _) => None,
+    };
     let root = s.projects_root();
     let dir = storage::create_project(&root, &name, s.prefs.new_project_defaults.defaults.clone())?;
 
     // Apply the rest of the app's new-project defaults (levels, backups) and save again.
     let mut project = storage::load_project(&dir)?;
     s.prefs.new_project_defaults.apply_to(&mut project);
+    if let Some(sample_dir) = sample_dir {
+        crate::sample::fill_sample_project(&dir, &sample_dir, &mut project)?;
+    }
     storage::save_project(&dir, &project)?;
 
     s.open_project(dir)?;

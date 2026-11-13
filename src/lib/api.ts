@@ -26,7 +26,7 @@ export const api = {
   // Projects
   listProjects: () => invoke<ProjectSummary[]>("list_projects"),
   projectsFolder: () => invoke<string>("projects_folder"),
-  createProject: (name: string) => invoke<void>("create_project", { name }),
+  createProject: (name: string, sample: boolean) => invoke<void>("create_project", { name, sample }),
   openProject: (path: string) => invoke<void>("open_project", { path }),
   closeProject: () => invoke<void>("close_project"),
   reloadProject: () => invoke<void>("reload_project"),

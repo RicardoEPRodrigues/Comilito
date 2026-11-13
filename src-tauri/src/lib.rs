@@ -4,6 +4,7 @@ mod commands;
 mod mix;
 mod prefs;
 mod project;
+mod sample;
 mod state;
 mod storage;
 
@@ -16,7 +17,7 @@ use std::{
 
 use audio::AudioEngine;
 use state::{AppState, SAVE_DELAY, emit_state};
-use tauri::{AppHandle, Emitter, Manager, RunEvent};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, path::BaseDirectory};
 
 // On Android this function becomes the app's entry point; on desktop main.rs calls it.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -33,6 +34,13 @@ pub fn run() {
             let config_dir = app.path().config_dir()?.join("comilito");
             let default_projects_root = app.path().document_dir()?.join("Comilito");
             let prefs = prefs::load(&config_dir);
+            // Where the bundled sample audio was installed (`bundle.resources` in
+            // tauri.conf.json). In development that's next to the debug binary.
+            let sample_dir = app
+                .path()
+                .resolve("sample", BaseDirectory::Resource)
+                .ok()
+                .filter(|p| p.is_dir());
 
             // Hands ownership of the state to Tauri, which shares it with every command.
             app.manage(Mutex::new(AppState {
@@ -40,6 +48,7 @@ pub fn run() {
                 prefs,
                 config_dir,
                 default_projects_root,
+                sample_dir,
                 open: None,
             }));
 
