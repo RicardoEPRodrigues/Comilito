@@ -42,7 +42,6 @@
       {@render link("https://colorcrow.me/", "colorcrow.me")} ·
       {@render link("https://github.com/RicardoEPRodrigues", "GitHub")}
     </p>
-    <p>Source code: {@render link("https://github.com/RicardoEPRodrigues/Comilito", "github.com/RicardoEPRodrigues/Comilito")}</p>
   </section>
 
   <section>

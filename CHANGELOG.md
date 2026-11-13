@@ -7,7 +7,7 @@ All notable changes to Comilito are listed here, newest first. The format follow
 When a version is released, its changes move from **Unreleased** into a new section with the
 version number and date.
 
-## [Unreleased]
+## Unreleased
 
 Nothing has been released yet; everything below is the first version, 0.1.0.
 
@@ -48,5 +48,3 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 - When Comilito is started without a terminal (for example by double-clicking the AppImage), its
   error messages and crashes are now written to `stderr.log` and `comilito.log` in the logs
   folder instead of being lost.
-
-[Unreleased]: https://github.com/RicardoEPRodrigues/Comilito/commits/main
