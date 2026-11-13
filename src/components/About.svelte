@@ -82,8 +82,8 @@
     <h3>Images</h3>
     <ul>
       <li>
-        The app icon is, for now, the default {@render link("https://tauri.app", "Tauri")} icon
-        (© Tauri Programme within The Commons Conservancy, MIT / Apache-2.0).
+        The app icon, a pale horse in the style of medieval manuscript illumination, is original
+        artwork generated with AI in {@render link("https://pen.dev", "Pencil")}.
       </li>
       <li>Interface symbols are Unicode emoji, drawn by your system's fonts.</li>
     </ul>
