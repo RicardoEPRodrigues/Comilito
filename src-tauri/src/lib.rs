@@ -1,8 +1,10 @@
 mod audio;
+mod project;
 
 use std::sync::Mutex;
 
-use audio::AudioEngine;
+use audio::{AudioEngine, Volumes};
+use project::Category;
 use tauri::State;
 
 /// Returns the app version from Cargo.toml.
@@ -22,11 +24,43 @@ fn app_version() -> String {
 /// Unlike C++'s std::mutex, a Rust Mutex *contains* the data: the only way to reach the
 /// engine is through `lock()`, so forgetting to lock is a compile error, not a race.
 #[tauri::command]
-fn play_file(path: String, engine: State<Mutex<AudioEngine>>) -> Result<(), String> {
+fn play_file(
+    path: String,
+    category: Category,
+    engine: State<Mutex<AudioEngine>>,
+) -> Result<(), String> {
     // `lock()` fails only if another thread panicked while holding the lock.
     // The guard it returns unlocks automatically when it goes out of scope (like C++ RAII).
     let mut engine = engine.lock().map_err(|_| "audio engine lock poisoned")?;
-    engine.play_file(&path)
+    engine.play_file(&path, category)
+}
+
+/// Current master and category volumes, so the UI can show them.
+#[tauri::command]
+fn get_volumes(engine: State<Mutex<AudioEngine>>) -> Result<Volumes, String> {
+    let engine = engine.lock().map_err(|_| "audio engine lock poisoned")?;
+    Ok(engine.volumes())
+}
+
+/// Sets the master volume (0.0–1.0).
+#[tauri::command]
+fn set_master_volume(volume: f32, engine: State<Mutex<AudioEngine>>) -> Result<(), String> {
+    let mut engine = engine.lock().map_err(|_| "audio engine lock poisoned")?;
+    engine.set_master_volume(volume);
+    Ok(())
+}
+
+/// Sets one category's volume (0.0–1.0). `category` arrives from JS as "music",
+/// "ambience" or "effects"; Tauri rejects anything else before this function runs.
+#[tauri::command]
+fn set_category_volume(
+    category: Category,
+    volume: f32,
+    engine: State<Mutex<AudioEngine>>,
+) -> Result<(), String> {
+    let mut engine = engine.lock().map_err(|_| "audio engine lock poisoned")?;
+    engine.set_category_volume(category, volume);
+    Ok(())
 }
 
 /// Fades out and stops everything that's playing.
@@ -48,7 +82,14 @@ pub fn run() {
     tauri::Builder::default()
         // Hands ownership of the engine to Tauri, which shares it with every command.
         .manage(Mutex::new(engine))
-        .invoke_handler(tauri::generate_handler![app_version, play_file, stop_all])
+        .invoke_handler(tauri::generate_handler![
+            app_version,
+            play_file,
+            stop_all,
+            get_volumes,
+            set_master_volume,
+            set_category_volume,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

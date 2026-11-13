@@ -30,6 +30,9 @@ Built on [kira](https://github.com/tesselode/kira):
 - One **kira mixer sub-track per category** (Music, Ambience, Effects), each with its own volume.
   A master volume sits above them.
 - Every sound plays into its category's track, so a category slider affects all its sounds.
+- Volumes are linear multipliers from 0.0 to 1.0 everywhere (UI, commands, `comilito.json`),
+  so ducking can simply multiply them. They're converted to decibels only when handed to kira.
+  Volume changes are smoothed over 50 ms so dragging a slider doesn't click.
 - Fades (fade-in, fade-out, crossfade) use kira tweens, so they're smooth and don't depend on UI timing.
 
 Planned default behaviour per category (each can be overridden per sound):
@@ -51,6 +54,7 @@ so they start instantly.
 | `set_sound_volume(id, v)` | Per-sound volume |
 | `set_category_volume(category, v)` | Category track volume |
 | `set_master_volume(v)` | Master volume |
+| `get_volumes()` | Current master and category volumes |
 | `stop_all()` | Panic button |
 | `add_sounds(category, paths)` / `remove_sound(id)` / `update_sound(id, settings)` | Edit the library |
 | `list_projects()` / `create_project(name)` / `open_project(folder)` | Project folders under `~/Documents/Comilito/` |
@@ -60,7 +64,7 @@ so they start instantly.
 | `set_project_defaults(d)` | Project-level default levels |
 
 Temporary, for testing the engine before the project model exists:
-`play_file(path)` plays a file by absolute path. It will be removed once `play_sound(id)` works.
+`play_file(path, category)` plays a file by absolute path into a category's track. It will be removed once `play_sound(id)` works.
 
 Events from Rust to UI: `playback-state-changed`, `project-changed`, `missing-files`,
 `hashing-progress`, `project-changed-on-disk` (for example, updated by a sync tool).
@@ -78,8 +82,8 @@ src-tauri/
   src/
     main.rs          Desktop entry point; just calls lib.rs
     lib.rs           Tauri setup, command registration
-    audio.rs         kira wrapper (so far: play a file, stop all)
-    project.rs       (planned) data model (serde structs)
+    audio.rs         kira wrapper: category tracks, volumes, play/stop
+    project.rs       data model (serde structs); so far only `Category`
     storage.rs       (planned) save/load, bundle zip, relinking
 docs/
 ```
