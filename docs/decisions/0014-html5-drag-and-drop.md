@@ -1,6 +1,6 @@
 # 0014. Hand-written HTML5 drag and drop for the stack
 
-- Status: Accepted
+- Status: Accepted (file drops on Linux: see 0022)
 - Date: 2026-11-13
 
 ## Context

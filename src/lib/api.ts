@@ -70,7 +70,18 @@ export const api = {
 
   // Sounds
   addSounds: (category: Category, paths: string[], folder: string | null = null) =>
-    invoke<void>("add_sounds", { category, folder, paths }),
+    invoke<string[]>("add_sounds", { category, folder, paths }),
+  /** A file dropped from the file manager: its bytes go as the raw request body (no JSON,
+   *  so large files aren't turned into huge number arrays); the rest goes in headers, which
+   *  must be plain ASCII, hence the URL-encoding. Returns the new sound's id. */
+  importDroppedFile: (category: Category, folder: string, name: string, bytes: ArrayBuffer) =>
+    invoke<string>("import_dropped_file", new Uint8Array(bytes), {
+      headers: {
+        "x-name": encodeURIComponent(name),
+        "x-category": category,
+        "x-folder": encodeURIComponent(folder),
+      },
+    }),
   updateSounds: (sounds: Sound[]) => invoke<void>("update_sounds", { sounds }),
   removeSound: (id: string, permanently: boolean) =>
     invoke<void>("remove_sound", { id, permanently }),

@@ -111,6 +111,7 @@ pub fn run() {
             commands::set_backup_settings,
             commands::reset_project_defaults,
             commands::add_sounds,
+            commands::import_dropped_file,
             commands::update_sounds,
             commands::remove_sound,
             commands::preview_sound,

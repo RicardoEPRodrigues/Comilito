@@ -394,10 +394,11 @@ pub fn add_sounds(
     paths: Vec<PathBuf>,
     app: AppHandle,
     state: AppStateRef,
-) -> Result<(), String> {
+) -> Result<Vec<String>, String> {
     let mut s = lock(&state)?;
     let open = s.open_mut()?;
     let mut problems = Vec::new();
+    let mut added = Vec::new();
     let folder = folder.unwrap_or_default();
 
     for path in paths {
@@ -407,7 +408,9 @@ pub fn add_sounds(
                     .file_stem()
                     .map(|n| n.to_string_lossy().into_owned())
                     .unwrap_or_else(|| "Sound".into());
-                open.project.sounds.push(Sound::new(category, name, file));
+                let sound = Sound::new(category, name, file);
+                added.push(sound.id.clone());
+                open.project.sounds.push(sound);
             }
             Err(e) => problems.push(e),
         }
@@ -415,7 +418,7 @@ pub fn add_sounds(
 
     problems.extend(s.project_changed(Duration::ZERO));
     emit_state(&app, &s, problems);
-    Ok(())
+    Ok(added)
 }
 
 /// Updates sounds' names, settings, tags and favourite flags (one sound from the editor, or
@@ -830,6 +833,52 @@ pub fn clear_downloads(app: AppHandle, state: AppStateRef) -> Result<(), String>
 #[tauri::command]
 pub fn list_downloads(state: AppStateRef) -> Result<Vec<crate::downloads::DownloadJob>, String> {
     Ok(lock(&state)?.downloads.clone())
+}
+
+/// A file dropped onto the window from the file manager (TODO.md), on webviews that give us the
+/// file's contents, not its path, so they arrive as the raw request body; the name, category
+/// and folder come in headers (URL-encoded). Saves a copy into the project and returns the
+/// new sound's id.
+#[tauri::command]
+pub fn import_dropped_file(
+    request: tauri::ipc::Request<'_>,
+    app: AppHandle,
+    state: AppStateRef,
+) -> Result<String, String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected the file's contents".into());
+    };
+    let header = |key: &str| {
+        request
+            .headers()
+            .get(key)
+            .and_then(|v| v.to_str().ok())
+            .map(crate::downloads::percent_decode)
+            .unwrap_or_default()
+    };
+    let name = header("x-name");
+    let folder = header("x-folder");
+    let category = match header("x-category").as_str() {
+        "music" => Category::Music,
+        "effects" => Category::Effects,
+        _ => Category::Ambience,
+    };
+
+    let mut s = lock(&state)?;
+    let open = s.open_mut()?;
+    let info = storage::save_dropped_file(&open.dir, category, &folder, &name, bytes)?;
+    let stem = std::path::Path::new(&name)
+        .file_stem()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "Sound".into());
+    let sound = Sound::new(category, stem, info);
+    let id = sound.id.clone();
+    open.project.sounds.push(sound);
+    open.folders = storage::list_folders(&open.dir);
+    crate::logging::info(&format!("Imported dropped file \"{name}\""));
+    let problems = s.project_changed(Duration::ZERO);
+    emit_state(&app, &s, problems);
+    Ok(id)
 }
 
 // ---- Library folders ------------------------------------------------------------------------

@@ -182,6 +182,22 @@ pub fn copy_audio_into_project(
     file_info(dir, relative)
 }
 
+/// Saves the bytes of a file dropped onto the window (it arrives as data, not as a path) into
+/// `audio/<category>/<folder>/<name>`, renamed if the name is taken. Only audio files are accepted.
+pub fn save_dropped_file(dir: &Path, category: Category, folder: &str, name: &str, bytes: &[u8]) -> Result<FileInfo, String> {
+    let name = safe_file_name(Path::new(name).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default().as_str());
+    let ext = Path::new(&name).extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
+    if name.is_empty() || !AUDIO_EXTENSIONS.contains(&ext.as_str()) {
+        return Err(format!("\"{name}\" isn't an audio file Comilito can play"));
+    }
+    let target_dir = category_folder_path(dir, category, folder);
+    fs::create_dir_all(&target_dir).map_err(|e| format!("could not create {}: {e}", target_dir.display()))?;
+    let target = unique_path(&target_dir, Path::new(&name));
+    fs::write(&target, bytes).map_err(|e| format!("could not save {}: {e}", target.display()))?;
+    let relative = target.strip_prefix(dir).expect("target was built inside dir");
+    file_info(dir, relative)
+}
+
 /// Moves a sound's file into `audio/<category>/<folder>/` (renamed if the name is taken
 /// there) and returns its updated `FileInfo`. The hash is kept: the content doesn't change.
 pub fn move_audio_file(dir: &Path, info: &FileInfo, category: Category, folder: &str) -> Result<FileInfo, String> {
@@ -562,6 +578,18 @@ mod tests {
         assert_eq!(moved.path, "audio/music/theme.ogg");
         delete_empty_folder(&dir, Category::Music, "Ravenloft").unwrap();
         assert!(list_folders(&dir).music.is_empty());
+    }
+
+    #[test]
+    fn dropped_files_are_saved_with_unique_names_and_checked() {
+        let root = TempDir::new();
+        let dir = create_project(&root.0, "P", ProjectDefaults::default()).unwrap();
+        let a = save_dropped_file(&dir, Category::Effects, "Doors", "creak.ogg", b"one").unwrap();
+        let b = save_dropped_file(&dir, Category::Effects, "Doors", "creak.ogg", b"two").unwrap();
+        assert_eq!(a.path, "audio/effects/Doors/creak.ogg");
+        assert_eq!(b.path, "audio/effects/Doors/creak (2).ogg");
+        assert!(save_dropped_file(&dir, Category::Effects, "", "notes.txt", b"x").is_err());
+        assert!(save_dropped_file(&dir, Category::Effects, "", "../../evil.mp3", b"x").unwrap().path.starts_with("audio/effects/"));
     }
 
     #[test]

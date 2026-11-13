@@ -206,7 +206,7 @@ pub fn probe(tools_dir: &Path, url: &str) -> Result<Probe, String> {
 }
 
 /// Decodes `%20`-style escapes in a file name taken from a URL.
-fn percent_decode(s: &str) -> String {
+pub fn percent_decode(s: &str) -> String {
     let bytes = s.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
