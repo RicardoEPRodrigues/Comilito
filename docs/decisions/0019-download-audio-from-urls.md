@@ -30,9 +30,13 @@ a network connection, and project folders must stay self-contained (0006).
 - **ffmpeg** is required for time ranges and conversions (yt-dlp uses it for both).
 - **Comilito downloads and manages the tools itself** (owner's choice: more disk space, less
   work for the user):
-  - The first time "From URL" (or cropping, 0020) needs them, Comilito downloads the official
-    yt-dlp and ffmpeg builds for the platform into the app data folder, showing progress.
-  - The SHA-256 of each download is checked against the published checksums.
+  - The first time "From URL" (or cropping, 0020) needs them, Comilito downloads the tools for
+    the platform into the app data folder, showing progress:
+    - yt-dlp: its GitHub releases (standalone binaries for Linux, Windows and macOS).
+    - ffmpeg: ffmpeg.org publishes no binaries, so Comilito uses the builds yt-dlp recommends
+      (`yt-dlp/FFmpeg-Builds` on GitHub, Linux and Windows). macOS needs another source, decided
+      when macOS support is added.
+  - The SHA-256 of each download is checked against the checksums published with the release.
   - It never relies on a system install, so the version is known and the behaviour is the same everywhere.
   - Comilito checks for yt-dlp updates (at most once a day, when the dialog opens), since sites
     change often and an old yt-dlp stops working. The version is shown with a "check for updates" link.
