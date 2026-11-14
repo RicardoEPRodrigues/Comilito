@@ -71,7 +71,8 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 - **Ambience roles:** every layer now has a role, and new layers start as Foreground; "No role"
   is gone (layers that had none become Foreground). The role can be changed right in the
   Tapestry, next to each layer of an expanded scene. A scene with no ambience of its own no
-  longer ducks the ambience below it.
+  longer ducks the ambience below it, unless its new *Duck all the ambience below* switch (in
+  the scene editor) is on.
 - The app icon is the plain horse-skull mark at every size; the decorated version was too busy.
 
 ### Fixed

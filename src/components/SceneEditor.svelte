@@ -221,6 +221,12 @@
       </div>
     {/each}
     <div class="under">{@render picker("ambience", "Add ambience layer")}<span class="muted small">or drag sounds here from the Library</span></div>
+    <label class="switch">
+      <input type="checkbox" checked={draft.ducksAll ?? false} onchange={(e) => (draft.ducksAll = e.currentTarget.checked || undefined)} />
+      <span class="small">
+        Duck all the ambience below, whatever its role{draft.ambience.length === 0 ? " (this scene has none of its own)" : ""}
+      </span>
+    </label>
   </section>
 
   <section>

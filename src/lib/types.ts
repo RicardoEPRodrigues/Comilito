@@ -96,6 +96,8 @@ export interface Scene {
   music: Playlist | null;
   /** For a scene without music: silence the music of the scenes below. */
   blocksMusic?: boolean;
+  /** Duck all the ambience below, whatever its role (decision 0031). */
+  ducksAll?: boolean;
   ambience: Layer[];
   effects: string[];
   duckLevel?: number;

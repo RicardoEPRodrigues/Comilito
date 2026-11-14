@@ -155,7 +155,11 @@
     if (scene.ambience.length) parts.push(`${scene.ambience.length} ambience layer${scene.ambience.length === 1 ? "" : "s"}`);
     if (scene.effects.length) parts.push(`${scene.effects.length} effect${scene.effects.length === 1 ? "" : "s"}`);
     const duck = scene.duckLevel ?? project.defaults.duckLevel;
-    if (duck < 1 && entry.id !== displayed[displayed.length - 1]?.id) parts.push(`ducks below to ${percent(duck)}`);
+    // A scene only ducks the roles it has layers for, unless it ducks everything.
+    const ducks = scene.ducksAll || scene.ambience.length > 0;
+    if (ducks && duck < 1 && entry.id !== displayed[displayed.length - 1]?.id) {
+      parts.push(`${scene.ducksAll ? "ducks all ambience below" : "ducks below"} to ${percent(duck)}`);
+    }
     return parts.join(" · ") || "No sounds yet";
   }
 

@@ -67,9 +67,11 @@ For each enabled scene above a layer with role R:
 | Scene above… | Effect |
 |---|---|
 | has a layer with role R | ducked (that role is taken over) |
-| has no layer with role R | not ducked by this scene |
+| has **Duck all the ambience below** on (`ducksAll`) | ducked, whatever the role |
+| otherwise | not ducked by this scene |
 
-So a scene with no ambience (music only, say) ducks nothing below it. The role is set in the
+So a scene with no ambience (music only, say) ducks nothing below it, unless it has
+*Duck all the ambience below* switched on ([0031](decisions/0031-scenes-that-duck-all-ambience.md)). The role is set in the
 scene editor, or from the role picker next to each layer in an expanded tapestry entry.
 
 ### Volumes
@@ -246,6 +248,8 @@ or preset load it's the top scene's.
 - `music`: `null` when the scene has no music, which leaves lower music playing.
 - `blocksMusic`: optional, only written when `true`. For a scene without music: silence the music
   of the scenes below while this scene is enabled.
+- `ducksAll`: optional, only written when `true`. Duck every ambience layer below, whatever its
+  role ([0031](decisions/0031-scenes-that-duck-all-ambience.md)).
 - `duckLevel`: the volume this scene leaves the ambience below it at (0.3 = 30%; 1 = no ducking; 0 = silence).
   Optional: if missing, the project default is used (see [preferences.md](preferences.md)).
 - `volumes`: optional, `{ "music": 0.3, "ambience": 0.9, "effects": 1.0 }`. The category volumes

@@ -262,6 +262,11 @@ pub struct Scene {
     pub blocks_music: bool,
     #[serde(default)]
     pub ambience: Vec<Layer>,
+    /// Duck every ambience layer below while enabled, whatever its role, instead of only the
+    /// roles this scene has layers for. Lets a scene with no ambience (music only, say) still
+    /// turn the ambience below down. Only written when true.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ducks_all: bool,
     /// Sound ids shown on the effects pad.
     #[serde(default)]
     pub effects: Vec<String>,
@@ -857,6 +862,7 @@ mod tests {
             duck_level: None,
             transition_ms: None,
         blocks_music: false,
+        ducks_all: false,
         volumes: None,
         });
         project.stack.push(StackEntry {

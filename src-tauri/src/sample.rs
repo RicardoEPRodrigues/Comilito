@@ -54,6 +54,7 @@ pub fn fill_sample_project(dir: &Path, sample_dir: &Path, project: &mut Project)
         duck_level: None,
         transition_ms: None,
         blocks_music: false,
+        ducks_all: false,
         volumes: None,
     };
 

@@ -36,6 +36,7 @@
     else if (s.blocksMusic) parts.push("Silences music");
     if (s.ambience.length) parts.push(`${s.ambience.length} layer${s.ambience.length === 1 ? "" : "s"}`);
     if (s.effects.length) parts.push(`${s.effects.length} effect${s.effects.length === 1 ? "" : "s"}`);
+    if (s.ducksAll) parts.push("Ducks all ambience");
     return parts.join(" · ") || "Empty";
   }
 

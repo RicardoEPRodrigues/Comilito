@@ -11,7 +11,6 @@
 
 ## Bugs
 
-- add options in scenes without no ambience to duck ambiences of lower scenes.
 - volume sliders should be animated when switching between scenes.
 
 ## Platforms

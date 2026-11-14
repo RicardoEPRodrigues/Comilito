@@ -80,8 +80,9 @@ pub fn target_mix(project: &Project) -> TargetMix {
             // Multiply by the duck level of every scene above that ducks this layer.
             let ducking: f32 = scenes_above
                 .iter()
-                // Only scenes that have a layer with the same role take it over.
-                .filter(|(_, above)| above.ambience.iter().any(|l| l.role == layer.role))
+                // Only scenes that have a layer with the same role take it over, or that duck
+                // everything below (`ducks_all`).
+                .filter(|(_, above)| above.ducks_all || above.ambience.iter().any(|l| l.role == layer.role))
                 .map(|(_, above)| project.scene_duck_level(above))
                 .product();
 
@@ -138,6 +139,7 @@ mod tests {
             duck_level: None,
             transition_ms: None,
         blocks_music: false,
+        ducks_all: false,
         volumes: None,
         }
     }
@@ -325,6 +327,17 @@ mod tests {
 
         assert!(approx(mix.ambience["stream"], 0.4));
         assert!(approx(mix.ambience["birds"], 0.8));
+    }
+
+    #[test]
+    fn a_scene_that_ducks_all_ducks_every_role() {
+        let mut p = example_project();
+        p.scenes[0].ducks_all = true; // travelling music, which has no ambience
+        set_stack(&mut p, &[("forest", true), ("music", true)]);
+        let mix = target_mix(&p);
+
+        assert!(approx(mix.ambience["stream"], 0.4 * 0.3));
+        assert!(approx(mix.ambience["birds"], 0.8 * 0.3));
     }
 
     #[test]

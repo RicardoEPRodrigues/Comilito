@@ -94,6 +94,8 @@ On each scene (added 2026-11-14, still version 2):
 - `volumes`: `{ music, ambience, effects }`, the category volumes while the scene is on top of the
   stack ([0028](decisions/0028-scene-volumes.md)). Without it, the project's `categories` volumes
   are used, so `categories` now means "the volumes of scenes that don't set their own".
+- `ducksAll`: optional, only written when `true`: the scene ducks all the ambience below it,
+  whatever the role ([0031](decisions/0031-scenes-that-duck-all-ambience.md)).
 - Ambience layers: `role` is always written; a layer without one loads as `foreground`
   ([0029](decisions/0029-every-layer-has-a-role.md)). Older versions of the app read it as before.
 - `file.loudness.durationMs`: the length, measured with the loudness. Files measured before

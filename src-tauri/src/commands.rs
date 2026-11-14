@@ -1174,6 +1174,7 @@ pub fn create_scene(
         duck_level: None,
         transition_ms: None,
         blocks_music: false,
+        ducks_all: false,
         volumes: None,
     });
     s.project_changed(Duration::ZERO);
