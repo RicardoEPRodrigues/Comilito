@@ -45,6 +45,8 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 - **Backspace removes the top scene** from the Tapestry. The key can be changed (or turned off)
   in Preferences › Behaviour › Shortcuts.
 - **Middle-click** a scene in the Tapestry to disable it, and again to enable it.
+- The **Library drawer can be resized** by dragging its top edge; double-click the edge to go
+  back to the default size. The size is remembered.
 
 ### Changed
 

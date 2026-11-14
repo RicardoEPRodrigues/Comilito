@@ -107,6 +107,8 @@ export const ui = $state({
   view: "tapestry" as "tapestry" | "library",
   leftTab: remembered<"scenes" | "presets">("leftTab", "scenes"),
   drawerOpen: remembered<boolean>("drawerOpen", true),
+  /** Height of the open Library drawer in px, once resized; null = the default size. */
+  drawerHeight: remembered<number | null>("drawerHeight", null),
   /** Scene / preset group headings the user folded away. */
   collapsed: remembered<string[]>("collapsed", []),
   library: {

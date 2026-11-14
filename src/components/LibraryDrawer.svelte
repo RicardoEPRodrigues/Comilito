@@ -54,6 +54,36 @@
     remember("drawerOpen", open);
   }
 
+  // Resizing: drag the top edge of the open drawer. The height is kept between a minimum
+  // that still shows a few rows and most of the window, and remembered on this computer.
+  const MIN_HEIGHT = 160;
+  const maxHeight = () => Math.round(window.innerHeight * 0.75);
+  let resizing: { startY: number; startHeight: number } | null = null;
+
+  function resizeStart(e: PointerEvent) {
+    if (e.button !== 0) return;
+    const drawer = (e.currentTarget as HTMLElement).parentElement!;
+    resizing = { startY: e.clientY, startHeight: drawer.getBoundingClientRect().height };
+    // Pointer capture keeps the moves coming to the handle even when the pointer leaves it.
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    e.preventDefault();
+  }
+  function resizeMove(e: PointerEvent) {
+    if (!resizing) return;
+    // Dragging up (smaller clientY) makes the drawer taller.
+    const height = resizing.startHeight + (resizing.startY - e.clientY);
+    ui.drawerHeight = Math.round(Math.min(maxHeight(), Math.max(MIN_HEIGHT, height)));
+  }
+  function resizeEnd() {
+    if (!resizing) return;
+    resizing = null;
+    remember("drawerHeight", ui.drawerHeight);
+  }
+  function resetHeight() {
+    ui.drawerHeight = null;
+    remember("drawerHeight", null);
+  }
+
   /** A category's matching sounds, grouped: the category folder first, then each folder. */
   function columns(category: Category): { folder: string; sounds: Sound[] }[] {
     const inCategory = matches.filter((s) => s.category === category);
@@ -115,7 +145,25 @@
   <button class="icon" title="Open the Library workspace" onclick={() => showView("library")}><Maximize2 size={16} /></button>
 {/snippet}
 
-<section class="drawer" class:open={ui.drawerOpen}>
+<section
+  class="drawer"
+  class:open={ui.drawerOpen}
+  style:height={ui.drawerOpen && ui.drawerHeight ? `min(${ui.drawerHeight}px, 75vh)` : null}
+>
+  {#if ui.drawerOpen}
+    <div
+      class="resize"
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label="Resize the Library"
+      title="Drag to resize · double-click for the default size"
+      onpointerdown={resizeStart}
+      onpointermove={resizeMove}
+      onpointerup={resizeEnd}
+      onpointercancel={resizeEnd}
+      ondblclick={resetHeight}
+    ></div>
+  {/if}
   <div class="bar">
     <button class="icon toggle" title={ui.drawerOpen ? "Hide the Library" : "Show the Library"} onclick={() => setOpen(!ui.drawerOpen)}>
       {#if ui.drawerOpen}<ChevronDown size={16} />{:else}<ChevronUp size={16} />{/if}
@@ -208,6 +256,21 @@
   }
   .drawer.open {
     height: clamp(14rem, 32vh, 22rem);
+    position: relative;
+  }
+  /* A strip over the top border; taller than it looks, so it's easy to grab. */
+  .resize {
+    position: absolute;
+    top: -4px;
+    left: 0;
+    right: 0;
+    height: 8px;
+    cursor: ns-resize;
+    z-index: 5;
+    touch-action: none;
+  }
+  .resize:hover {
+    background: linear-gradient(transparent 3px, var(--accent) 3px, var(--accent) 5px, transparent 5px);
   }
   .bar {
     display: flex;
