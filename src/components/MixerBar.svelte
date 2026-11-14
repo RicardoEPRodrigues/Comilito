@@ -1,9 +1,10 @@
 <script lang="ts">
   // Bottom bar: play/pause and stop, the project's master volume, and the category volumes
-  // of the top-most enabled scene (decision 0028).
-  import { Pause, Play, Square } from "@lucide/svelte";
+  // of the top-most enabled scene (decision 0028). While a sound is previewed, a chip names it
+  // and stops it, wherever it was started from.
+  import { Headphones, Pause, Play, Square } from "@lucide/svelte";
   import { api } from "../lib/api";
-  import { run, sceneById, ui } from "../lib/store.svelte";
+  import { run, sceneById, soundById, ui } from "../lib/store.svelte";
   import { CATEGORIES } from "../lib/types";
   import VolumeSlider from "./VolumeSlider.svelte";
 
@@ -11,6 +12,7 @@
   const mix = $derived(ui.snapshot!.mix);
   const transport = $derived(ui.snapshot!.playback.transport);
   const topScene = $derived(mix.volumesScene ? sceneById(mix.volumesScene) : undefined);
+  const previewing = $derived(ui.snapshot!.playback.preview ? soundById(ui.snapshot!.playback.preview) : undefined);
 </script>
 
 <footer>
@@ -35,6 +37,11 @@
     </div>
   </div>
   <span class="spacer"></span>
+  {#if previewing}
+    <button class="preview" onclick={() => run(api.stopPreview())} title="Stop the preview">
+      <Headphones size={14} /><span class="name">{previewing.name}</span><Square size={11} />
+    </button>
+  {/if}
   <span class="hint">
     {transport === "stopped" ? "Stopped" : transport === "paused" ? "Paused" : "Playing"} · Space pause · Esc stop
   </span>
@@ -98,6 +105,21 @@
   }
   .spacer {
     flex: 1;
+  }
+  .preview {
+    gap: 0.45rem;
+    max-width: 16rem;
+    border-color: var(--mixer-text);
+    color: var(--mixer-text);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.8rem;
+    padding: 0.35rem 0.6rem;
+  }
+  .preview .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .hint {
     font-size: 0.65rem;

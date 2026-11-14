@@ -62,6 +62,8 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 
 ### Fixed
 
+- A sound previewed in an editor kept playing after leaving it. Previews now stop when their
+  editor closes, and the bottom bar shows what's being previewed with a button to stop it.
 - In the Library drawer, folding a folder now hides its subfolders too.
 - Scenes can be dragged into a group: drop one on the group's heading or on a scene in it (or
   on an ungrouped scene to take it out of its group).

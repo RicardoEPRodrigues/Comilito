@@ -3,7 +3,8 @@
   // or type exact times; preview the selection or the loop seam; then save a copy (default)
   // or overwrite the original, whose file goes to the system trash. ffmpeg does the cutting.
   import { Play, Repeat, Scan, Scissors, Square, ZoomIn, ZoomOut } from "@lucide/svelte";
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
+  import { stopPreviewOnLeave } from "../lib/actions";
   import { api } from "../lib/api";
   import { formatBytes, notify, refreshTools, run, ui } from "../lib/store.svelte";
   import type { Sound } from "../lib/types";
@@ -13,6 +14,7 @@
   import { followPreview, wheelView, zoomView } from "../lib/wave";
 
   let { sound }: { sound: Sound } = $props();
+  onDestroy(() => stopPreviewOnLeave(sound.id));
 
   let duration = $state(0);
   let view = $state({ start: 0, end: 0 });

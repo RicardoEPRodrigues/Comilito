@@ -18,9 +18,9 @@
     X,
   } from "@lucide/svelte";
   import { openUrl } from "@tauri-apps/plugin-opener";
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { api } from "../lib/api";
-  import { moveSounds, relinkOne, removeSound } from "../lib/actions";
+  import { moveSounds, relinkOne, removeSound, stopPreviewOnLeave } from "../lib/actions";
   import { formatDb, normalizationGainDb } from "../lib/loudness";
   import { askText, focusOn, folderOf, formatBytes, formatDuration, run, scenesUsing, soundById, ui } from "../lib/store.svelte";
   import { CATEGORIES, type Category, type Sound } from "../lib/types";
@@ -31,6 +31,7 @@
   import { followPreview, wheelView, type View } from "../lib/wave";
 
   let { id }: { id: string } = $props();
+  onDestroy(() => stopPreviewOnLeave(id));
 
   // svelte-ignore state_referenced_locally
   const original = soundById(id)!;

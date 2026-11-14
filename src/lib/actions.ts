@@ -348,3 +348,16 @@ export async function relinkOne(soundId: string) {
   const path = await open({ title: `Locate the audio for “${name}”`, filters: [{ name: "Audio", extensions: AUDIO_EXTENSIONS }] });
   if (typeof path === "string") await run(api.relinkSound(soundId, path));
 }
+
+// ---- Previews ---------------------------------------------------------------------------------
+
+/**
+ * Stops the preview when the editor it was started in closes, so it doesn't keep playing
+ * unseen (TODO.md). With `soundId`, only if that sound is the one previewing: the Library's
+ * sound editor is recreated whenever the selection changes, and a preview started from another
+ * row should survive that. The mixer bar can stop any preview too.
+ */
+export function stopPreviewOnLeave(soundId?: string) {
+  const playing = ui.snapshot?.playback.preview;
+  if (playing && (soundId === undefined || playing === soundId)) run(api.stopPreview());
+}

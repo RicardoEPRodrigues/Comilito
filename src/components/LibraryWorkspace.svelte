@@ -5,7 +5,9 @@
   // The list only draws the rows that are on screen ("virtual scrolling"), so a library with
   // thousands of sounds scrolls as smoothly as one with ten.
   import { ArrowDownAZ, FolderOpen, Play, Square, Star, TriangleAlert } from "@lucide/svelte";
+  import { onDestroy } from "svelte";
   import { api } from "../lib/api";
+  import { stopPreviewOnLeave } from "../lib/actions";
   import { findSounds, soundDragStart, tapestrySoundIds, type Filter } from "../lib/library";
   import { durationOf, formatBytes, formatDuration, folderOf, run, ui } from "../lib/store.svelte";
   import { CATEGORIES, type Sound } from "../lib/types";
@@ -17,6 +19,8 @@
   const snapshot = $derived(ui.snapshot!);
   const project = $derived(snapshot.project!);
   const lib = ui.library;
+  // Leaving the Library stops whatever was being previewed there.
+  onDestroy(() => stopPreviewOnLeave());
 
   let sort = $state<"name" | "recent" | "size" | "loudness">("name");
 

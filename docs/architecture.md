@@ -114,6 +114,9 @@ the download and tools events.
 - **Effects:** loaded into memory (cached) so they start instantly. A pad button is a toggle:
   clicking an effect that's still playing stops it (so a looping effect is an on/off switch).
 - **Previews** (▶ in the library) play straight into the main track, so they're heard even while paused.
+  Only one plays at a time. It stops when the editor it was started from closes (a sound or
+  crop editor, the scene editor, the Library workspace), and the mixer bar shows the previewed
+  sound with a button to stop it from anywhere.
 - Fades on scene changes use the scene's `transitionMs` (or the sound's own fade-in, if longer).
 - **Loudness normalization** ([0015](decisions/0015-loudness-normalization.md)): every sound's
   playback volume is its linear volume plus a gain in dB that brings it to the project's target

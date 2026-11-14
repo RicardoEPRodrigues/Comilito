@@ -4,7 +4,8 @@
   // the whole scene to Rust. Sounds can be dragged in from the Library drawer.
   import { ArrowDown, ArrowUp, ArrowUpToLine, AudioLines, Music, Plus, X, Zap } from "@lucide/svelte";
   import { api } from "../lib/api";
-  import { addSceneOnTop } from "../lib/actions";
+  import { onDestroy } from "svelte";
+  import { addSceneOnTop, stopPreviewOnLeave } from "../lib/actions";
   import { project, run, sceneById, soundById, ui } from "../lib/store.svelte";
   import { ROLES, type Category, type Role, type Scene } from "../lib/types";
   import { confirmLeave, fingerprint } from "../lib/unsaved";
@@ -13,6 +14,8 @@
   import Watermark from "./Watermark.svelte";
 
   let { id }: { id: string } = $props();
+  // Sounds previewed from this editor stop when it closes.
+  onDestroy(() => stopPreviewOnLeave());
 
   // svelte-ignore state_referenced_locally
   const original = sceneById(id)!;
