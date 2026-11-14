@@ -13,6 +13,7 @@ import type {
   DesktopAppearance,
   DownloadJob,
   DownloadRequest,
+  OutputDevice,
   Preferences,
   PresetEntry,
   Probe,
@@ -32,6 +33,7 @@ export const api = {
   getState: () => invoke<Snapshot>("get_state"),
   getPreferences: () => invoke<Preferences>("get_preferences"),
   setPreferences: (prefs: Preferences) => invoke<void>("set_preferences", { prefs }),
+  listOutputDevices: () => invoke<{ devices: OutputDevice[]; defaultId: string | null }>("list_output_devices"),
 
   // Appearance
   desktopAppearance: () => invoke<DesktopAppearance>("desktop_appearance"),

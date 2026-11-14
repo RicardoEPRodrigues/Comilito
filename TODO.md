@@ -16,6 +16,8 @@
 
 - macOS: choose where ffmpeg comes from (decision 0019); the app currently expects one on the PATH.
 - Windows: the desktop accent colour (registry) and the downloaded tools are untested.
+- Windows and macOS: choosing the audio output (decision 0032) lists devices through cpal's own
+  hosts there; untested.
 - Windows and macOS: the OS media controls (decision 0030) compile but are untested. On
   Windows they're tied to the main window's handle, created from a background thread.
 - Windows and macOS: dropping audio files onto the window (decision 0022) uses a different path
@@ -27,11 +29,6 @@
 
 ### Documented but not built yet
 
-- Choosing the audio output device. It's in docs/preferences.md (Playback › Audio output device)
-  and decision 0012, and the README lists it under "Not yet". The engine always opens the system
-  default (`src-tauri/src/audio.rs`). Decision 0012 says to first check that kira's cpal backend
-  can pick a device; it should also cope with the device disappearing (USB headset unplugged) by
-  falling back to the default.
 - Warning when quitting during hashing or a backup. docs/preferences.md lists a "Warn when
   quitting during hashing or backup" setting (default on) and the README lists it under "Not
   yet"; neither the setting nor the warning exists.
@@ -39,6 +36,9 @@
 ### Docs out of date
 
 ### Other checks
+
+- Audio output: unplugging a chosen output while playing should move the sound to the system
+  default (kira does it). Not tried with real hardware; worth one try with the headset.
 
 - Downloads of only part of a video can't report a percentage (ffmpeg does the download), so they
   show "downloading the selected part…" instead. Consider estimating progress from ffmpeg's

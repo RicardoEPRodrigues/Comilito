@@ -2,12 +2,12 @@
   // App preferences (this computer, docs/preferences.md): levels for new projects, playback,
   // projects folder and download tools, behaviour, and appearance. Never changes existing
   // projects. Appearance changes preview live and are undone if you cancel.
-  import { FolderOpen, MousePointerClick, Palette, Play, SlidersHorizontal } from "@lucide/svelte";
+  import { FolderOpen, MousePointerClick, Palette, Play, RefreshCw, SlidersHorizontal } from "@lucide/svelte";
   import { open } from "@tauri-apps/plugin-dialog";
   import type { Component } from "svelte";
   import { api } from "../lib/api";
   import { ask, confirmAction, formatBytes, moveProjects, notify, openLogs, refreshTools, run, ui } from "../lib/store.svelte";
-  import type { Preferences } from "../lib/types";
+  import type { OutputDevice, Preferences } from "../lib/types";
   import { CATEGORIES } from "../lib/types";
   import { closeEditor, fingerprint } from "../lib/unsaved";
   import AppearancePage from "./AppearancePage.svelte";
@@ -102,6 +102,23 @@
     if (answer?.choice === "keep" || answer?.choice === "all") await run(api.forgetAllData(answer.choice === "keep"));
   }
 
+  // Audio outputs, listed when the Playback page is shown (and on Refresh, after plugging
+  // something in).
+  let outputs = $state<{ devices: OutputDevice[]; defaultId: string | null } | null>(null);
+  async function refreshOutputs() {
+    outputs = (await run(api.listOutputDevices())) ?? { devices: [], defaultId: null };
+  }
+  $effect(() => {
+    if (page === "playback" && outputs === null) refreshOutputs();
+  });
+  const defaultName = $derived(outputs?.devices.find((d) => d.id === outputs?.defaultId)?.name);
+  /** The saved output, when it isn't connected right now (so it's still shown as chosen). */
+  const missingOutput = $derived(
+    draft?.playback.outputDevice && outputs && !outputs.devices.some((d) => d.id === draft?.playback.outputDevice)
+      ? draft.playback.outputDevice
+      : null,
+  );
+
   const pct = (v: number) => Math.round(v * 100);
   const seconds = (ms: number) => ms / 1000;
   const toMs = (s: number) => Math.round(Math.max(0, s || 0) * 1000);
@@ -140,6 +157,22 @@
           <DefaultsForm bind:defaults={draft.newProjectDefaults.defaults} bind:backups={draft.newProjectDefaults.backups} />
         {:else if page === "playback"}
           <section class="form">
+            <div class="row">
+              <span>Audio output</span>
+              <select
+                value={draft.playback.outputDevice ?? ""}
+                onchange={(e) => (draft!.playback.outputDevice = e.currentTarget.value || null)}
+              >
+                <option value="">System default{defaultName ? ` (${defaultName})` : ""}</option>
+                {#each outputs?.devices ?? [] as d (d.id)}<option value={d.id}>{d.name}</option>{/each}
+                {#if missingOutput}<option value={missingOutput}>{missingOutput} (not connected)</option>{/if}
+              </select>
+              <button class="icon" title="Look for outputs again" onclick={refreshOutputs}><RefreshCw size={15} /></button>
+            </div>
+            <p class="muted small">
+              The system default follows your desktop's sound settings. A chosen output that's
+              unplugged falls back to the system default. Changing it restarts what's playing.
+            </p>
             <label class="row">
               <span>Pause / resume fade (Space)</span>
               <input type="number" min="0" max="10" step="0.1" value={seconds(draft.playback.pauseFadeMs)}

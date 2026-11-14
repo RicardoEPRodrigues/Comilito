@@ -47,6 +47,8 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 - **Middle-click** a scene in the Tapestry to disable it, and again to enable it.
 - The **Library drawer can be resized** by dragging its top edge; double-click the edge to go
   back to the default size. The size is remembered.
+- **Choose the audio output** in Preferences › Playback (for example the table's speakers while
+  your headset is on a call). By default Comilito follows the desktop's default output.
 - **Media keys and the desktop's media controls** play, pause and stop the Tapestry: Comilito
   registers with the OS as a media player, showing the top scene and the music playing.
 - **Smoother opening and closing:** the Library drawer slides open and shut, menus and dialogs

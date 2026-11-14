@@ -38,6 +38,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0029](0029-every-layer-has-a-role.md) | Every ambience layer has a role (Foreground by default) | Accepted (ducking everything: 0031) | 2026-11-14 |
 | [0030](0030-os-media-controls.md) | Register with the OS as a media player | Accepted | 2026-11-14 |
 | [0031](0031-scenes-that-duck-all-ambience.md) | A scene can duck all the ambience below | Accepted | 2026-11-14 |
+| [0032](0032-choosing-the-audio-output.md) | Choosing the audio output | Accepted | 2026-11-14 |
 
 ## Template
 

@@ -270,6 +270,29 @@ impl AppState {
             .apply_mix(&open.project, &open.dir, &open.mix, transition)
     }
 
+    /// Plays through another output (`None`: the system default). kira can't move a running
+    /// mix to another device, so the engine is rebuilt: what was playing starts again from
+    /// the beginning on the new output, and a paused mix stays stopped. Returns problems to
+    /// show the user.
+    pub fn switch_output(&mut self, device: Option<&str>) -> Vec<String> {
+        let (mut engine, warning) = match AudioEngine::new(device) {
+            Ok(created) => created,
+            Err(e) => return vec![format!("Couldn't switch the audio output: {e}")],
+        };
+        let was_playing = self.engine.playback_transport() == crate::audio::Transport::Playing;
+        let mut problems: Vec<String> = warning.into_iter().collect();
+        if let Some(open) = &self.open {
+            engine.apply_levels(&open.project, &open.mix, Duration::ZERO);
+            if was_playing {
+                let fade = Duration::from_millis(self.prefs.playback.pause_fade_ms as u64);
+                problems.extend(engine.toggle_play(&open.project, &open.dir, &open.mix, fade));
+            }
+        }
+        // The old engine is dropped here, which closes its output.
+        self.engine = engine;
+        problems
+    }
+
     /// Re-applies volumes after a small edit (a slider), with only a short smoothing fade.
     pub fn levels_changed(&mut self) -> Vec<String> {
         self.project_changed(VOLUME_SMOOTHING)

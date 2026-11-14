@@ -178,6 +178,12 @@ export interface PlaybackInfo {
   preview: string | null;
 }
 
+/** An audio output to choose from (Preferences › Playback). */
+export interface OutputDevice {
+  id: string;
+  name: string;
+}
+
 export interface Snapshot {
   /** How long the category volumes take to reach `mix.volumes`, for the mixer's sliders. */
   levelsFadeMs: number;
@@ -224,7 +230,8 @@ export interface Preferences {
   openLastProject: boolean;
   /** Most recent first. Kept by Rust; changes sent from here are ignored. */
   recentProjects: string[];
-  playback: { pauseFadeMs: number; stopFadeMs: number };
+  /** `outputDevice`: an `OutputDevice` id, or null for the system default. */
+  playback: { outputDevice: string | null; pauseFadeMs: number; stopFadeMs: number };
   behaviour: {
     duplicateInStack: "ask" | "move" | "duplicate";
     removeSound: "ask" | "trash";

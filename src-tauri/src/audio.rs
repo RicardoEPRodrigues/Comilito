@@ -23,6 +23,16 @@ use std::{
 
 use kira::{
     AudioManager, AudioManagerSettings, Decibels, DefaultBackend, Tween,
+    // kira plays through `cpal` and re-exports it, so the device list comes from the same
+    // version kira uses. `traits` brings the methods (`output_devices`, `id`...) into scope:
+    // in Rust a trait's methods can only be called where the trait is imported.
+    backend::cpal::{
+        CpalBackendSettings,
+        cpal::{
+            self,
+            traits::{DeviceTrait, HostTrait},
+        },
+    },
     sound::{
         FromFileError, PlaybackState,
         static_sound::{StaticSoundData, StaticSoundHandle},
@@ -41,6 +51,70 @@ use crate::{
 /// Volume changes are smoothed over this time. Jumping instantly makes a slider drag
 /// sound like small clicks ("zipper noise").
 pub const VOLUME_SMOOTHING: Duration = Duration::from_millis(50);
+
+/// An audio output the user can choose (Preferences › Playback, decision 0032).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputDevice {
+    /// Stable across runs, e.g. `pulseaudio:alsa_output.usb-…analog-stereo`; saved in the
+    /// preferences.
+    pub id: String,
+    /// What the desktop calls it, e.g. "Razer Barracuda X 2.4 Analog Stereo".
+    pub name: String,
+}
+
+/// The outputs available now, and which one the system uses by default.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputDevices {
+    pub devices: Vec<OutputDevice>,
+    pub default_id: Option<String>,
+}
+
+fn describe(device: &cpal::Device) -> Option<OutputDevice> {
+    let id = device.id().ok()?.to_string();
+    let name = device.description().map(|d| d.name().to_string()).unwrap_or_else(|_| id.clone());
+    Some(OutputDevice { id, name })
+}
+
+/// Lists the outputs through the same host kira uses (on Linux, the PulseAudio protocol that
+/// PipeWire also speaks, so these are the outputs the desktop's sound settings show).
+pub fn output_devices() -> OutputDevices {
+    let host = cpal::default_host();
+    let devices = host
+        .output_devices()
+        .map(|list| list.filter_map(|d| describe(&d)).collect())
+        .unwrap_or_default();
+    let default_id = host.default_output_device().and_then(|d| describe(&d)).map(|d| d.id);
+    OutputDevices { devices, default_id }
+}
+
+/// The output to use when none is chosen. On Linux that's ALSA's "default", which PipeWire or
+/// PulseAudio route to the desktop's default output (and move along when it changes), exactly
+/// as before outputs could be chosen; the stream keeps its usual name in the desktop's volume
+/// mixer. Elsewhere `None` lets kira use the system default.
+///
+/// (With cpal's PulseAudio host compiled in, kira would otherwise open the default through it,
+/// and that host names every stream "cpal-pulseaudio-<process id>", so the desktop couldn't
+/// remember Comilito's volume between runs.)
+fn system_default_output() -> Option<cpal::Device> {
+    #[cfg(target_os = "linux")]
+    {
+        cpal::host_from_id(cpal::HostId::Alsa).ok()?.default_output_device()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        None
+    }
+}
+
+/// Finds an output by the id saved in the preferences, if it's connected now.
+fn find_output(id: &str) -> Option<cpal::Device> {
+    cpal::default_host()
+        .output_devices()
+        .ok()?
+        .find(|d| d.id().is_ok_and(|device_id| device_id.to_string() == id))
+}
 
 /// kira's handle type for a sound streamed from a file. A type alias is just a shorter name.
 type Stream = StreamingSoundHandle<FromFileError>;
@@ -117,13 +191,30 @@ pub struct AudioEngine {
 }
 
 impl AudioEngine {
-    /// Opens the default audio output device and builds the category tracks.
+    /// Opens an audio output and builds the category tracks: the one with id `device` if
+    /// given and connected, otherwise the system default. The second value is a message for
+    /// the user when the chosen output wasn't found.
+    ///
+    /// If the chosen output disappears later (a headset unplugged), kira moves to the system
+    /// default by itself. The system default follows the desktop when its default changes.
     ///
     /// Returns `Result` because this can fail (no sound card, device busy...).
     /// `Result<T, E>` is Rust's replacement for exceptions: the caller *must* handle
     /// the error case before it can use the value.
-    pub fn new() -> Result<Self, String> {
-        let mut manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default())
+    pub fn new(device: Option<&str>) -> Result<(Self, Option<String>), String> {
+        let chosen = device.map(|id| (id, find_output(id)));
+        let warning = match &chosen {
+            Some((id, None)) => Some(format!(
+                "The chosen audio output ({id}) isn't connected; using the system default."
+            )),
+            _ => None,
+        };
+        let device = chosen.and_then(|(_, found)| found).or_else(system_default_output);
+        let settings = AudioManagerSettings {
+            backend_settings: CpalBackendSettings { device, config: None },
+            ..AudioManagerSettings::default()
+        };
+        let mut manager = AudioManager::<DefaultBackend>::new(settings)
             .map_err(|e| format!("could not open audio output: {e}"))?;
 
         // A closure (an inline function, like a C++ lambda) to avoid writing this three times.
@@ -137,7 +228,7 @@ impl AudioEngine {
         let ambience_track = add_track()?;
         let effects_track = add_track()?;
 
-        Ok(Self {
+        let engine = Self {
             manager,
             music_track,
             ambience_track,
@@ -150,7 +241,8 @@ impl AudioEngine {
             preview_stop_at: None,
             preview_offset: 0.0,
             effect_cache: HashMap::new(),
-        })
+        };
+        Ok((engine, warning))
     }
 
     /// Returns the mixer track for a category.
@@ -789,3 +881,4 @@ mod tests {
         assert_eq!(p.position, 0);
     }
 }
+

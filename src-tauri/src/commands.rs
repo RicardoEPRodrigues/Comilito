@@ -76,12 +76,25 @@ pub fn get_preferences(state: AppStateRef) -> Result<Preferences, String> {
 }
 
 #[tauri::command]
-pub fn set_preferences(mut prefs: Preferences, state: AppStateRef) -> Result<(), String> {
+pub fn set_preferences(mut prefs: Preferences, app: AppHandle, state: AppStateRef) -> Result<(), String> {
     let mut s = lock(&state)?;
     // Rust keeps the recent list (see Preferences::recent_projects).
     prefs.recent_projects = std::mem::take(&mut s.prefs.recent_projects);
+    let output_changed = prefs.playback.output_device != s.prefs.playback.output_device;
     s.prefs = prefs;
-    s.save_prefs()
+    s.save_prefs()?;
+    if output_changed {
+        let device = s.prefs.playback.output_device.clone();
+        let problems = s.switch_output(device.as_deref());
+        emit_state(&app, &s, problems);
+    }
+    Ok(())
+}
+
+/// The audio outputs to choose from in Preferences › Playback.
+#[tauri::command]
+pub fn list_output_devices() -> crate::audio::OutputDevices {
+    crate::audio::output_devices()
 }
 
 // ---- Appearance -----------------------------------------------------------------------------

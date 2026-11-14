@@ -58,11 +58,17 @@ pub fn run() {
             let data_dir = app.path().app_data_dir()?;
             logging::init(&data_dir.join("logs"));
 
+            let config_dir = app.path().config_dir()?.join("comilito");
+            let prefs = prefs::load(&config_dir);
+
             // Without audio output the app is useless, so refuse to start with a clear message
             // (in the log too: it may have been started without a terminal).
-            let engine = AudioEngine::new().inspect_err(|e| logging::error(&format!("can't start: {e}")))?;
+            let (engine, warning) = AudioEngine::new(prefs.playback.output_device.as_deref())
+                .inspect_err(|e| logging::error(&format!("can't start: {e}")))?;
+            if let Some(warning) = warning {
+                logging::warn(&warning);
+            }
 
-            let config_dir = app.path().config_dir()?.join("comilito");
             // Some systems don't define a Documents folder (on Linux, no XDG_DOCUMENTS_DIR in
             // user-dirs.dirs). Fall back to ~/Documents rather than refusing to start.
             // `.or_else(...)` tries the second lookup only if the first returned an error.
@@ -71,7 +77,6 @@ pub fn run() {
                 .document_dir()
                 .or_else(|_| app.path().home_dir().map(|home| home.join("Documents")))?;
             let default_projects_root = documents.join("Comilito");
-            let prefs = prefs::load(&config_dir);
             let backups_dir = data_dir.join("backups");
             // Older versions kept backups in `<projects folder>/Backups`. Move them in the
             // background (it may copy across disks); new backups already go to the new place.
@@ -126,6 +131,7 @@ pub fn run() {
             commands::get_state,
             commands::get_preferences,
             commands::set_preferences,
+            commands::list_output_devices,
             commands::desktop_appearance,
             commands::list_user_themes,
             commands::save_user_theme,

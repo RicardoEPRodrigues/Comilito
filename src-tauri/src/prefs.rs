@@ -61,6 +61,10 @@ pub struct Preferences {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Playback {
+    /// The audio output to play through (an `OutputDevice` id); `None` follows the system
+    /// default (decision 0032).
+    #[serde(default)]
+    pub output_device: Option<String>,
     pub pause_fade_ms: u32,
     pub stop_fade_ms: u32,
 }
@@ -153,6 +157,7 @@ impl Default for Preferences {
 impl Default for Playback {
     fn default() -> Self {
         Self {
+            output_device: None,
             pause_fade_ms: 300,
             stop_fade_ms: 1000,
         }
@@ -266,6 +271,7 @@ mod tests {
         assert_eq!(prefs.behaviour.duplicate_in_stack, "move");
         assert_eq!(prefs.behaviour.unsaved_changes, "ask");
         assert_eq!(prefs.shortcuts.remove_top_scene, "Backspace");
+        assert_eq!(prefs.playback.output_device, None, "the system default");
     }
 
     #[test]

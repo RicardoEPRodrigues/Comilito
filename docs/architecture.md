@@ -33,6 +33,8 @@ Built on [kira](https://github.com/tesselode/kira):
 - Volumes are linear multipliers from 0.0 to 1.0 everywhere (UI, commands, `comilito.json`),
   so ducking can simply multiply them. They're converted to decibels only when handed to kira.
   Volume changes are smoothed over 50 ms so dragging a slider doesn't click.
+- The output is the system default, or one chosen in Preferences
+  ([0032](decisions/0032-choosing-the-audio-output.md)). Changing it rebuilds the engine.
 - Fades (fade-in, fade-out, crossfade) use kira tweens, so they're smooth and don't depend on UI timing.
 
 Default behaviour per category (each can be overridden per sound; the fade times are the
@@ -80,7 +82,7 @@ Stack indexes count from the bottom (0 = bottom), like `stack` in `comilito.json
 
 | Area | Commands |
 |------|----------|
-| General | `app_version`, `get_state`, `get_preferences`, `set_preferences(prefs)` |
+| General | `app_version`, `get_state`, `get_preferences`, `set_preferences(prefs)` (switches the audio output if it changed), `list_output_devices` |
 | Projects | `list_projects` (with counts and last edit), `projects_folder`, `duplicate_project(path)`, `move_projects_folder(to)`, `show_projects_folder(project?)`, `create_project(name, sample)`, `open_project(path)`, `delete_project(path, delete_audio)`, `close_project`, `reload_project`, `keep_my_version`, `rename_project(name)` |
 | Moving projects | `export_project(dest, include_audio)`, `import_project(path)`, `backups_folder`, `relink_from_folder(folder)`, `relink_sound(id, path)` |
 | Project settings | `set_master_volume(volume)`, `set_category_volume(category, volume)` (the top scene's, or the project's when no scene is enabled), `set_project_defaults(defaults)`, `set_backup_settings(backups)`, `reset_project_defaults` |

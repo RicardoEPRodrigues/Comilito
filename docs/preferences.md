@@ -49,7 +49,7 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 
 | Setting | Default |
 |---|---|
-| Audio output device | system default (not built yet: the system default is always used) |
+| Audio output device | system default (follows the desktop). Or one of the outputs the desktop lists; if it isn't connected, the system default is used ([0032](decisions/0032-choosing-the-audio-output.md)) |
 | Pause / resume fade (Space) | 0.3 s (a short fade avoids clicks) |
 | Stop all fade (Esc) | 1 s |
 
@@ -101,7 +101,7 @@ App `preferences.json` (`src-tauri/src/prefs.rs`), with its defaults:
   "projectsFolder": null,
   "openLastProject": false,
   "recentProjects": ["/home/me/Documents/Comilito/Curse of Strahd"],
-  "playback": { "pauseFadeMs": 300, "stopFadeMs": 1000 },
+  "playback": { "outputDevice": null, "pauseFadeMs": 300, "stopFadeMs": 1000 },
   "behaviour": {
     "duplicateInStack": "ask",
     "removeSound": "ask",
@@ -126,6 +126,8 @@ App `preferences.json` (`src-tauri/src/prefs.rs`), with its defaults:
 ```
 
 - `projectsFolder: null` means the default, `~/Documents/Comilito`.
+- `playback.outputDevice`: the chosen output's id (for example
+  `pulseaudio:alsa_output.usb-…-stereo`), or `null` for the system default.
 - `shortcuts` values are `KeyboardEvent.key` names (`"Backspace"`, `"Delete"`, `"x"`); `""` turns
   the shortcut off.
 - `appearance.mode` is `"system"` (follow the desktop's light/dark, using `lightTheme` /
