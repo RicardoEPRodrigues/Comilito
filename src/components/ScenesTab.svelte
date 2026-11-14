@@ -71,6 +71,21 @@
 
   let soundTarget = $state<string | null>(null);
 
+  /** The scene being dragged, if it would actually change group by being dropped in `group`. */
+  function sceneMovingTo(group: string | undefined): Scene | null {
+    if (ui.drag?.kind !== "scene") return null;
+    const id = ui.drag.id;
+    const scene = p.scenes.find((s) => s.id === id);
+    return scene && (scene.group ?? undefined) !== group ? scene : null;
+  }
+
+  /** `undefined` takes the scene out of its group. */
+  function dropInGroup(group: string | undefined) {
+    const scene = sceneMovingTo(group);
+    ui.drag = null;
+    if (scene) run(api.sceneSetGroup(scene.id, group ?? null));
+  }
+
   function startDrag(e: DragEvent, id: string) {
     ui.drag = { kind: "scene", id };
     // Some webviews only start a drag if dataTransfer holds something.
@@ -91,6 +106,13 @@
     ondragstart={(e) => startDrag(e, scene.id)}
     ondragend={() => (ui.drag = null)}
     ondragover={(e) => {
+      // A scene dragged onto another card joins that card's group (or leaves its group, on an
+      // ungrouped card). Group headings take drops too.
+      if (sceneMovingTo(scene.group)) {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+        return;
+      }
       if (ui.drag?.kind !== "sound") return;
       e.preventDefault();
       if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
@@ -98,6 +120,11 @@
     }}
     ondragleave={() => (soundTarget = null)}
     ondrop={(e) => {
+      if (sceneMovingTo(scene.group)) {
+        e.preventDefault();
+        dropInGroup(scene.group);
+        return;
+      }
       if (ui.drag?.kind !== "sound") return;
       e.preventDefault();
       const soundId = ui.drag.id;
@@ -125,7 +152,14 @@
   {/if}
   {#each ungrouped as scene (scene.id)}{@render card(scene)}{/each}
   {#each groups as [group, scenes] (group)}
-    <GroupHeading id={`scene:${group}`} name={group} count={scenes.length} onmenu={(e) => openMenu(e, groupMenu(group), group)}>
+    <GroupHeading
+      id={`scene:${group}`}
+      name={group}
+      count={scenes.length}
+      onmenu={(e) => openMenu(e, groupMenu(group), group)}
+      droppable={sceneMovingTo(group) !== null}
+      ondrop={() => dropInGroup(group)}
+    >
       {#each scenes as scene (scene.id)}{@render card(scene)}{/each}
     </GroupHeading>
   {/each}
