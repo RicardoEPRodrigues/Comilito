@@ -6,8 +6,20 @@
 - Add ability to have plugins.
 - Add a plug in that associates a video with a scene and the top scene's video plays on a seperate window.
 - Create a first time experience.
+- Resume unfinished downloads after new launch.
+- add animations, so opening and closing menus is smoother. e.g., opening the library drawer.
+- add a keybind (default backspace) to delete the top most scene from the stack.
+- make the middle mouse click disable the selected scene.
+- allow library drawer to be resizable.
 
 ## Bugs
+
+- If I play a sound on its edit page and then leave, the sound keeps playing. we should create an area where we can stop any temporary sounds.
+- in the youtube video downloader, the input for the beginning and end of the video are not that pretty and are overflowing. I prefer the 00:00:00 format for example.
+- Library: closing a folder does not hide subfolders.
+- Not able to drag a scene into a group.
+- any new ambient sound added to a scene should be labeled as foreground. Remove the No Role option. allow editing the role from the tapestry.
+
 
 ## Left to do or to check (added by Claude)
 
