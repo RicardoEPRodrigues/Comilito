@@ -29,7 +29,7 @@ re-encoded to a lower MP3 bitrate (112 / 96 / 96 kbps) to keep the app small; no
 
 - The app icon, a skeletal pale horse in the style of medieval manuscript illumination, is original
   artwork generated with AI in [Pencil](https://pen.dev) and cleaned up for Comilito. There are
-  two versions: the decorated icon for 128 px and up, and a simplified mark for 64 px and below.
+  two versions: a simplified mark, used at every size, and a decorated icon kept for later use.
   The sources are in `src-tauri/icons/source/` and the design file in `pencil/`.
 - Interface symbols are Unicode emoji, drawn by the system's fonts.
 

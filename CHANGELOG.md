@@ -58,6 +58,7 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 - The window remembers its size, position and maximised state from the last time.
 - Missing audio can be relinked; files added to a project's audio folders appear by themselves.
 - Logs (Preferences › See logs) and a "Remove all data" option for uninstalling.
+- The app icon is the plain horse-skull mark at every size; the decorated version was too busy.
 
 ### Fixed
 
