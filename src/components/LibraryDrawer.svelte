@@ -9,6 +9,8 @@
     ChevronDown,
     ChevronRight,
     ChevronUp,
+    ChevronsDownUp,
+    ChevronsUpDown,
     FilePlus,
     Folder,
     FolderOpen,
@@ -120,6 +122,14 @@
     remember("collapsed", ui.collapsed);
   }
 
+  /** Folds (or unfolds) every folder in all three columns at once. */
+  function foldAll(fold: boolean) {
+    const keys = CATEGORIES.flatMap((c) => snapshot.folders[c.id].map((f) => `lib:${c.id}:${f}`));
+    const others = ui.collapsed.filter((k) => !k.startsWith("lib:"));
+    ui.collapsed = fold ? [...others, ...keys] : others;
+    remember("collapsed", ui.collapsed);
+  }
+
   function folderLabel(folder: string) {
     const parts = folder.split("/");
     return { name: parts[parts.length - 1], depth: parts.length - 1 };
@@ -142,6 +152,10 @@
 {/snippet}
 
 {#snippet tools()}
+  {#if ui.drawerOpen}
+    <button class="icon" title="Unfold all folders" onclick={() => foldAll(false)}><ChevronsUpDown size={16} /></button>
+    <button class="icon" title="Fold all folders" onclick={() => foldAll(true)}><ChevronsDownUp size={16} /></button>
+  {/if}
   <button class="icon" title="From a URL…" onclick={() => (ui.editing = { kind: "addUrl" })}><Link size={16} /></button>
   <button class="icon" title="Open the audio folder in the file manager" onclick={() => run(api.openAudioFolder(null, null))}><FolderOpen size={16} /></button>
   <button class="icon" title="Open the Library workspace" onclick={() => showView("library")}><Maximize2 size={16} /></button>
