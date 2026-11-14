@@ -44,6 +44,7 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
   project. Scenes you haven't adjusted use the project's volumes.
 - **Backspace removes the top scene** from the Tapestry. The key can be changed (or turned off)
   in Preferences › Behaviour › Shortcuts.
+- **Middle-click** a scene in the Tapestry to disable it, and again to enable it.
 
 ### Changed
 

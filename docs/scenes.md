@@ -125,7 +125,7 @@ The stack is the focus, and it's driven mainly by drag and drop.
 | Import audio files | drop them onto the window from the file manager; after choosing a category and folder, copies go into the project |
 | Remove a sound from a scene | Expand the entry in the stack and press ✕ next to the sound (it stays in the library) |
 | Reorder | drag an entry within the stack |
-| Enable / disable | the checkbox on the entry |
+| Enable / disable | the checkbox on the entry, or middle-click the entry |
 | Remove | × on the entry, or drag it out of the stack |
 | Remove the top scene | **Backspace** (can be changed in Preferences › Behaviour › Shortcuts) |
 | Add on top | right-click a scene → *Add on top* |

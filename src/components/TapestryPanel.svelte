@@ -276,13 +276,21 @@
           draggable="true"
           ondragstart={(e) => onEntryDragStart(e, entry)}
           ondragend={() => onEntryDragEnd(entry)}
+          onmousedown={(e) => e.button === 1 && e.preventDefault()}
+          onauxclick={(e) => {
+            // Middle click enables or disables the scene, like its checkbox. (Mousedown is
+            // cancelled above so Linux doesn't paste or start autoscrolling.)
+            if (e.button !== 1) return;
+            e.preventDefault();
+            run(api.stackSetEnabled(entry.id, !entry.enabled));
+          }}
         >
           <span class="handle" title="Drag to reorder, or out of the tapestry to remove"><GripVertical size={18} /></span>
           <input
             type="checkbox"
             checked={entry.enabled}
             onchange={(e) => run(api.stackSetEnabled(entry.id, e.currentTarget.checked))}
-            title="Enable / disable"
+            title="Enable / disable (or middle-click the scene)"
           />
           <Capital name={scene?.name ?? "?"} live={live} />
           <button class="text" onclick={() => toggleExpanded(entry.id)}>
