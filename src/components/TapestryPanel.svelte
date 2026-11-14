@@ -8,6 +8,7 @@
   //
   // The stack is stored bottom to top, so displayed position `p` (0 = top) of `n` entries is
   // stack index `n - 1 - p`. "Insert above displayed item p" means stack index `n - p`.
+  import { fold } from "../lib/motion";
   import {
     BookmarkPlus,
     ChevronDown,
@@ -317,7 +318,7 @@
         {/if}
 
         {#if expanded.has(entry.id) && scene}
-          <div class="details">
+          <div class="details" transition:fold>
             {#each scene.music?.tracks ?? [] as trackId (trackId)}
               {@const playing = snapshot.mix.musicEntry === entry.id && snapshot.playback.musicSound === trackId}
               <div class="sound" class:playing>
@@ -619,6 +620,10 @@
     color: inherit;
     cursor: pointer;
     max-width: 100%;
+    /* No native arrow: it's drawn as the same pill the role used to be shown in. */
+    appearance: none;
+    -webkit-appearance: none;
+    text-align: center;
   }
   .tag:hover {
     border-color: var(--accent);

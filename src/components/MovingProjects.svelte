@@ -2,6 +2,7 @@
   // Covers the app while the projects folder is being moved (decision 0023). The move runs
   // on a Rust thread, so the window keeps redrawing; this dialog shows how far it got and
   // keeps the user from opening or changing projects meanwhile.
+  import { backdrop, rise } from "../lib/motion";
   import { FolderSync } from "@lucide/svelte";
   import { formatBytes, ui } from "../lib/store.svelte";
 
@@ -11,8 +12,8 @@
 </script>
 
 {#if ui.moving}
-  <div class="backdrop">
-    <div class="dialog" role="alertdialog" aria-modal="true" aria-label="Moving the projects">
+  <div class="backdrop" transition:backdrop>
+    <div class="dialog" transition:rise role="alertdialog" aria-modal="true" aria-label="Moving the projects">
       <div class="heading"><FolderSync size={20} /><h3 class="display">Moving the projects</h3></div>
       <div class="bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(fraction * 100)}>
         <span style:width="{fraction * 100}%"></span>

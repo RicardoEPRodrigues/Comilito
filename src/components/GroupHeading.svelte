@@ -2,6 +2,7 @@
   // A collapsible group heading: ▾ Name ……… count  [⋯]. Folded groups are remembered.
   import { ChevronDown, ChevronRight, Ellipsis } from "@lucide/svelte";
   import type { Snippet } from "svelte";
+  import { fold } from "../lib/motion";
   import { remember, ui } from "../lib/store.svelte";
 
   interface Props {
@@ -54,7 +55,7 @@
   {/if}
 </div>
 {#if !folded}
-  {@render children()}
+  <div class="children" transition:fold>{@render children()}</div>
 {/if}
 
 <style>
@@ -94,5 +95,11 @@
   }
   .icon {
     color: var(--side-muted);
+  }
+  /* The parent lists lay out their items with a gap; keep it inside the group too. */
+  .children {
+    display: flex;
+    flex-direction: column;
+    gap: inherit;
   }
 </style>

@@ -47,6 +47,9 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 - **Middle-click** a scene in the Tapestry to disable it, and again to enable it.
 - The **Library drawer can be resized** by dragging its top edge; double-click the edge to go
   back to the default size. The size is remembered.
+- **Smoother opening and closing:** the Library drawer slides open and shut, menus and dialogs
+  ease in, and groups, folders and Tapestry entries unfold instead of jumping. All of it is
+  turned off when the desktop asks for reduced motion.
 
 ### Changed
 

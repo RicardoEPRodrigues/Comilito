@@ -26,6 +26,7 @@
   import { api } from "../lib/api";
   import { addSoundFiles } from "../lib/actions";
   import { findSounds, topTags, type Filter } from "../lib/library";
+  import { fold, pop } from "../lib/motion";
   import { folderOf, remember, run, showView, ui } from "../lib/store.svelte";
   import { CATEGORIES, type Category, type Sound } from "../lib/types";
   import SoundRow from "./SoundRow.svelte";
@@ -58,7 +59,8 @@
   // that still shows a few rows and most of the window, and remembered on this computer.
   const MIN_HEIGHT = 160;
   const maxHeight = () => Math.round(window.innerHeight * 0.75);
-  let resizing: { startY: number; startHeight: number } | null = null;
+  // `$state`, because the drawer's class depends on it (no height animation while dragging).
+  let resizing = $state<{ startY: number; startHeight: number } | null>(null);
 
   function resizeStart(e: PointerEvent) {
     if (e.button !== 0) return;
@@ -148,6 +150,7 @@
 <section
   class="drawer"
   class:open={ui.drawerOpen}
+  class:resizing={resizing !== null}
   style:height={ui.drawerOpen && ui.drawerHeight ? `min(${ui.drawerHeight}px, 75vh)` : null}
 >
   {#if ui.drawerOpen}
@@ -190,7 +193,7 @@
     {@render tools()}
 
     {#if !ui.drawerOpen && searchFocused && quickResults.length > 0}
-      <div class="quick" role="list">
+      <div class="quick" role="list" transition:pop>
         <span class="caps muted">{quickResults.length} result{quickResults.length === 1 ? "" : "s"} · drag onto a scene or the tapestry</span>
         {#each quickResults as s (s.id)}
           <SoundRow sound={s} detail={`${CATEGORIES.find((c) => c.id === s.category)?.label}${folderOf(s) ? ` › ${folderOf(s)}` : ""}`} />
@@ -226,7 +229,7 @@
                   <span class="count">{g.sounds.length}</span>
                 </button>
                 {#if !isFolded}
-                  <div class="nested" style:padding-left="{label.depth * 0.9 + 1.2}rem">
+                  <div class="nested" transition:fold style:padding-left="{label.depth * 0.9 + 1.2}rem">
                     {#each g.sounds as s (s.id)}<SoundRow sound={s} />{/each}
                   </div>
                 {/if}
@@ -253,15 +256,27 @@
     display: flex;
     flex-direction: column;
     height: 3.6rem;
+    /* Opening and closing slide the drawer up and down. */
+    transition: height 200ms ease;
+  }
+  .drawer.resizing {
+    transition: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .drawer {
+      transition: none;
+    }
   }
   .drawer.open {
     height: clamp(14rem, 32vh, 22rem);
     position: relative;
+    /* While it grows, the columns stay inside it. (Closed, the search pop-up must overflow.) */
+    overflow: hidden;
   }
-  /* A strip over the top border; taller than it looks, so it's easy to grab. */
+  /* A strip along the top border; taller than it looks, so it's easy to grab. */
   .resize {
     position: absolute;
-    top: -4px;
+    top: 0;
     left: 0;
     right: 0;
     height: 8px;
@@ -270,7 +285,7 @@
     touch-action: none;
   }
   .resize:hover {
-    background: linear-gradient(transparent 3px, var(--accent) 3px, var(--accent) 5px, transparent 5px);
+    background: linear-gradient(var(--accent) 2px, transparent 2px);
   }
   .bar {
     display: flex;

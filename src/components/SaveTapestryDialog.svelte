@@ -25,6 +25,7 @@
 </script>
 
 <script lang="ts">
+  import { backdrop, rise } from "../lib/motion";
   import { BookmarkPlus, Check } from "@lucide/svelte";
   import { api } from "../lib/api";
   import { presetById, project, run, savePrefs, sceneById, ui } from "../lib/store.svelte";
@@ -90,8 +91,8 @@
 <svelte:window onkeydown={onKeydown} />
 
 {#if saveRequest.open && p}
-  <div class="backdrop">
-    <div class="dialog" role="dialog" aria-modal="true" aria-label="Save the tapestry">
+  <div class="backdrop" transition:backdrop>
+    <div class="dialog" transition:rise role="dialog" aria-modal="true" aria-label="Save the tapestry">
       <div class="heading">
         <BookmarkPlus size={20} />
         <h3 class="display">{saveRequest.target ? "Save the current tapestry?" : "Save as a preset"}</h3>

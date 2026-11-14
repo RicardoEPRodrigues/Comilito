@@ -2,6 +2,7 @@
   // `module` script: runs once and is shared, so any component can open the menu with
   // `openMenu(event, items)` and a single <ContextMenu /> (in Workspace) shows it.
   // Used for right-click menus and for the "⋯" buttons.
+  import { pop } from "../lib/motion";
   import type { Component } from "svelte";
 
   export type MenuItem =
@@ -93,7 +94,7 @@
           {#if item.submenu}<ChevronRight size={14} />{/if}
         </button>
         {#if item.submenu && openSub === i && !nested}
-          <div class="menu sub" role="menu">
+          <div class="menu sub" role="menu" in:pop>
             {@render items(item.submenu, true)}
           </div>
         {/if}
@@ -106,6 +107,7 @@
   <div
     bind:this={box}
     class="menu"
+    in:pop
     style:left="{pos.x || menu.x}px"
     style:top="{pos.y || menu.y}px"
     role="menu"

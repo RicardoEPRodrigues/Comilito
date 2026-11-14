@@ -4,6 +4,7 @@
   // `children` and `footer` are "snippets": chunks of markup passed in by the parent.
   import { X } from "@lucide/svelte";
   import type { Snippet } from "svelte";
+  import { backdrop, rise } from "../lib/motion";
   import { ui } from "../lib/store.svelte";
 
   interface Props {
@@ -30,8 +31,9 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<div class="backdrop">
-  <div class="modal" class:wide class:tall role="dialog" aria-modal="true" aria-label={title}>
+<!-- `|global`: play when the window is opened or closed, which happens in the parent. -->
+<div class="backdrop" transition:backdrop|global>
+  <div class="modal" class:wide class:tall transition:rise|global role="dialog" aria-modal="true" aria-label={title}>
     <header>
       <h3 class="display">{title}</h3>
       <button class="icon" onclick={onclose} aria-label="Close"><X size={18} /></button>

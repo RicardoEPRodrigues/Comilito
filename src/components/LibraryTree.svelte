@@ -28,6 +28,7 @@
   import type { Component } from "svelte";
   import { api } from "../lib/api";
   import { addSoundFiles, moveFolder, moveSounds, moveTargets, newFolder } from "../lib/actions";
+  import { fold } from "../lib/motion";
   import { askText, folderOf, remember, run, ui, type SmartList } from "../lib/store.svelte";
   import { CATEGORIES, type Category } from "../lib/types";
   import { openMenu, type MenuItem } from "./ContextMenu.svelte";
@@ -240,27 +241,29 @@
           <Icon size={14} /><span class="label">{c.label}</span><span class="n">{countIn(c.id, null)}</span>
         </button>
         {#if open}
-          {#each snapshot.folders[c.id] as folder (folder)}
-            {@const parts = folder.split("/")}
-            {@const selected = lib.category === c.id && lib.folder === folder}
-            <button
-              class="node"
-              class:selected
-              class:drop={dropTarget === `${c.id}:${folder}`}
-              style:padding-left="{1.7 + (parts.length - 1) * 0.9}rem"
-              onclick={() => selectFolder(c.id, folder)}
-              oncontextmenu={(e) => openMenu(e, folderMenu(c.id, folder), parts[parts.length - 1])}
-              draggable="true"
-              ondragstart={(e) => folderDragStart(e, c.id, folder)}
-              ondragend={() => ((ui.drag = null), (dropTarget = null))}
-              ondragover={(e) => dragOver(e, c.id, folder)}
-              ondragleave={() => (dropTarget = null)}
-              ondrop={(e) => drop(e, c.id, folder)}
-            >
-              {#if selected}<FolderOpen size={14} />{:else}<Folder size={14} />{/if}
-              <span class="label">{parts[parts.length - 1]}</span><span class="n">{countIn(c.id, folder)}</span>
-            </button>
-          {/each}
+          <div class="folders" transition:fold>
+            {#each snapshot.folders[c.id] as folder (folder)}
+              {@const parts = folder.split("/")}
+              {@const selected = lib.category === c.id && lib.folder === folder}
+              <button
+                class="node"
+                class:selected
+                class:drop={dropTarget === `${c.id}:${folder}`}
+                style:padding-left="{1.7 + (parts.length - 1) * 0.9}rem"
+                onclick={() => selectFolder(c.id, folder)}
+                oncontextmenu={(e) => openMenu(e, folderMenu(c.id, folder), parts[parts.length - 1])}
+                draggable="true"
+                ondragstart={(e) => folderDragStart(e, c.id, folder)}
+                ondragend={() => ((ui.drag = null), (dropTarget = null))}
+                ondragover={(e) => dragOver(e, c.id, folder)}
+                ondragleave={() => (dropTarget = null)}
+                ondrop={(e) => drop(e, c.id, folder)}
+              >
+                {#if selected}<FolderOpen size={14} />{:else}<Folder size={14} />{/if}
+                <span class="label">{parts[parts.length - 1]}</span><span class="n">{countIn(c.id, folder)}</span>
+              </button>
+            {/each}
+          </div>
         {/if}
       {/each}
       <button class="node new" onclick={() => newFolder(lib.category ?? "ambience", lib.category ? lib.folder : null)}>
@@ -335,7 +338,8 @@
     overflow: auto;
     min-height: 0;
   }
-  .group {
+  .group,
+  .folders {
     display: flex;
     flex-direction: column;
     gap: 1px;

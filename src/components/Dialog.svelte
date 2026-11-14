@@ -1,5 +1,6 @@
 <script lang="ts">
   // Shows `ui.question` (set by `ask()` in the store) and resolves it with the answer.
+  import { backdrop, rise } from "../lib/motion";
   import { ui } from "../lib/store.svelte";
 
   let text = $state("");
@@ -41,8 +42,8 @@
 <svelte:window onkeydown={onKeydown} />
 
 {#if ui.question}
-  <div class="backdrop">
-    <div class="dialog" role="dialog" aria-modal="true" aria-label={ui.question.title}>
+  <div class="backdrop" transition:backdrop>
+    <div class="dialog" transition:rise role="dialog" aria-modal="true" aria-label={ui.question.title}>
       <h3 class="display">{ui.question.title}</h3>
       {#if ui.question.message}
         <p>{ui.question.message}</p>
