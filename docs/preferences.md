@@ -49,10 +49,9 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 
 | Setting | Default |
 |---|---|
-| Audio output device | system default |
+| Audio output device | system default (not built yet: the system default is always used) |
 | Pause / resume fade (Space) | 0.3 s (a short fade avoids clicks) |
 | Stop all fade (Esc) | 1 s |
-| Start paused when opening a project | on |
 
 ### Projects and backups
 
@@ -73,7 +72,7 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 | When removing a sound | ask (other choices: always move to trash) |
 | When loading a preset over an unsaved tapestry | ask (other choice: always replace without saving) |
 | Closing a window with unsaved changes (✕ or Esc) | ask (other choices: save, discard). The window's Cancel button always discards. |
-| Warn when quitting during hashing or backup | on |
+| Warn when quitting during hashing or backup | on (not built yet) |
 
 ### Appearance
 
@@ -86,22 +85,45 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 Shows the same **Levels** and **Sound defaults per category** sections, plus **Backups**, but for
 the open project. These values are stored in `comilito.json` under `defaults` and `backups`.
 
-## Data (draft)
+## Data
 
-App `preferences.json`:
+App `preferences.json` (`src-tauri/src/prefs.rs`), with its defaults:
 
 ```json
 {
   "formatVersion": 1,
-  "projectsFolder": "~/Documents/Comilito",
+  "projectsFolder": null,
   "openLastProject": false,
   "recentProjects": ["/home/me/Documents/Comilito/Curse of Strahd"],
-  "playback": { "outputDevice": null, "pauseFadeMs": 300, "stopFadeMs": 1000, "startPaused": true },
-  "behaviour": { "duplicateInStack": "ask", "removeSound": "ask", "unsavedChanges": "ask" },
-  "appearance": { "theme": "system" },
-  "newProjectDefaults": { "...": "same shape as a project's defaults + backups" }
+  "playback": { "pauseFadeMs": 300, "stopFadeMs": 1000 },
+  "behaviour": {
+    "duplicateInStack": "ask",
+    "removeSound": "ask",
+    "unsavedChanges": "ask",
+    "replaceUnsavedTapestry": "ask"
+  },
+  "appearance": {
+    "mode": "system",
+    "theme": "codex",
+    "lightTheme": "codex",
+    "darkTheme": "ironwood",
+    "accent": "theme",
+    "customAccent": "#7a4fb5",
+    "capitals": true,
+    "watermark": true,
+    "rules": true,
+    "blackletter": true
+  },
+  "newProjectDefaults": { "...": "masterVolume, categories, defaults and backups, as in a project" }
 }
 ```
+
+- `projectsFolder: null` means the default, `~/Documents/Comilito`.
+- `appearance.mode` is `"system"` (follow the desktop's light/dark, using `lightTheme` /
+  `darkTheme`) or `"fixed"` (always `theme`). `accent` is `"theme"`, `"desktop"` or `"custom"`
+  (then `customAccent` is used). See [themes.md](themes.md).
+- Missing fields get their defaults, so older files still load. Files from before themes existed
+  had `appearance.theme` set to `"system"`, `"light"` or `"dark"`; these are migrated on load.
 
 Project `comilito.json`:
 

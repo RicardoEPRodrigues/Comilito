@@ -1,7 +1,5 @@
 # Architecture
 
-> Status: planned. Updated as the code takes shape.
-
 ## Overview
 
 ```
@@ -37,12 +35,13 @@ Built on [kira](https://github.com/tesselode/kira):
   Volume changes are smoothed over 50 ms so dragging a slider doesn't click.
 - Fades (fade-in, fade-out, crossfade) use kira tweens, so they're smooth and don't depend on UI timing.
 
-Planned default behaviour per category (each can be overridden per sound):
+Default behaviour per category (each can be overridden per sound; the fade times are the
+defaults for new projects, see [preferences.md](preferences.md)):
 
 | Category | Loop | Multiple at once | Typical fade |
 |----------|------|------------------|--------------|
-| Music    | yes  | no (crossfade to the new track) | 2–3 s |
-| Ambience | yes  | yes (layers)     | 1–2 s |
+| Music    | yes  | no (crossfade to the new track) | 2 s |
+| Ambience | yes  | yes (layers)     | 1.5 s |
 | Effects  | no   | yes              | none |
 
 Long files (music) are **streamed** from disk; short files (effects) are loaded into memory

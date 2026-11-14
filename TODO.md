@@ -19,17 +19,38 @@
 - Library: closing a folder does not hide subfolders.
 - Not able to drag a scene into a group.
 - any new ambient sound added to a scene should be labeled as foreground. Remove the No Role option. allow editing the role from the tapestry.
+- the decorated logo is too loud, lets switch to use the mark icon for everything (lets keep the decorated icon saved for later use).
 
 
-## Left to do or to check (added by Claude)
+## Platforms
 
-- Downloads of only part of a video can't report a percentage (ffmpeg does the download), so they
-  show "downloading the selected part…" instead. Consider estimating progress from ffmpeg's
-  `time=` output.
 - macOS: choose where ffmpeg comes from (decision 0019); the app currently expects one on the PATH.
 - Windows: the desktop accent colour (registry) and the downloaded tools are untested.
 - Windows and macOS: dropping audio files onto the window (decision 0022) uses a different path
   from Linux (file contents sent from the webview) and is untested.
+- macOS and Android are listed as planned in the README. Android also needs checking that kira's
+  cpal backend works there (decision 0002).
+
+## Left to do or to check (added by Claude)
+
+### Documented but not built yet
+
+- Choosing the audio output device. It's in docs/preferences.md (Playback › Audio output device)
+  and decision 0012, and the README lists it under "Not yet". The engine always opens the system
+  default (`src-tauri/src/audio.rs`). Decision 0012 says to first check that kira's cpal backend
+  can pick a device; it should also cope with the device disappearing (USB headset unplugged) by
+  falling back to the default.
+- Warning when quitting during hashing or a backup. docs/preferences.md lists a "Warn when
+  quitting during hashing or backup" setting (default on) and the README lists it under "Not
+  yet"; neither the setting nor the warning exists.
+
+### Docs out of date
+
+### Other checks
+
+- Downloads of only part of a video can't report a percentage (ffmpeg does the download), so they
+  show "downloading the selected part…" instead. Consider estimating progress from ffmpeg's
+  `time=` output.
 - Moving the projects folder across disks (the slow, copying case) was only tested by unit
   tests; on the virtual display both folders were on one disk, so the move was an instant rename.
   Worth trying once with a big project and a USB drive to see the progress dialog.
