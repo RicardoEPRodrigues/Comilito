@@ -1,47 +1,57 @@
 <script lang="ts">
-  // A time as three small fields: hours, minutes, seconds (TODO.md: long videos need hours).
-  // `value` is in milliseconds; `onchange` gets the new total whenever a field changes.
+  // A time typed as hh:mm:ss in one field (long videos need hours). Shorter forms are accepted
+  // too: "1:30" is a minute and a half, "90" is 90 seconds. `value` is in milliseconds;
+  // `onchange` gets the new total once the field is left or Enter is pressed.
   let { value, onchange, label = "" }: { value: number; onchange: (ms: number) => void; label?: string } = $props();
 
-  const total = $derived(Math.max(0, Math.round(value / 1000)));
-  const h = $derived(Math.floor(total / 3600));
-  const m = $derived(Math.floor((total % 3600) / 60));
-  const s = $derived(total % 60);
+  const pad = (n: number) => String(n).padStart(2, "0");
 
-  function set(part: "h" | "m" | "s", raw: number) {
-    const n = Number.isFinite(raw) ? Math.max(0, Math.floor(raw)) : 0;
-    const hours = part === "h" ? n : h;
-    const minutes = part === "m" ? n : m;
-    const seconds = part === "s" ? n : s;
-    onchange((hours * 3600 + minutes * 60 + seconds) * 1000);
+  function format(ms: number): string {
+    const total = Math.max(0, Math.round(ms / 1000));
+    return `${pad(Math.floor(total / 3600))}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`;
+  }
+
+  /** Seconds from "h:m:s", "m:s" or "s"; null if it isn't a time. */
+  function parse(text: string): number | null {
+    const parts = text.trim().split(":");
+    if (parts.length > 3 || parts.some((p) => !/^\d+$/.test(p))) return null;
+    // Read right to left: seconds, minutes, hours.
+    return parts.reverse().reduce((sum, p, i) => sum + Number(p) * 60 ** i, 0);
+  }
+
+  let invalid = $state(false);
+
+  function commit(input: HTMLInputElement) {
+    const seconds = parse(input.value);
+    invalid = seconds === null;
+    if (seconds === null) return;
+    onchange(seconds * 1000);
+    // Normalise what was typed ("90" becomes 00:01:30), even when the value didn't change.
+    input.value = format(seconds * 1000);
   }
 </script>
 
-<span class="time" role="group" aria-label={label}>
-  <input type="number" min="0" value={h} onchange={(e) => set("h", e.currentTarget.valueAsNumber)} aria-label="Hours" />
-  <span>h</span>
-  <input type="number" min="0" max="59" value={m} onchange={(e) => set("m", e.currentTarget.valueAsNumber)} aria-label="Minutes" />
-  <span>m</span>
-  <input type="number" min="0" max="59" value={s} onchange={(e) => set("s", e.currentTarget.valueAsNumber)} aria-label="Seconds" />
-  <span>s</span>
-</span>
+<input
+  class="time"
+  class:invalid
+  value={format(value)}
+  aria-label={label}
+  title="Hours:minutes:seconds"
+  inputmode="numeric"
+  spellcheck="false"
+  onchange={(e) => commit(e.currentTarget)}
+  onkeydown={(e) => e.key === "Enter" && commit(e.currentTarget)}
+/>
 
 <style>
   .time {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.2rem;
-  }
-  input {
-    width: 3.4rem;
-    padding: 0.3rem 0.35rem;
+    width: 6.2rem;
+    padding: 0.3rem 0.45rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    text-align: right;
+    text-align: center;
   }
-  span {
-    color: var(--muted);
-    font-size: 0.8rem;
-    margin-right: 0.25rem;
+  .invalid {
+    border-color: var(--warn);
   }
 </style>
