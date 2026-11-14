@@ -167,13 +167,14 @@ impl AudioEngine {
 
     // ---- Mixer levels -------------------------------------------------------------------
 
-    /// Applies the project's master and category volumes.
-    pub fn apply_levels(&mut self, project: &Project, tween: Duration) {
+    /// Applies the project's master volume and the mix's category volumes (those of the
+    /// top-most enabled scene, decision 0028).
+    pub fn apply_levels(&mut self, project: &Project, target: &TargetMix, tween: Duration) {
         self.manager
             .main_track()
             .set_volume(to_decibels(project.master_volume), tween_of(tween));
         for category in Category::ALL {
-            let volume = project.categories.get(category).volume;
+            let volume = *target.volumes.get(category);
             self.track(category)
                 .set_volume(to_decibels(volume), tween_of(tween));
         }

@@ -69,6 +69,14 @@ Each scene uses its own `duckLevel`, so a scene with `duckLevel` 0.5 above one w
 | role R | has a layer with role R | ducked (that role is taken over) |
 | role R | has no layer with role R | not ducked by this scene |
 
+### Volumes
+
+The **top-most enabled scene** sets the Music, Ambience and Effects volumes for everything that
+plays, including music coming from a scene below it. A tavern scene on top of travelling music
+can turn that music down while it's there. When the top scene changes, the volumes fade over its
+transition. A scene that has no volumes of its own uses the project's. The master volume is
+project-wide ([0028](decisions/0028-scene-volumes.md)).
+
 ### Effects pad
 
 Shows the effects of every enabled scene in the stack, top scene first. Clicking an effect plays
@@ -163,7 +171,8 @@ or preset load it's the top scene's.
 - **Stack** (centre): top of the stack at the top. `⠿` is the drag handle. Clicking an entry
   expands it to show its sounds with their *effective* volume and a live slider for each.
 - **Effects pad** (right): buttons for the enabled scenes' effects.
-- **Mixer bar** (bottom): play/pause, master and per-category volumes.
+- **Mixer bar** (bottom): play/pause, the project's master volume, and the top scene's Music,
+  Ambience and Effects volumes (labelled with its name; with no enabled scene, the project's).
 - **No Play / Edit mode:** everything is always editable ([0021](decisions/0021-no-play-edit-mode.md)).
 - **Live sliders** in an expanded stack entry change that layer's volume in its scene directly
   (and are saved), so there's no separate "save current mix to scene" step.
@@ -235,6 +244,8 @@ or preset load it's the top scene's.
   of the scenes below while this scene is enabled.
 - `duckLevel`: the volume this scene leaves the ambience below it at (0.3 = 30%; 1 = no ducking; 0 = silence).
   Optional: if missing, the project default is used (see [preferences.md](preferences.md)).
+- `volumes`: optional, `{ "music": 0.3, "ambience": 0.9, "effects": 1.0 }`. The category volumes
+  while this is the top-most enabled scene. If missing, the project's `categories` volumes are used.
 - `role`: optional; one of `foreground`, `background`, `supporting`.
 - `stack`: ordered **bottom to top**. Each entry has its own `id`, so a scene can appear twice.
   It's saved automatically (debounced) whenever it changes.

@@ -269,6 +269,10 @@ pub struct Scene {
     pub duck_level: Option<f32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transition_ms: Option<u32>,
+    /// Music, ambience and effects volumes while this scene is the top-most enabled one
+    /// (decision 0028). `None`: the project's category volumes are used.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub volumes: Option<PerCategory<f32>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -544,6 +548,24 @@ impl Project {
 
     pub fn scene_duck_level(&self, scene: &Scene) -> f32 {
         scene.duck_level.unwrap_or(self.defaults.duck_level)
+    }
+
+    /// The category volumes a scene plays at: its own, or the project's.
+    pub fn scene_volumes(&self, scene: &Scene) -> PerCategory<f32> {
+        match &scene.volumes {
+            Some(v) => v.clone(),
+            None => self.default_volumes(),
+        }
+    }
+
+    /// The project's category volumes: used by scenes without their own, and when no
+    /// scene is enabled.
+    pub fn default_volumes(&self) -> PerCategory<f32> {
+        PerCategory {
+            music: self.categories.music.volume,
+            ambience: self.categories.ambience.volume,
+            effects: self.categories.effects.volume,
+        }
     }
 
     pub fn scene_transition_ms(&self, scene: &Scene) -> u32 {
@@ -827,6 +849,7 @@ mod tests {
             duck_level: None,
             transition_ms: None,
         blocks_music: false,
+        volumes: None,
         });
         project.stack.push(StackEntry {
             id: "stk-1".into(),

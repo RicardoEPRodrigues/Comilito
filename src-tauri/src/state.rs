@@ -185,9 +185,9 @@ impl AppState {
         let project = storage::load_project(&dir)?;
         self.close_project()?;
 
-        self.engine.apply_levels(&project, Duration::ZERO);
         let missing = storage::missing_sounds(&dir, &project);
         let mix = target_mix(&project);
+        self.engine.apply_levels(&project, &mix, Duration::ZERO);
         let folders = storage::list_folders(&dir);
         self.open = Some(OpenProject {
             folders,
@@ -255,15 +255,19 @@ impl AppState {
         open.dirty_since.get_or_insert_with(Instant::now);
         open.changed_since_backup = true;
         open.mix = target_mix(&open.project);
+        // The category volumes follow the top scene, so a stack change can change them too;
+        // they fade along with the sounds.
+        self.engine.apply_levels(
+            &open.project,
+            &open.mix,
+            transition.max(VOLUME_SMOOTHING),
+        );
         self.engine
             .apply_mix(&open.project, &open.dir, &open.mix, transition)
     }
 
     /// Re-applies volumes after a small edit (a slider), with only a short smoothing fade.
     pub fn levels_changed(&mut self) -> Vec<String> {
-        if let Some(open) = &self.open {
-            self.engine.apply_levels(&open.project, VOLUME_SMOOTHING);
-        }
         self.project_changed(VOLUME_SMOOTHING)
     }
 

@@ -98,6 +98,8 @@ export interface Scene {
   effects: string[];
   duckLevel?: number;
   transitionMs?: number;
+  /** Category volumes while this is the top-most enabled scene; missing: the project's. */
+  volumes?: PerCategory<number>;
 }
 
 export interface StackEntry {
@@ -160,6 +162,9 @@ export interface TargetMix {
   ambience: Record<string, number>;
   effects: string[];
   layerVolumes: Record<string, number[]>;
+  /** The scene whose category volumes play (the top-most enabled one), if any. */
+  volumesScene: string | null;
+  volumes: PerCategory<number>;
 }
 
 export interface PlaybackInfo {

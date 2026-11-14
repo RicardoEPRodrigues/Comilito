@@ -28,7 +28,9 @@ and sends commands that change it.
 Built on [kira](https://github.com/tesselode/kira):
 
 - One **kira mixer sub-track per category** (Music, Ambience, Effects), each with its own volume.
-  A master volume sits above them.
+  A master volume sits above them. The category volumes are those of the top-most enabled
+  scene (or the project's, when it has none or no scene is enabled), and fade with the scene
+  transition when the top scene changes ([0028](decisions/0028-scene-volumes.md)).
 - Every sound plays into its category's track, so a category slider affects all its sounds.
 - Volumes are linear multipliers from 0.0 to 1.0 everywhere (UI, commands, `comilito.json`),
   so ducking can simply multiply them. They're converted to decibels only when handed to kira.
@@ -82,7 +84,7 @@ Stack indexes count from the bottom (0 = bottom), like `stack` in `comilito.json
 | General | `app_version`, `get_state`, `get_preferences`, `set_preferences(prefs)` |
 | Projects | `list_projects` (with counts and last edit), `projects_folder`, `duplicate_project(path)`, `move_projects_folder(to)`, `show_projects_folder(project?)`, `create_project(name, sample)`, `open_project(path)`, `delete_project(path, delete_audio)`, `close_project`, `reload_project`, `keep_my_version`, `rename_project(name)` |
 | Moving projects | `export_project(dest, include_audio)`, `import_project(path)`, `backups_folder`, `relink_from_folder(folder)`, `relink_sound(id, path)` |
-| Project settings | `set_master_volume(volume)`, `set_category_volume(category, volume)`, `set_project_defaults(defaults)`, `set_backup_settings(backups)`, `reset_project_defaults` |
+| Project settings | `set_master_volume(volume)`, `set_category_volume(category, volume)` (the top scene's, or the project's when no scene is enabled), `set_project_defaults(defaults)`, `set_backup_settings(backups)`, `reset_project_defaults` |
 | Sounds | `add_sounds(category, folder, paths)` → new ids, `import_dropped_file` (raw file bytes; name, category and folder in headers), `update_sound(sound)`, `set_sound_category(id, category)`, `remove_sound(id, permanently)`, `preview_sound(id)`, `toggle_effect(id)` |
 | Scenes | `create_scene(name, group)`, `update_scene(scene)`, `duplicate_scene(id)`, `delete_scene(id)`, `scene_set_group(scene_id, group)`, `scene_group_rename(from, to)`, `scene_group_ungroup(name)`, `set_layer_volume(scene_id, layer_index, volume)`, `add_sound_to_scene(scene_id, sound_id)`, `remove_sound_from_scene(scene_id, sound_id)`, `remove_missing_sounds` |
 | Stack | `stack_insert(scene_id, index, mode)`, `stack_move(entry_id, index)`, `stack_remove(entry_id)`, `stack_set_enabled(entry_id, enabled)`, `stack_switch(scene_id)`, `scene_hotkey(scene_id)` |

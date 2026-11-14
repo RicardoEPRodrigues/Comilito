@@ -38,6 +38,10 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
   use *Move to* in its right-click menu. The sounds inside follow.
 - *Add from URL here…* in a Library folder's (or category's) right-click menu downloads straight
   into that folder.
+- **Each scene has its own Music, Ambience and Effects volumes.** The bottom bar's sliders
+  now set the volumes of the top scene in the Tapestry (its name is shown above them), and
+  the volumes fade along when another scene comes on top. Master stays the same for the whole
+  project. Scenes you haven't adjusted use the project's volumes.
 
 ### Changed
 

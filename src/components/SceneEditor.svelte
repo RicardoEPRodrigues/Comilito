@@ -36,6 +36,9 @@
     if (!draft.name.trim()) draft.name = original.name;
     if (draft.group !== undefined && !draft.group.trim()) draft.group = undefined;
     const snapshot = $state.snapshot(draft);
+    // The volumes are set from the mixer bar, maybe while this editor was open: keep the
+    // current ones rather than the draft's copy from when it opened.
+    snapshot.volumes = $state.snapshot(sceneById(id)?.volumes);
     await run(api.updateScene(snapshot));
     saved = fingerprint(snapshot);
   }

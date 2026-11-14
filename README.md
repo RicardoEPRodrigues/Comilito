@@ -13,7 +13,8 @@ organised into three categories:
 - **Ambience** — looping environmental layers (rain, tavern chatter, wind…) that can be stacked
 - **Effects** — short one-shot sounds (door slam, dragon roar, spell cast)
 
-Each category has its own volume, and each sound has its own volume, loop and fade settings.
+Each scene sets its own Music, Ambience and Effects volumes (the top scene of the Tapestry
+decides them), and each sound has its own volume, loop and fade settings.
 
 ## Using Comilito
 

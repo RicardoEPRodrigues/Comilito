@@ -88,6 +88,12 @@ written back as version 2. On each sound:
 - `source`: for downloaded audio, `{ url, title, site, downloadedAt, range? }`, where `range` is
   `{ startMs, endMs }` when only part was downloaded (decision 0019).
 - `lastUsed`: when the sound was last previewed, played or added to a scene, for "Recent".
+
+On each scene (added 2026-11-14, still version 2):
+
+- `volumes`: `{ music, ambience, effects }`, the category volumes while the scene is on top of the
+  stack ([0028](decisions/0028-scene-volumes.md)). Without it, the project's `categories` volumes
+  are used, so `categories` now means "the volumes of scenes that don't set their own".
 - `file.loudness.durationMs`: the length, measured with the loudness. Files measured before
   this existed are measured again in the background.
 

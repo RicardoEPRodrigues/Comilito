@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 
-use crate::project::{Project, Scene};
+use crate::project::{PerCategory, Project, Scene};
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -23,6 +23,11 @@ pub struct TargetMix {
     /// Stack entry id → effective volume of each of its scene's ambience layers (same order
     /// as `scene.ambience`), for the UI. Disabled entries are absent.
     pub layer_volumes: HashMap<String, Vec<f32>>,
+    /// The scene whose category volumes are used: the top-most enabled one. `None` when no
+    /// scene is enabled; the project's own category volumes are used then (decision 0028).
+    pub volumes_scene: Option<String>,
+    /// Music, ambience and effects track volumes.
+    pub volumes: PerCategory<f32>,
 }
 
 /// Computes the target mix from the project's stack.
@@ -47,8 +52,17 @@ pub fn target_mix(project: &Project) -> TargetMix {
         .filter(|(_, scene)| has_music(scene))
         .map(|(entry_id, _)| entry_id.to_string());
 
+    // Category volumes: the top-most enabled scene decides them for every sound playing,
+    // including music coming from a scene below it.
+    let top = enabled.last().map(|(_, scene)| *scene);
+
     let mut mix = TargetMix {
         music_entry,
+        volumes_scene: top.map(|scene| scene.id.clone()),
+        volumes: match top {
+            Some(scene) => project.scene_volumes(scene),
+            None => project.default_volumes(),
+        },
         ..Default::default()
     };
 
@@ -128,6 +142,7 @@ mod tests {
             duck_level: None,
             transition_ms: None,
         blocks_music: false,
+        volumes: None,
         }
     }
 
@@ -179,7 +194,39 @@ mod tests {
     #[test]
     fn empty_stack_plays_nothing() {
         let p = example_project();
-        assert_eq!(target_mix(&p), TargetMix::default());
+        let mix = target_mix(&p);
+        assert_eq!(mix.music_entry, None);
+        assert!(mix.ambience.is_empty());
+        assert!(mix.effects.is_empty());
+        assert_eq!(mix.volumes_scene, None);
+        assert_eq!(mix.volumes, p.default_volumes());
+    }
+
+    #[test]
+    fn the_top_enabled_scene_sets_the_category_volumes() {
+        let mut p = example_project();
+        let forest_volumes = PerCategory {
+            music: 0.2,
+            ambience: 0.9,
+            effects: 1.0,
+        };
+        p.scenes[1].volumes = Some(forest_volumes.clone());
+
+        // The forest is on top: its volumes apply, also to the music from the scene below.
+        set_stack(&mut p, &[("music", true), ("forest", true)]);
+        let mix = target_mix(&p);
+        assert_eq!(mix.volumes_scene.as_deref(), Some("forest"));
+        assert_eq!(mix.volumes, forest_volumes);
+
+        // Combat on top has no volumes of its own: the project's are used.
+        set_stack(&mut p, &[("music", true), ("forest", true), ("combat", true)]);
+        let mix = target_mix(&p);
+        assert_eq!(mix.volumes_scene.as_deref(), Some("combat"));
+        assert_eq!(mix.volumes, p.default_volumes());
+
+        // A disabled scene on top doesn't count.
+        set_stack(&mut p, &[("music", true), ("forest", true), ("combat", false)]);
+        assert_eq!(target_mix(&p).volumes, forest_volumes);
     }
 
     #[test]

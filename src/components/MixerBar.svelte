@@ -1,13 +1,16 @@
 <script lang="ts">
-  // Bottom bar: play/pause and stop, and the master and category volumes.
+  // Bottom bar: play/pause and stop, the project's master volume, and the category volumes
+  // of the top-most enabled scene (decision 0028).
   import { Pause, Play, Square } from "@lucide/svelte";
   import { api } from "../lib/api";
-  import { run, ui } from "../lib/store.svelte";
+  import { run, sceneById, ui } from "../lib/store.svelte";
   import { CATEGORIES } from "../lib/types";
   import VolumeSlider from "./VolumeSlider.svelte";
 
   const project = $derived(ui.snapshot!.project!);
+  const mix = $derived(ui.snapshot!.mix);
   const transport = $derived(ui.snapshot!.playback.transport);
+  const topScene = $derived(mix.volumesScene ? sceneById(mix.volumesScene) : undefined);
 </script>
 
 <footer>
@@ -17,9 +20,20 @@
   <button class="stop" onclick={() => run(api.stopAll())} title="Stop all (Esc)" aria-label="Stop all"><Square size={13} /></button>
   <span class="divider"></span>
   <VolumeSlider label="Master" value={project.masterVolume} onchange={(v) => run(api.setMasterVolume(v))} />
-  {#each CATEGORIES as c (c.id)}
-    <VolumeSlider label={c.label} value={project.categories[c.id].volume} onchange={(v) => run(api.setCategoryVolume(c.id, v))} />
-  {/each}
+  <span class="divider"></span>
+  <div
+    class="scene-levels"
+    title={topScene
+      ? `Volumes of ${topScene.name}, the top scene of the tapestry${topScene.volumes ? "" : " (project volumes until changed)"}`
+      : "Project volumes, used by scenes that have none of their own"}
+  >
+    <span class="owner caps">{topScene ? topScene.name : "Project volumes"}</span>
+    <div class="sliders">
+      {#each CATEGORIES as c (c.id)}
+        <VolumeSlider label={c.label} value={mix.volumes[c.id]} onchange={(v) => run(api.setCategoryVolume(c.id, v))} />
+      {/each}
+    </div>
+  </div>
   <span class="spacer"></span>
   <span class="hint">
     {transport === "stopped" ? "Stopped" : transport === "paused" ? "Paused" : "Playing"} · Space pause · Esc stop
@@ -63,6 +77,24 @@
     width: 1px;
     height: 2.2rem;
     background: color-mix(in srgb, var(--mixer-text) 25%, transparent);
+  }
+  .scene-levels {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+  .owner {
+    font-size: 0.6rem;
+    opacity: 0.55;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 30rem;
+  }
+  .sliders {
+    display: flex;
+    gap: 1.6rem;
   }
   .spacer {
     flex: 1;

@@ -34,6 +34,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0025](0025-theme-packages.md) | Themes can bring a watermark and fonts, shared as `.comilito-theme` packages | Accepted (editor: 0027) | 2026-11-13 |
 | [0026](0026-backups-in-app-data.md) | Keep backups in the app's data folder, not the projects folder | Accepted | 2026-11-13 |
 | [0027](0027-theme-editor-files.md) | The theme editor can add a woodcut, font files and licences | Accepted | 2026-11-13 |
+| [0028](0028-scene-volumes.md) | Each scene has its own music, ambience and effects volumes | Accepted | 2026-11-14 |
 
 ## Template
 

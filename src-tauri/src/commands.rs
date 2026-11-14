@@ -471,6 +471,10 @@ pub fn set_master_volume(volume: f32, app: AppHandle, state: AppStateRef) -> Res
     Ok(())
 }
 
+/// Sets a category volume of the top-most enabled scene (decision 0028), or the project's
+/// own when no scene is enabled. A scene without volumes of its own gets a copy of the
+/// project's first, so only the one category changes.
+///
 /// `category` arrives from JS as "music", "ambience" or "effects"; Tauri rejects anything
 /// else before this function runs, because `Category` can't be built from other strings.
 #[tauri::command]
@@ -481,7 +485,19 @@ pub fn set_category_volume(
     state: AppStateRef,
 ) -> Result<(), String> {
     let mut s = lock(&state)?;
-    s.open_mut()?.project.categories.get_mut(category).volume = volume.clamp(0.0, 1.0);
+    let open = s.open_mut()?;
+    let volume = volume.clamp(0.0, 1.0);
+    let defaults = open.project.default_volumes();
+    // `open.mix` is up to date: it's recomputed after every change.
+    let top = open.mix.volumes_scene.clone();
+    match top.and_then(|id| open.project.scenes.iter_mut().find(|sc| sc.id == id)) {
+        Some(scene) => {
+            // `get_or_insert` fills the `Option` if it's `None` and returns a mutable
+            // reference to what's inside either way.
+            *scene.volumes.get_or_insert(defaults).get_mut(category) = volume;
+        }
+        None => open.project.categories.get_mut(category).volume = volume,
+    }
     let problems = s.levels_changed();
     emit_state(&app, &s, problems);
     Ok(())
@@ -1158,6 +1174,7 @@ pub fn create_scene(
         duck_level: None,
         transition_ms: None,
         blocks_music: false,
+        volumes: None,
     });
     s.project_changed(Duration::ZERO);
     emit_state(&app, &s, Vec::new());
