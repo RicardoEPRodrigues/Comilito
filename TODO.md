@@ -6,7 +6,7 @@
 - Add ability to have plugins.
 - Add a plug in that associates a video with a scene and the top scene's video plays on a seperate window.
 - Create a first time experience.
-- Resume unfinished downloads after new launch.
+- Resume unfinished downloads after new launch. show warning when quitting while downloading.
 - add buttons to open all folders and close all folders.
 
 ## Bugs
