@@ -5,6 +5,7 @@ mod crop;
 mod desktop;
 mod downloads;
 mod logging;
+mod media_controls;
 mod loudness;
 mod mix;
 mod prefs;
@@ -117,6 +118,7 @@ pub fn run() {
             thread::spawn(move || desktop::watch(handle));
             let handle = app.handle().clone();
             thread::spawn(move || downloads::worker(handle, download_queue));
+            media_controls::start(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

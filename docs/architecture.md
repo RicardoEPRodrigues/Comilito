@@ -104,6 +104,9 @@ the download and tools events.
   resume. Stack changes while paused are applied but stay silent until resume.
 - **Esc (stop all):** every sound fades out and positions are forgotten; the stack is kept.
 - Effects and previews ignore pause.
+- The OS's media controls (media keys, headset buttons, the desktop's player widget) can play,
+  pause and stop too: Comilito registers as a media player (`media_controls.rs`, decision 0030)
+  and shows the top scene, the music track and the project there.
 
 ## Playback details
 
@@ -149,6 +152,7 @@ src-tauri/
     bundle.rs        .comilito zips (export, import, backups), sha256, finding missing files
     sample.rs        Builds the sample project from the bundled audio
     loudness.rs      Measures a file's EBU R128 loudness and peak
+    media_controls.rs  Registers with the OS as a media player (MPRIS, Windows, macOS)
   resources/sample/  Sample audio, shipped with the app (`bundle.resources`), see CREDITS.md
 docs/
 ```

@@ -7,15 +7,19 @@
 - Add a plug in that associates a video with a scene and the top scene's video plays on a seperate window.
 - Create a first time experience.
 - Resume unfinished downloads after new launch.
+- add buttons to open all folders and close all folders.
 
 ## Bugs
 
-
+- add options in scenes without no ambience to duck ambiences of lower scenes.
+- volume sliders should be animated when switching between scenes.
 
 ## Platforms
 
 - macOS: choose where ffmpeg comes from (decision 0019); the app currently expects one on the PATH.
 - Windows: the desktop accent colour (registry) and the downloaded tools are untested.
+- Windows and macOS: the OS media controls (decision 0030) compile but are untested. On
+  Windows they're tied to the main window's handle, created from a background thread.
 - Windows and macOS: dropping audio files onto the window (decision 0022) uses a different path
   from Linux (file contents sent from the webview) and is untested.
 - macOS and Android are listed as planned in the README. Android also needs checking that kira's

@@ -36,6 +36,10 @@ symphonia = { version = "0.6", default-features = false, features = ["aac", "iso
 # Small, blocking (no async runtime) and bundles its own TLS, so it works the same everywhere.
 ureq = "3"
 tauri-plugin-window-state = "2"
+# Registers Comilito as a media player with the OS (MPRIS on Linux, the media transport
+# controls on Windows, Now Playing on macOS), decision 0030. On Linux it uses zbus, which is
+# already in the build, instead of libdbus.
+souvlaki = { version = "0.9", default-features = false, features = ["use_zbus"] }
 
 # Reading the desktop's accent colour from the XDG portal (desktop.rs). zbus is already in
 # the build through tauri-plugin-opener, so this adds no new code.

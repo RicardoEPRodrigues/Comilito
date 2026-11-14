@@ -605,6 +605,11 @@ impl AudioEngine {
         self.effect_cache.clear();
     }
 
+    /// Whether the scene mix is playing, paused or stopped.
+    pub fn playback_transport(&self) -> Transport {
+        self.transport
+    }
+
     pub fn playback_info(&self, target: &TargetMix) -> PlaybackInfo {
         let music_sound = target
             .music_entry
