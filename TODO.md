@@ -7,19 +7,9 @@
 - Add a plug in that associates a video with a scene and the top scene's video plays on a seperate window.
 - Create a first time experience.
 - Resume unfinished downloads after new launch.
-- add animations, so opening and closing menus is smoother. e.g., opening the library drawer.
-- add a keybind (default backspace) to delete the top most scene from the stack.
-- make the middle mouse click disable the selected scene.
-- allow library drawer to be resizable.
 
 ## Bugs
 
-- If I play a sound on its edit page and then leave, the sound keeps playing. we should create an area where we can stop any temporary sounds.
-- in the youtube video downloader, the input for the beginning and end of the video are not that pretty and are overflowing. I prefer the 00:00:00 format for example.
-- Library: closing a folder does not hide subfolders.
-- Not able to drag a scene into a group.
-- any new ambient sound added to a scene should be labeled as foreground. Remove the No Role option. allow editing the role from the tapestry.
-- the decorated logo is too loud, lets switch to use the mark icon for everything (lets keep the decorated icon saved for later use).
 
 
 ## Platforms
@@ -60,3 +50,10 @@
   drags of sound rows didn't register there); folder drags did. Worth one manual try.
 - Flatpak needs a permanent app ID (reverse domain, e.g. `me.colorcrow.Comilito`), plus
   `flatpak-builder` and the GNOME SDK with the Rust extension installed to build and test it.
+- The new hh:mm:ss start/end fields for downloading part of a video were type-checked but not
+  tried in the app (the dialog needs a real URL and yt-dlp). Worth one manual try.
+- Library drawer: folding a folder with subfolders couldn't be tried in the sample project (it
+  has no folders). Worth one manual try.
+- Opening a project made before roles were required (decision 0029): layers without a role
+  become Foreground, and a scene with no ambience no longer ducks the ones below. Check that an
+  older real project still sounds right.
