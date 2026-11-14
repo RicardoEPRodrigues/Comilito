@@ -108,6 +108,24 @@ fn system_default_output() -> Option<cpal::Device> {
     }
 }
 
+/// Buffer size (frames) for outputs opened through cpal's PulseAudio host. Left to its
+/// default, that host buffers about 2 seconds, so every sound started 2 s late. 512 frames
+/// measured about 43 ms here, the same as the ALSA path (decision 0032).
+const PULSE_BUFFER_FRAMES: u32 = 512;
+
+/// The stream settings for an output: the device's own, except for a PulseAudio output,
+/// which gets a short buffer (see `PULSE_BUFFER_FRAMES`).
+fn stream_config(device: &cpal::Device) -> Option<cpal::StreamConfig> {
+    let id = device.id().ok()?;
+    if id.to_string().starts_with("pulseaudio:") {
+        let mut config = device.default_output_config().ok()?.config();
+        config.buffer_size = cpal::BufferSize::Fixed(PULSE_BUFFER_FRAMES);
+        Some(config)
+    } else {
+        None
+    }
+}
+
 /// Finds an output by the id saved in the preferences, if it's connected now.
 fn find_output(id: &str) -> Option<cpal::Device> {
     cpal::default_host()
@@ -196,7 +214,8 @@ impl AudioEngine {
     /// the user when the chosen output wasn't found.
     ///
     /// If the chosen output disappears later (a headset unplugged), kira moves to the system
-    /// default by itself. The system default follows the desktop when its default changes.
+    /// default by itself, keeping the same buffer size (so no extra delay) and what's playing.
+    /// The system default follows the desktop when its default changes.
     ///
     /// Returns `Result` because this can fail (no sound card, device busy...).
     /// `Result<T, E>` is Rust's replacement for exceptions: the caller *must* handle
@@ -210,8 +229,9 @@ impl AudioEngine {
             _ => None,
         };
         let device = chosen.and_then(|(_, found)| found).or_else(system_default_output);
+        let config = device.as_ref().and_then(stream_config);
         let settings = AudioManagerSettings {
-            backend_settings: CpalBackendSettings { device, config: None },
+            backend_settings: CpalBackendSettings { device, config },
             ..AudioManagerSettings::default()
         };
         let mut manager = AudioManager::<DefaultBackend>::new(settings)
@@ -881,4 +901,5 @@ mod tests {
         assert_eq!(p.position, 0);
     }
 }
+
 

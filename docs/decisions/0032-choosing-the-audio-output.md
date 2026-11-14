@@ -36,12 +36,16 @@ PulseAudio, which usually hold it.
   PulseAudio route it to the desktop's default output and move it when that changes, and the
   stream keeps a stable name ("ALSA plug-in [comilito]"), so the desktop remembers its volume.
   (cpal's PulseAudio host names every stream `cpal-pulseaudio-<process id>`.)
-- A **chosen output** is opened through the PulseAudio host.
+- A **chosen output** is opened through the PulseAudio host, with a fixed buffer of 512 frames.
+  Left to its default, that host buffers about **2 seconds**, so every sound started late
+  (measured with cpal's stream timestamps: 2.0 s by default, 43 ms with 512 frames; the ALSA
+  path measured 48 ms). Found and fixed the same day.
 - Changing the output rebuilds the audio engine: kira can't move a running mix. What was
   playing starts again from the beginning on the new output; a paused mix stays stopped.
 - If the chosen output isn't connected at start, the system default is used (and logged); the
   choice is kept, and Preferences shows it as "(not connected)". If it's unplugged while
-  playing, kira moves to the system default by itself.
+  playing, kira moves to the system default by itself, keeping the buffer size and what's
+  playing.
 
 ## Consequences
 
