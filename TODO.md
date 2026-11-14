@@ -37,8 +37,6 @@
 
 ### Other checks
 
-- Audio output: unplugging a chosen output while playing should move the sound to the system
-  default (kira does it). Not tried with real hardware; worth one try with the headset.
 
 - Downloads of only part of a video can't report a percentage (ffmpeg does the download), so they
   show "downloading the selected part…" instead. Consider estimating progress from ffmpeg's
