@@ -60,7 +60,12 @@
     }
   }
 
-  /** Global shortcuts: Space, Esc, / and scene hotkeys (docs/scenes.md "Controls"). */
+  /** True if `e` is the key set for `shortcut` (letters match either case). */
+  function isShortcut(e: KeyboardEvent, shortcut: string | undefined): boolean {
+    return !!shortcut && !e.ctrlKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === shortcut.toLowerCase();
+  }
+
+  /** Global shortcuts: Space, Esc, /, the configurable ones and scene hotkeys (docs/scenes.md "Controls"). */
   function onKeydown(e: KeyboardEvent) {
     // Already handled by a dialog or menu.
     if (e.defaultPrevented) return;
@@ -84,6 +89,11 @@
     } else if (e.key === "/") {
       e.preventDefault();
       document.querySelector<HTMLInputElement>("[data-library-search]")?.focus();
+    } else if (isShortcut(e, ui.prefs?.shortcuts.removeTopScene)) {
+      // The stack is stored bottom to top, so the top scene is the last entry.
+      e.preventDefault();
+      const top = p.stack[p.stack.length - 1];
+      if (top) run(api.stackRemove(top.id));
     } else if (!e.ctrlKey && !e.altKey && !e.metaKey) {
       const scene = p.scenes.find((s) => s.hotkey && s.hotkey.toLowerCase() === e.key.toLowerCase());
       if (scene) {

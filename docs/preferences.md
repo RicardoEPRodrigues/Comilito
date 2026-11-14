@@ -74,6 +74,12 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 | Closing a window with unsaved changes (✕ or Esc) | ask (other choices: save, discard). The window's Cancel button always discards. |
 | Warn when quitting during hashing or backup | on (not built yet) |
 
+### Shortcuts
+
+| Setting | Default |
+|---|---|
+| Remove the top scene from the tapestry | Backspace (any key except Space, Esc and /; or none) |
+
 ### Appearance
 
 | Setting | Default |
@@ -102,6 +108,7 @@ App `preferences.json` (`src-tauri/src/prefs.rs`), with its defaults:
     "unsavedChanges": "ask",
     "replaceUnsavedTapestry": "ask"
   },
+  "shortcuts": { "removeTopScene": "Backspace" },
   "appearance": {
     "mode": "system",
     "theme": "codex",
@@ -119,6 +126,8 @@ App `preferences.json` (`src-tauri/src/prefs.rs`), with its defaults:
 ```
 
 - `projectsFolder: null` means the default, `~/Documents/Comilito`.
+- `shortcuts` values are `KeyboardEvent.key` names (`"Backspace"`, `"Delete"`, `"x"`); `""` turns
+  the shortcut off.
 - `appearance.mode` is `"system"` (follow the desktop's light/dark, using `lightTheme` /
   `darkTheme`) or `"fixed"` (always `theme`). `accent` is `"theme"`, `"desktop"` or `"custom"`
   (then `customAccent` is used). See [themes.md](themes.md).

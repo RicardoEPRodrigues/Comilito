@@ -51,6 +51,8 @@ pub struct Preferences {
     #[serde(default)]
     pub behaviour: Behaviour,
     #[serde(default)]
+    pub shortcuts: Shortcuts,
+    #[serde(default)]
     pub appearance: Appearance,
     #[serde(default)]
     pub new_project_defaults: NewProjectDefaults,
@@ -83,6 +85,23 @@ pub struct Behaviour {
 
 fn ask() -> String {
     "ask".into()
+}
+
+/// Keys that can be changed. Each is a `KeyboardEvent.key` value ("Backspace", "Delete", "x");
+/// an empty string turns the shortcut off. Handled by the UI.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Shortcuts {
+    /// Removes the top-most scene from the tapestry.
+    pub remove_top_scene: String,
+}
+
+impl Default for Shortcuts {
+    fn default() -> Self {
+        Self {
+            remove_top_scene: "Backspace".into(),
+        }
+    }
 }
 
 /// Themes, accent colour and decoration (decision 0016, docs/preferences.md).
@@ -124,6 +143,7 @@ impl Default for Preferences {
             recent_projects: Vec::new(),
             playback: Playback::default(),
             behaviour: Behaviour::default(),
+            shortcuts: Shortcuts::default(),
             appearance: Appearance::default(),
             new_project_defaults: NewProjectDefaults::default(),
         }
@@ -245,6 +265,7 @@ mod tests {
         assert_eq!(prefs.playback.stop_fade_ms, 2500, "kept, not reset to defaults");
         assert_eq!(prefs.behaviour.duplicate_in_stack, "move");
         assert_eq!(prefs.behaviour.unsaved_changes, "ask");
+        assert_eq!(prefs.shortcuts.remove_top_scene, "Backspace");
     }
 
     #[test]

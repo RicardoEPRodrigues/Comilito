@@ -12,6 +12,7 @@
   import { closeEditor, fingerprint } from "../lib/unsaved";
   import AppearancePage from "./AppearancePage.svelte";
   import DefaultsForm from "./DefaultsForm.svelte";
+  import KeyInput from "./KeyInput.svelte";
   import Modal from "./Modal.svelte";
   import ToolsInstall from "./ToolsInstall.svelte";
 
@@ -229,6 +230,14 @@
                 <option value="replace">Replace without saving</option>
               </select>
             </label>
+          </section>
+          <section class="form">
+            <div class="section-head"><span class="caps">Shortcuts</span><span class="hint">Click, then press a key</span></div>
+            <div class="row">
+              <span>Remove the top scene from the tapestry</span>
+              <KeyInput value={draft.shortcuts.removeTopScene} onchange={(k) => (draft!.shortcuts.removeTopScene = k)} />
+            </div>
+            <p class="muted small">Space (pause), Esc (stop all) and / (search) are fixed. A scene hotkey on the same key is ignored.</p>
           </section>
         {:else if page === "appearance"}
           <AppearancePage bind:appearance={draft.appearance} />

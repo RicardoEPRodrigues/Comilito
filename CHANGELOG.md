@@ -42,6 +42,8 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
   now set the volumes of the top scene in the Tapestry (its name is shown above them), and
   the volumes fade along when another scene comes on top. Master stays the same for the whole
   project. Scenes you haven't adjusted use the project's volumes.
+- **Backspace removes the top scene** from the Tapestry. The key can be changed (or turned off)
+  in Preferences › Behaviour › Shortcuts.
 
 ### Changed
 

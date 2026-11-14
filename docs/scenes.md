@@ -127,6 +127,7 @@ The stack is the focus, and it's driven mainly by drag and drop.
 | Reorder | drag an entry within the stack |
 | Enable / disable | the checkbox on the entry |
 | Remove | × on the entry, or drag it out of the stack |
+| Remove the top scene | **Backspace** (can be changed in Preferences › Behaviour › Shortcuts) |
 | Add on top | right-click a scene → *Add on top* |
 | Switch stack | right-click a scene → *Switch stack to this scene* (the stack becomes just this scene) |
 | Replace with preset | right-click a preset → *Replace stack* |

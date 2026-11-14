@@ -227,6 +227,8 @@ export interface Preferences {
     unsavedChanges: "ask" | "save" | "discard";
     replaceUnsavedTapestry: "ask" | "replace";
   };
+  /** `KeyboardEvent.key` values; "" means the shortcut is off. */
+  shortcuts: { removeTopScene: string };
   appearance: Appearance;
   newProjectDefaults: {
     masterVolume: number;
