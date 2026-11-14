@@ -52,10 +52,6 @@
   drags of sound rows didn't register there); folder drags did. Worth one manual try.
 - Flatpak needs a permanent app ID (reverse domain, e.g. `me.colorcrow.Comilito`), plus
   `flatpak-builder` and the GNOME SDK with the Rust extension installed to build and test it.
-- The new hh:mm:ss start/end fields for downloading part of a video were type-checked but not
-  tried in the app (the dialog needs a real URL and yt-dlp). Worth one manual try.
-- Library drawer: folding a folder with subfolders couldn't be tried in the sample project (it
-  has no folders). Worth one manual try.
 - Opening a project made before roles were required (decision 0029): layers without a role
   become Foreground, and a scene with no ambience no longer ducks the ones below. Check that an
   older real project still sounds right.
