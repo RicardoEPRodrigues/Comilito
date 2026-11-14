@@ -79,7 +79,7 @@ scene editor, or from the role picker next to each layer in an expanded tapestry
 The **top-most enabled scene** sets the Music, Ambience and Effects volumes for everything that
 plays, including music coming from a scene below it. A tavern scene on top of travelling music
 can turn that music down while it's there. When the top scene changes, the volumes fade over its
-transition. A scene that has no volumes of its own uses the project's. The master volume is
+transition, and the mixer bar's sliders glide along. A scene that has no volumes of its own uses the project's. The master volume is
 project-wide ([0028](decisions/0028-scene-volumes.md)).
 
 ### Effects pad

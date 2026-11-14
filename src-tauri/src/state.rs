@@ -75,6 +75,9 @@ pub struct OpenProject {
     /// added once its size is the same on two scans in a row, so we never pick up a file
     /// that's still being copied or synced.
     pub pending_files: HashMap<String, u64>,
+    /// How long the last change took to fade the category volumes, so the mixer bar's
+    /// sliders can glide along with the sound instead of jumping.
+    pub levels_fade_ms: u32,
 }
 
 /// What `refresh_from_disk` changed.
@@ -155,6 +158,8 @@ pub struct Snapshot {
     pub stack_status: StackStatus,
     /// Preset groups in display order (including empty ones).
     pub preset_groups: Vec<String>,
+    /// How long the category volumes take to reach `mix.volumes` (see `OpenProject`).
+    pub levels_fade_ms: u32,
 }
 
 impl AppState {
@@ -202,6 +207,7 @@ impl AppState {
             last_backup: Instant::now(),
             analysis_failed: Vec::new(),
             pending_files: HashMap::new(),
+            levels_fade_ms: 0,
         });
         // The stack is restored but not started: the DM presses Space when ready.
         if let Some(open) = &self.open {
@@ -257,11 +263,9 @@ impl AppState {
         open.mix = target_mix(&open.project);
         // The category volumes follow the top scene, so a stack change can change them too;
         // they fade along with the sounds.
-        self.engine.apply_levels(
-            &open.project,
-            &open.mix,
-            transition.max(VOLUME_SMOOTHING),
-        );
+        let levels_fade = transition.max(VOLUME_SMOOTHING);
+        open.levels_fade_ms = levels_fade.as_millis() as u32;
+        self.engine.apply_levels(&open.project, &open.mix, levels_fade);
         self.engine
             .apply_mix(&open.project, &open.dir, &open.mix, transition)
     }
@@ -299,6 +303,7 @@ impl AppState {
                 folders: open.folders.clone(),
                 stack_status: open.project.stack_status(),
                 preset_groups: open.project.all_preset_groups(),
+                levels_fade_ms: open.levels_fade_ms,
             },
             None => Snapshot {
                 project: None,
@@ -312,6 +317,7 @@ impl AppState {
                 folders: PerCategory::default(),
                 stack_status: StackStatus::Empty,
                 preset_groups: Vec::new(),
+                levels_fade_ms: 0,
             },
         }
     }
@@ -361,6 +367,7 @@ mod tests {
             analysis_failed: Vec::new(),
             pending_files: HashMap::new(),
             folders: PerCategory::default(),
+            levels_fade_ms: 0,
         }
     }
 

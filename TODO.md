@@ -11,7 +11,6 @@
 
 ## Bugs
 
-- volume sliders should be animated when switching between scenes.
 
 ## Platforms
 

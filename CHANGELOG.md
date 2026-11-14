@@ -77,6 +77,8 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 
 ### Fixed
 
+- The bottom bar's Music, Ambience and Effects sliders jumped when another scene came on top;
+  they now glide to the new volumes in step with the sound.
 - A sound previewed in an editor kept playing after leaving it. Previews now stop when their
   editor closes, and the bottom bar shows what's being previewed with a button to stop it.
 - In the Library drawer, folding a folder now hides its subfolders too.

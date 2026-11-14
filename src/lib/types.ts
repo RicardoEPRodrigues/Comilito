@@ -179,6 +179,8 @@ export interface PlaybackInfo {
 }
 
 export interface Snapshot {
+  /** How long the category volumes take to reach `mix.volumes`, for the mixer's sliders. */
+  levelsFadeMs: number;
   project: Project | null;
   projectDir: string | null;
   missing: string[];

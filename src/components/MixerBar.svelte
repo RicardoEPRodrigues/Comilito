@@ -32,7 +32,12 @@
     <span class="owner caps">{topScene ? topScene.name : "Project volumes"}</span>
     <div class="sliders">
       {#each CATEGORIES as c (c.id)}
-        <VolumeSlider label={c.label} value={mix.volumes[c.id]} onchange={(v) => run(api.setCategoryVolume(c.id, v))} />
+        <VolumeSlider
+          label={c.label}
+          value={mix.volumes[c.id]}
+          glideMs={ui.snapshot!.levelsFadeMs}
+          onchange={(v) => run(api.setCategoryVolume(c.id, v))}
+        />
       {/each}
     </div>
   </div>
