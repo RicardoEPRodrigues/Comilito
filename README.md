@@ -67,8 +67,8 @@ See [docs/architecture.md](docs/architecture.md) and [docs/decisions/](docs/deci
 ## Status
 
 First version: projects, a sound library, scenes, the scene stack with ducking and roles,
-presets, an effects pad, export/import, relinking missing audio, hashing and automatic backups.
-Not yet: a warning when quitting during hashing.
+presets, an effects pad, export/import, relinking missing audio, hashing and automatic backups,
+downloads that resume after a restart, and a warning when quitting while work is running.
 
 ## Uninstalling
 

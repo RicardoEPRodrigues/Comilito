@@ -72,7 +72,7 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 | When removing a sound | ask (other choices: always move to trash) |
 | When loading a preset over an unsaved tapestry | ask (other choice: always replace without saving) |
 | Closing a window with unsaved changes (✕ or Esc) | ask (other choices: save, discard). The window's Cancel button always discards. |
-| Warn when quitting during hashing or backup | on (not built yet) |
+| Warn when quitting during downloads, fingerprinting or a backup (also while moving the projects folder) | on ([0033](decisions/0033-resuming-downloads-and-quit-warning.md)) |
 
 ### Shortcuts
 
@@ -106,7 +106,8 @@ App `preferences.json` (`src-tauri/src/prefs.rs`), with its defaults:
     "duplicateInStack": "ask",
     "removeSound": "ask",
     "unsavedChanges": "ask",
-    "replaceUnsavedTapestry": "ask"
+    "replaceUnsavedTapestry": "ask",
+    "warnOnQuit": true
   },
   "shortcuts": { "removeTopScene": "Backspace" },
   "appearance": {

@@ -53,6 +53,11 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
   registers with the OS as a media player, showing the top scene and the music playing.
 - **Loudness normalization can be turned on or off for one sound**, in its Loudness section in
   the Library, overriding its category's setting in Project settings.
+- **Downloads continue after a restart.** Downloads still queued or running when Comilito quits
+  resume, from where they stopped, the next time their project is opened.
+- **A warning when quitting while busy:** closing Comilito during downloads, fingerprinting, a
+  backup or a move of the projects folder asks first, listing what would be interrupted. It can
+  be turned off in Preferences › Behaviour.
 - **Fold or unfold all folders** with the two new buttons in the Library drawer's toolbar.
 - **Smoother opening and closing:** the Library drawer slides open and shut, menus and dialogs
   ease in, and groups, folders and Tapestry entries unfold instead of jumping. All of it is

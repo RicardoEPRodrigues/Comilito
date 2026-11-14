@@ -239,6 +239,8 @@ export interface Preferences {
     removeSound: "ask" | "trash";
     unsavedChanges: "ask" | "save" | "discard";
     replaceUnsavedTapestry: "ask" | "replace";
+    /** Ask before quitting while downloads, fingerprinting, a backup or a move are running. */
+    warnOnQuit: boolean;
   };
   /** `KeyboardEvent.key` values; "" means the shortcut is off. */
   shortcuts: { removeTopScene: string };

@@ -82,7 +82,7 @@ Stack indexes count from the bottom (0 = bottom), like `stack` in `comilito.json
 
 | Area | Commands |
 |------|----------|
-| General | `app_version`, `get_state`, `get_preferences`, `set_preferences(prefs)` (switches the audio output if it changed), `list_output_devices` |
+| General | `app_version`, `confirm_quit` (quit after the "still busy" warning), `get_state`, `get_preferences`, `set_preferences(prefs)` (switches the audio output if it changed), `list_output_devices` |
 | Projects | `list_projects` (with counts and last edit), `projects_folder`, `duplicate_project(path)`, `move_projects_folder(to)`, `show_projects_folder(project?)`, `create_project(name, sample)`, `open_project(path)`, `delete_project(path, delete_audio)`, `close_project`, `reload_project`, `keep_my_version`, `rename_project(name)` |
 | Moving projects | `export_project(dest, include_audio)`, `import_project(path)`, `backups_folder`, `relink_from_folder(folder)`, `relink_sound(id, path)` |
 | Project settings | `set_master_volume(volume)`, `set_category_volume(category, volume)` (the top scene's, or the project's when no scene is enabled), `set_project_defaults(defaults)`, `set_backup_settings(backups)`, `reset_project_defaults` |
@@ -94,8 +94,18 @@ Stack indexes count from the bottom (0 = bottom), like `stack` in `comilito.json
 | Appearance | `desktop_appearance`, `list_user_themes`, `save_user_theme(theme)`, `delete_user_theme(id)`, `import_theme(path)` (a `.comilito-theme` package or a plain `.json`), `export_theme(theme, dest)` (writes a package), `read_theme_asset(name)` → raw bytes of a font or watermark a theme brought, `add_theme_file(path, role)` → stored name of a file picked in the theme editor ([themes.md](themes.md)) |
 
 Events from Rust to UI: `state-changed` (a `Snapshot`), `notice` (a message string),
-`projects-move-progress` and `projects-moved` (moving the projects folder, decision 0024), plus
-the download and tools events.
+`projects-move-progress` and `projects-moved` (moving the projects folder, decision 0024),
+`quit-requested` (a list of what's still running; see below), plus the download and tools events.
+
+### Quitting
+
+Closing the main window runs `on_window_event` in `lib.rs`. If downloads, fingerprinting, a
+backup or a projects-folder move are running (`AppState::busy_work`) and the *Warn when quitting*
+preference is on, the close is held back and `quit-requested` is emitted; the UI asks, and
+*Quit anyway* calls `confirm_quit`, which sets `AppState::quitting` and closes the window again.
+On exit, a running yt-dlp is stopped (a child process outlives its parent) and the project is
+saved. Unfinished downloads are kept in `downloads.json` in the app data folder and resume when
+their project is next opened ([0033](decisions/0033-resuming-downloads-and-quit-warning.md)).
 
 ## Transport
 

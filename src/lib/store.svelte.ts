@@ -268,6 +268,18 @@ export async function init() {
   await listen<InstallProgress>("tools-progress", (e) => {
     ui.toolsProgress = e.payload;
   });
+  // Closing the window while work is running: Rust holds the close back and lists the work.
+  await listen<string[]>("quit-requested", async (e) => {
+    const answer = await ask({
+      title: "Quit while busy?",
+      message: `Comilito is still working:\n\n${e.payload.map((w) => `• ${w}`).join("\n")}`,
+      choices: [
+        { label: "Keep running", value: "stay", primary: true },
+        { label: "Quit anyway", value: "quit", danger: true },
+      ],
+    });
+    if (answer?.choice === "quit") await run(api.confirmQuit());
+  });
   const [snapshot, prefs, desktop, downloads] = await Promise.all([
     api.getState(),
     api.getPreferences(),

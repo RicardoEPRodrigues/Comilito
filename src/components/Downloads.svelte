@@ -34,7 +34,7 @@
         </div>
         <span class="meta">
           {job.site} ·
-          {#if job.status === "queued"}queued{:else if job.status === "running"}{job.message ?? `${Math.round(job.progress * 100)}%`}{:else if job.status === "done"}added to the Library{:else if job.status === "cancelled"}cancelled{:else}{job.message}{/if}
+          {#if job.status === "queued"}{job.message ?? "queued"}{:else if job.status === "running"}{job.message ?? `${Math.round(job.progress * 100)}%`}{:else if job.status === "done"}added to the Library{:else if job.status === "cancelled"}cancelled{:else}{job.message}{/if}
         </span>
         {#if job.status === "running"}
           <div class="track"><div class="fill" style:width="{job.progress * 100}%"></div></div>

@@ -6,11 +6,9 @@
 - Add ability to have plugins.
 - Add a plug in that associates a video with a scene and the top scene's video plays on a seperate window.
 - Create a first time experience.
-- Resume unfinished downloads after new launch. show warning when quitting while downloading.
-- add buttons to open all folders and close all folders.
+- draggin a file onto the library should add it to the selected folder or where the mouse drops.
 
 ## Bugs
-
 
 ## Platforms
 
@@ -29,27 +27,21 @@
 
 ### Documented but not built yet
 
-- Warning when quitting during hashing or a backup. docs/preferences.md lists a "Warn when
-  quitting during hashing or backup" setting (default on) and the README lists it under "Not
-  yet"; neither the setting nor the warning exists.
-
 ### Docs out of date
 
 ### Other checks
 
-
+- The quit warning, resuming downloads and the drawer's fold/unfold-all buttons were checked by
+  type-checks and unit tests only (no virtual display available this time). Worth one manual
+  try: start a long download, close the window, choose *Quit anyway*, reopen the project and see
+  it continue from where it stopped.
+- Quitting during a download of part of a video stops yt-dlp but not the ffmpeg it started,
+  which runs to the end on its own (decision 0033). Harmless, but could be stopped too.
 - Downloads of only part of a video can't report a percentage (ffmpeg does the download), so they
   show "downloading the selected part…" instead. Consider estimating progress from ffmpeg's
   `time=` output.
 - Moving the projects folder across disks (the slow, copying case) was only tested by unit
   tests; on the virtual display both folders were on one disk, so the move was an instant rename.
   Worth trying once with a big project and a USB drive to see the progress dialog.
-- Library: a folder can only be moved within its category. Moving one to another category would
-  also mean moving its sounds between categories (and out of scene slots that don't take them).
-- Library: dragging a sound onto a folder couldn't be checked on the virtual display (synthetic
-  drags of sound rows didn't register there); folder drags did. Worth one manual try.
 - Flatpak needs a permanent app ID (reverse domain, e.g. `me.colorcrow.Comilito`), plus
   `flatpak-builder` and the GNOME SDK with the Rust extension installed to build and test it.
-- Opening a project made before roles were required (decision 0029): layers without a role
-  become Foreground, and a scene with no ambience no longer ducks the ones below. Check that an
-  older real project still sounds right.

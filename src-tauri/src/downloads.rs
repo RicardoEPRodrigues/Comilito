@@ -8,13 +8,18 @@
 //!
 //! Downloads wait in a queue and run one at a time on a background thread. The queue lives
 //! in `AppState::downloads`, and every change is sent to the UI as a `downloads-changed` event.
+//!
+//! Unfinished downloads survive quitting: the queue is written to `downloads.json` in the app
+//! data folder, and a download resumes the next time its project is opened. Partial data is
+//! kept in the cache folder (`*.part` files), so yt-dlp and direct links continue where they
+//! stopped instead of starting over.
 
 use std::{
     fs,
     io::{BufRead, BufReader, Read, Write},
     path::{Path, PathBuf},
-    process::Stdio,
-    sync::{Mutex, mpsc},
+    process::{Child, Stdio},
+    sync::{Arc, Mutex, mpsc},
     thread,
     time::{Duration, Instant},
 };
@@ -48,7 +53,7 @@ pub struct Probe {
     pub ext: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DownloadRequest {
     pub url: String,
@@ -94,6 +99,104 @@ pub struct DownloadJob {
     request: Option<DownloadRequest>,
     #[serde(skip)]
     project_dir: PathBuf,
+}
+
+/// An unfinished download as written to `downloads.json`, to resume it after a restart.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SavedDownload {
+    /// Kept so the partial data in the cache folder (named after the id) is found again.
+    pub id: String,
+    pub project_dir: PathBuf,
+    pub request: DownloadRequest,
+}
+
+pub const SAVED_FILE: &str = "downloads.json";
+
+/// Reads the unfinished downloads left by the last run. Downloads for projects that no longer
+/// exist are dropped (and their partial data deleted), as are the cache folders of downloads
+/// that aren't in the list any more.
+pub fn load_saved(data_dir: &Path, cache_dir: &Path) -> Vec<SavedDownload> {
+    let saved: Vec<SavedDownload> = fs::read_to_string(data_dir.join(SAVED_FILE))
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_default();
+    let saved: Vec<SavedDownload> = saved
+        .into_iter()
+        .filter(|d| d.project_dir.join(storage::PROJECT_FILE).is_file())
+        .collect();
+    if let Ok(entries) = fs::read_dir(cache_dir.join("downloads")) {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if !saved.iter().any(|d| d.id == name) {
+                let _ = fs::remove_dir_all(entry.path());
+            }
+        }
+    }
+    saved
+}
+
+/// Writes the downloads that haven't finished (queued or running in this run, plus those
+/// waiting for their project to be opened) to `downloads.json`, or removes it when there are
+/// none. Called whenever a download is added, finishes or is cancelled.
+pub fn save_unfinished(state: &AppState) {
+    let mut list: Vec<SavedDownload> = state
+        .downloads
+        .iter()
+        .filter(|j| matches!(j.status, JobStatus::Queued | JobStatus::Running))
+        .filter_map(|j| {
+            Some(SavedDownload {
+                id: j.id.clone(),
+                project_dir: j.project_dir.clone(),
+                request: j.request.clone()?,
+            })
+        })
+        .collect();
+    list.extend(state.waiting_downloads.iter().cloned());
+    let file = state.data_dir.join(SAVED_FILE);
+    let result = if list.is_empty() {
+        match fs::remove_file(&file) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.to_string()),
+            _ => Ok(()),
+        }
+    } else {
+        serde_json::to_string_pretty(&list)
+            .map_err(|e| e.to_string())
+            .and_then(|json| fs::write(&file, json).map_err(|e| e.to_string()))
+    };
+    if let Err(e) = result {
+        crate::logging::warn(&format!("could not remember the unfinished downloads: {e}"));
+    }
+}
+
+/// Puts the saved downloads of the project just opened back in the queue. Returns how many.
+pub fn resume_for(state: &mut AppState, dir: &Path) -> usize {
+    // `partition` splits a list in two by a test: (those that pass, those that don't).
+    let (resume, keep): (Vec<_>, Vec<_>) =
+        std::mem::take(&mut state.waiting_downloads).into_iter().partition(|d| d.project_dir == dir);
+    state.waiting_downloads = keep;
+    let count = resume.len();
+    for saved in resume {
+        state.downloads.push(DownloadJob {
+            id: saved.id,
+            name: saved.request.name.clone(),
+            url: saved.request.url.clone(),
+            site: saved.request.site.clone(),
+            status: JobStatus::Queued,
+            progress: 0.0,
+            message: Some("resuming…".into()),
+            sound_id: None,
+            request: Some(saved.request),
+            project_dir: saved.project_dir,
+        });
+    }
+    if count > 0 {
+        crate::logging::info(&format!("Resuming {count} unfinished download(s)"));
+        if let Some(tx) = &state.download_wakeup {
+            let _ = tx.send(());
+        }
+    }
+    count
 }
 
 /// Audio formats a direct link may point at.
@@ -244,6 +347,7 @@ pub fn enqueue(state: &mut AppState, request: DownloadRequest) -> Result<String,
     if let Some(tx) = &state.download_wakeup {
         let _ = tx.send(());
     }
+    save_unfinished(state);
     Ok(id)
 }
 
@@ -263,6 +367,7 @@ pub fn worker(app: AppHandle, wakeup: mpsc::Receiver<()>) {
                     break;
                 };
                 job.status = JobStatus::Running;
+                job.message = None;
                 let next = (job.id.clone(), job.request.clone(), job.project_dir.clone());
                 emit_downloads(&app, &s);
                 next
@@ -307,6 +412,11 @@ fn temp_dir_for(app: &AppHandle, id: &str) -> Result<PathBuf, String> {
 /// Downloads into a temporary folder and returns the finished file.
 fn run(app: &AppHandle, id: &str, request: &DownloadRequest, _dir: &Path) -> Result<PathBuf, String> {
     let tmp = temp_dir_for(app, id)?;
+    // A download stopped by quitting may have left files behind. Only partial downloads
+    // (`.part`, and yt-dlp's `.ytdl` notes about them) can be continued; anything else may be
+    // half-written (a conversion that was cut off) and is deleted. A part of a video is cut
+    // by ffmpeg, which can't continue, so that starts over.
+    clean_leftovers(&tmp, request.range.is_none());
     let tools_dir = app.state::<Mutex<AppState>>().lock().map_err(|_| "busy")?.tools_dir.clone();
 
     if request.kind == "direct" {
@@ -356,15 +466,39 @@ fn run(app: &AppHandle, id: &str, request: &DownloadRequest, _dir: &Path) -> Res
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| format!("could not run yt-dlp: {e}"))?;
+    let stdout = child.stdout.take().expect("piped");
+    let stderr = child.stderr.take().expect("piped");
+    // The child is shared with the app state so quitting can stop it: a child process isn't
+    // stopped when its parent exits, and a stray yt-dlp would keep writing into the folder
+    // the resumed download uses next time. `Arc<Mutex<…>>` is a shared, locked box (like a
+    // `shared_ptr` to an object with its own mutex in C++).
+    let child = Arc::new(Mutex::new(child));
+    if let Ok(mut s) = app.state::<Mutex<AppState>>().lock() {
+        s.download_process = Some(child.clone());
+    }
+    let result = watch_yt_dlp(app, id, &tmp, &child, stdout, stderr);
+    if let Ok(mut s) = app.state::<Mutex<AppState>>().lock() {
+        s.download_process = None;
+    }
+    result
+}
+
+/// Follows a running yt-dlp until it ends (or the download is cancelled) and returns the
+/// audio file it left.
+fn watch_yt_dlp(
+    app: &AppHandle,
+    id: &str,
+    tmp: &Path,
+    child: &Mutex<Child>,
+    stdout: impl Read + Send + 'static,
+    stderr: impl Read + Send + 'static,
+) -> Result<PathBuf, String> {
 
     // Read yt-dlp's output on other threads, so this one can watch for "cancel". Progress
     // lines can arrive on stdout or stderr depending on the version, so both are read; error
     // lines from stderr are kept for the message if the download fails.
     let errors = std::sync::Arc::new(Mutex::new(String::new()));
-    let readers: Vec<_> = [
-        Box::new(child.stdout.take().expect("piped")) as Box<dyn Read + Send>,
-        Box::new(child.stderr.take().expect("piped")) as Box<dyn Read + Send>,
-    ]
+    let readers: Vec<_> = [Box::new(stdout) as Box<dyn Read + Send>, Box::new(stderr) as Box<dyn Read + Send>]
     .into_iter()
     .map(|stream| {
         let (app2, id2, errors) = (app.clone(), id.to_string(), errors.clone());
@@ -396,14 +530,19 @@ fn run(app: &AppHandle, id: &str, request: &DownloadRequest, _dir: &Path) -> Res
     .collect();
 
     let status = loop {
+        let mut process = child.lock().map_err(|_| "busy")?;
         if is_cancelled(app, id) {
-            let _ = child.kill();
-            let _ = child.wait();
+            let _ = process.kill();
+            let _ = process.wait();
             return Err("CANCELLED".into());
         }
-        match child.try_wait().map_err(|e| e.to_string())? {
+        match process.try_wait().map_err(|e| e.to_string())? {
             Some(status) => break status,
-            None => thread::sleep(Duration::from_millis(200)),
+            None => {
+                // Unlock before sleeping, so quitting can take the lock to stop the process.
+                drop(process);
+                thread::sleep(Duration::from_millis(200));
+            }
         }
     };
     for reader in readers {
@@ -415,7 +554,7 @@ fn run(app: &AppHandle, id: &str, request: &DownloadRequest, _dir: &Path) -> Res
         return Err(line.trim_start_matches("ERROR:").trim().to_string());
     }
     // yt-dlp chose the final name's extension; find the audio it left.
-    fs::read_dir(&tmp)
+    fs::read_dir(tmp)
         .map_err(|e| e.to_string())?
         .flatten()
         .map(|e| e.path())
@@ -426,18 +565,40 @@ fn run(app: &AppHandle, id: &str, request: &DownloadRequest, _dir: &Path) -> Res
         .ok_or_else(|| "yt-dlp finished but left no audio file".to_string())
 }
 
+/// Downloads a direct link into `dest`, through `dest.part` so an interrupted download can
+/// continue: if a `.part` file is there, only the rest is asked for (an HTTP `Range` request).
+/// Servers that don't support that send the whole file again, which then starts over.
 fn fetch_direct(app: &AppHandle, id: &str, url: &str, dest: &Path) -> Result<(), String> {
-    let mut response = ureq::get(url).call().map_err(|e| format!("couldn't download: {e}"))?;
-    let total: u64 = response
+    let part = dest.with_extension(format!(
+        "{}.part",
+        dest.extension().map(|e| e.to_string_lossy().into_owned()).unwrap_or_default()
+    ));
+    let already = fs::metadata(&part).map(|m| m.len()).unwrap_or(0);
+    let mut request = ureq::get(url);
+    if already > 0 {
+        request = request.header("Range", format!("bytes={already}-"));
+    }
+    let mut response = request.call().map_err(|e| format!("couldn't download: {e}"))?;
+    // 206 "Partial Content": the server sent only the rest, so append to what we have.
+    let resuming = already > 0 && response.status().as_u16() == 206;
+    let rest: u64 = response
         .headers()
         .get("content-length")
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.parse().ok())
         .unwrap_or(0);
+    let mut done = if resuming { already } else { 0 };
+    let total = if rest > 0 { done + rest } else { 0 };
     let mut reader = response.body_mut().with_config().limit(u64::MAX).reader();
-    let mut file = fs::File::create(dest).map_err(|e| e.to_string())?;
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(resuming)
+        .truncate(!resuming)
+        .open(&part)
+        .map_err(|e| e.to_string())?;
     let mut buffer = vec![0u8; 64 * 1024];
-    let (mut done, mut last) = (0u64, Instant::now());
+    let mut last = Instant::now();
     loop {
         if is_cancelled(app, id) {
             return Err("CANCELLED".into());
@@ -453,11 +614,30 @@ fn fetch_direct(app: &AppHandle, id: &str, url: &str, dest: &Path) -> Result<(),
             update(app, id, |j| j.progress = done as f32 / total as f32);
         }
     }
-    Ok(())
+    drop(file);
+    fs::rename(&part, dest).map_err(|e| e.to_string())
+}
+
+/// Deletes what an interrupted download left in its cache folder, except (when `keep_partial`)
+/// the partial downloads that can be continued.
+fn clean_leftovers(tmp: &Path, keep_partial: bool) {
+    let Ok(entries) = fs::read_dir(tmp) else { return };
+    for path in entries.flatten().map(|e| e.path()) {
+        let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+        let resumable = name.ends_with(".part") || name.ends_with(".ytdl");
+        if !(keep_partial && resumable) {
+            let _ = fs::remove_file(&path);
+        }
+    }
 }
 
 /// Moves the finished file into the project and adds it to the library.
 fn finish(app: &AppHandle, id: &str, request: &DownloadRequest, dir: &Path, result: Result<PathBuf, String>) {
+    // Quitting stops yt-dlp, which looks like a failure from here. Leave everything as it is
+    // (partial data and `downloads.json`), so the download resumes next time.
+    if app.state::<Mutex<AppState>>().lock().map(|s| s.quitting).unwrap_or(true) {
+        return;
+    }
     let placed = result.and_then(|file| {
         let ext = file.extension().map(|e| e.to_string_lossy().to_string()).unwrap_or_else(|| request.ext.clone());
         let folder = storage::category_folder_path(dir, request.category, &request.folder);
@@ -535,6 +715,7 @@ fn finish(app: &AppHandle, id: &str, request: &DownloadRequest, dir: &Path, resu
         problems.push(format!("Downloaded \"{}\".", request.name.trim()));
         problems.extend(s.project_changed(Duration::ZERO));
     }
+    save_unfinished(&s);
     emit_downloads(app, &s);
     emit_state(app, &s, problems);
 }
@@ -560,6 +741,58 @@ mod tests {
         assert_eq!(direct_extension("https://x.org/page.html"), None);
         assert_eq!(host_of("https://www.freesound.org/s/1"), "freesound.org");
         assert_eq!(percent_decode("rain%20loop+2"), "rain loop 2");
+    }
+
+    #[test]
+    fn leftovers_keep_only_what_can_be_continued() {
+        let tmp = crate::storage::test_support::TempDir::new();
+        for name in ["audio.webm.part", "audio.webm.ytdl", "audio.m4a", "audio.temp.m4a"] {
+            fs::write(tmp.0.join(name), b"x").unwrap();
+        }
+        clean_leftovers(&tmp.0, true);
+        let mut left: Vec<String> =
+            fs::read_dir(&tmp.0).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+        left.sort();
+        assert_eq!(left, ["audio.webm.part", "audio.webm.ytdl"]);
+        // A part of a video can't be continued: everything goes.
+        clean_leftovers(&tmp.0, false);
+        assert_eq!(fs::read_dir(&tmp.0).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn saved_downloads_of_missing_projects_are_dropped() {
+        let root = crate::storage::test_support::TempDir::new();
+        let (data, cache, project) = (root.0.join("data"), root.0.join("cache"), root.0.join("Strahd"));
+        fs::create_dir_all(&data).unwrap();
+        fs::create_dir_all(&project).unwrap();
+        fs::write(project.join(storage::PROJECT_FILE), "{}").unwrap();
+        for id in ["dl-kept", "dl-gone", "dl-stray"] {
+            fs::create_dir_all(cache.join("downloads").join(id)).unwrap();
+        }
+        let request = |name: &str| DownloadRequest {
+            url: "https://x.org/a.mp3".into(),
+            kind: "direct".into(),
+            title: name.into(),
+            site: "x.org".into(),
+            ext: "mp3".into(),
+            category: Category::Effects,
+            folder: String::new(),
+            name: name.into(),
+            range: None,
+            replace: None,
+        };
+        let saved = vec![
+            SavedDownload { id: "dl-kept".into(), project_dir: project.clone(), request: request("kept") },
+            SavedDownload { id: "dl-gone".into(), project_dir: root.0.join("Deleted"), request: request("gone") },
+        ];
+        fs::write(data.join(SAVED_FILE), serde_json::to_string(&saved).unwrap()).unwrap();
+
+        let loaded = load_saved(&data, &cache);
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].id, "dl-kept");
+        assert!(cache.join("downloads/dl-kept").is_dir());
+        assert!(!cache.join("downloads/dl-gone").exists());
+        assert!(!cache.join("downloads/dl-stray").exists());
     }
 
     #[test]

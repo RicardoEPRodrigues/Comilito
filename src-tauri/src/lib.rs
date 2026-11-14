@@ -27,7 +27,7 @@ use std::{
 
 use audio::AudioEngine;
 use state::{AppState, SAVE_DELAY, emit_state};
-use tauri::{AppHandle, Emitter, Manager, RunEvent, path::BaseDirectory};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent, path::BaseDirectory};
 
 // On Android this function becomes the app's entry point; on desktop main.rs calls it.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -99,6 +99,8 @@ pub fn run() {
             let tools_dir = tools::tools_dir(&data_dir);
             // A channel: the sending half wakes the download worker, which owns the other half.
             let (download_wakeup, download_queue) = mpsc::channel();
+            // Downloads cut off by quitting last time; each resumes when its project opens.
+            let waiting_downloads = downloads::load_saved(&data_dir, &app.path().app_cache_dir()?);
             app.manage(Mutex::new(AppState {
                 engine,
                 prefs,
@@ -111,6 +113,11 @@ pub fn run() {
                 tools_dir,
                 downloads: Vec::new(),
                 download_wakeup: Some(download_wakeup),
+                waiting_downloads,
+                download_process: None,
+                data_dir: data_dir.clone(),
+                backing_up: false,
+                quitting: false,
                 waveforms: Vec::new(),
             }));
 
@@ -126,7 +133,28 @@ pub fn run() {
             media_controls::start(app.handle());
             Ok(())
         })
+        // Closing the main window quits the app. If that would cut off work (downloads, a
+        // backup...), the close is held back and the UI asks first (`confirm_quit`).
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event
+                && window.label() == "main"
+            {
+                let state = window.state::<Mutex<AppState>>();
+                let Ok(mut s) = state.lock() else { return };
+                if s.quitting {
+                    return;
+                }
+                let work = s.busy_work();
+                if s.prefs.behaviour.warn_on_quit && !work.is_empty() {
+                    api.prevent_close();
+                    let _ = window.emit("quit-requested", work);
+                } else {
+                    s.quitting = true;
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
+            commands::confirm_quit,
             commands::app_version,
             commands::get_state,
             commands::get_preferences,
@@ -233,10 +261,19 @@ pub fn run() {
     app.run(|app, event| {
         if let RunEvent::Exit = event {
             let state = app.state::<Mutex<AppState>>();
-            if let Ok(mut s) = state.lock()
-                && let Err(e) = s.close_project()
-            {
-                eprintln!("could not save on exit: {e}");
+            if let Ok(mut s) = state.lock() {
+                s.quitting = true;
+                // A child process outlives its parent; stop a running yt-dlp so it doesn't
+                // keep writing into the folder the download resumes from next time.
+                if let Some(process) = s.download_process.take()
+                    && let Ok(mut child) = process.lock()
+                {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                }
+                if let Err(e) = s.close_project() {
+                    eprintln!("could not save on exit: {e}");
+                }
             }
         }
     });
@@ -330,6 +367,7 @@ fn ticker(app: AppHandle) {
                 if open.changed_since_backup && open.last_backup.elapsed() >= interval {
                     open.changed_since_backup = false;
                     open.last_backup = Instant::now();
+                    s_ref.backing_up = true;
                     job = Some(SlowJob::Backup {
                         dir: open.dir.clone(),
                         project: Box::new(open.project.clone()),
@@ -381,7 +419,11 @@ fn ticker(app: AppHandle) {
         // ---- Slow work, with the state unlocked ----
         match job {
             Some(SlowJob::Backup { dir, project, backups_dir }) => {
-                match bundle::write_backup(&dir, &project, &backups_dir) {
+                let result = bundle::write_backup(&dir, &project, &backups_dir);
+                if let Ok(mut s) = state.lock() {
+                    s.backing_up = false;
+                }
+                match result {
                     Ok(path) => logging::info(&format!("Backup written: {}", path.display())),
                     Err(e) => {
                         logging::error(&format!("Backup failed: {e}"));

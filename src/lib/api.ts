@@ -30,6 +30,7 @@ import type {
 
 export const api = {
   appVersion: () => invoke<string>("app_version"),
+  confirmQuit: () => invoke<void>("confirm_quit"),
   getState: () => invoke<Snapshot>("get_state"),
   getPreferences: () => invoke<Preferences>("get_preferences"),
   setPreferences: (prefs: Preferences) => invoke<void>("set_preferences", { prefs }),

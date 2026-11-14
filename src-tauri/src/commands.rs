@@ -65,6 +65,22 @@ pub fn app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
+/// Quits after the user said yes to the "still busy" warning (see `on_window_event` in
+/// lib.rs): marks the app as quitting, so the close isn't held back again, and closes it.
+#[tauri::command]
+pub fn confirm_quit(app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    lock(&state)?.quitting = true;
+    // The lock is released at the end of the line above: closing the window runs the
+    // window-event handler, which takes it again.
+    match app.get_webview_window("main") {
+        Some(window) => window.close().map_err(|e| e.to_string()),
+        None => {
+            app.exit(0);
+            Ok(())
+        }
+    }
+}
+
 #[tauri::command]
 pub fn get_state(state: AppStateRef) -> Result<Snapshot, String> {
     Ok(lock(&state)?.snapshot())
@@ -1014,6 +1030,7 @@ pub fn cancel_download(id: String, app: AppHandle, state: AppStateRef) -> Result
     {
         job.status = JobStatus::Cancelled;
     }
+    crate::downloads::save_unfinished(&s);
     crate::downloads::emit_downloads(&app, &s);
     Ok(())
 }

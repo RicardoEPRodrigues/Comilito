@@ -8,7 +8,8 @@
 use std::{
     collections::{HashMap, HashSet},
     path::{Path, PathBuf},
-    sync::{Arc, mpsc},
+    process::Child,
+    sync::{Arc, Mutex, mpsc},
     time::{Duration, Instant, SystemTime},
 };
 
@@ -47,6 +48,16 @@ pub struct AppState {
     /// The download queue (downloads.rs), and how to wake its worker thread.
     pub downloads: Vec<crate::downloads::DownloadJob>,
     pub download_wakeup: Option<mpsc::Sender<()>>,
+    /// Unfinished downloads from an earlier run, waiting for their project to be opened.
+    pub waiting_downloads: Vec<crate::downloads::SavedDownload>,
+    /// The yt-dlp process of the running download, so quitting can stop it.
+    pub download_process: Option<Arc<Mutex<Child>>>,
+    /// The app's data folder (logs, backups, `downloads.json`).
+    pub data_dir: PathBuf,
+    /// True while the ticker writes a backup (for the warning when quitting).
+    pub backing_up: bool,
+    /// Set once the app is really quitting (the user confirmed, or nothing was busy).
+    pub quitting: bool,
     /// Waveform peaks of recently viewed files, keyed by path and modification time.
     pub waveforms: Vec<(String, Arc<crate::waveform::Peaks>)>,
 }
@@ -176,6 +187,44 @@ impl AppState {
         self.backups_dir.clone()
     }
 
+    /// What quitting now would interrupt, in words for the warning. Empty when nothing is.
+    pub fn busy_work(&self) -> Vec<String> {
+        let plural = |n: usize, one: &str, many: &str| if n == 1 { format!("1 {one}") } else { format!("{n} {many}") };
+        let mut work = Vec::new();
+        if self.moving_projects {
+            work.push("Moving the projects folder. Stopping now leaves projects in both places.".to_string());
+        }
+        let downloads = self
+            .downloads
+            .iter()
+            .filter(|j| matches!(j.status, crate::downloads::JobStatus::Queued | crate::downloads::JobStatus::Running))
+            .count();
+        if downloads > 0 {
+            work.push(format!(
+                "{} unfinished. They continue the next time you open the project.",
+                plural(downloads, "download", "downloads")
+            ));
+        }
+        if self.backing_up {
+            work.push("Writing a backup. It would be left incomplete.".to_string());
+        }
+        if let Some(open) = &self.open {
+            let hashing = open
+                .project
+                .sounds
+                .iter()
+                .filter(|s| s.file.sha256.is_none() && !open.missing.contains(&s.id))
+                .count();
+            if hashing > 0 {
+                work.push(format!(
+                    "Fingerprinting {} (used to find moved or missing files). It carries on next time.",
+                    plural(hashing, "sound", "sounds")
+                ));
+            }
+        }
+        work
+    }
+
     /// The open project, or an error for commands that need one.
     pub fn open_mut(&mut self) -> Result<&mut OpenProject, String> {
         self.open.as_mut().ok_or_else(|| "no project is open".to_string())
@@ -212,6 +261,7 @@ impl AppState {
         // The stack is restored but not started: the DM presses Space when ready.
         if let Some(open) = &self.open {
             let dir = open.dir.clone();
+            crate::downloads::resume_for(self, &dir);
             self.prefs.note_opened(&dir);
             // Not being able to remember it isn't worth failing the open for.
             if let Err(e) = self.save_prefs() {

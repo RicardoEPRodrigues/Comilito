@@ -85,10 +85,18 @@ pub struct Behaviour {
     /// Loading a preset over a tapestry that isn't saved in a preset: "ask" or "replace".
     #[serde(default = "ask")]
     pub replace_unsaved_tapestry: String,
+    /// Ask before quitting while something would be cut off: downloads, fingerprinting,
+    /// a backup or moving the projects folder.
+    #[serde(default = "yes")]
+    pub warn_on_quit: bool,
 }
 
 fn ask() -> String {
     "ask".into()
+}
+
+fn yes() -> bool {
+    true
 }
 
 /// Keys that can be changed. Each is a `KeyboardEvent.key` value ("Backspace", "Delete", "x");
@@ -171,6 +179,7 @@ impl Default for Behaviour {
             remove_sound: "ask".into(),
             unsaved_changes: ask(),
             replace_unsaved_tapestry: ask(),
+            warn_on_quit: true,
         }
     }
 }
@@ -270,6 +279,7 @@ mod tests {
         assert_eq!(prefs.playback.stop_fade_ms, 2500, "kept, not reset to defaults");
         assert_eq!(prefs.behaviour.duplicate_in_stack, "move");
         assert_eq!(prefs.behaviour.unsaved_changes, "ask");
+        assert!(prefs.behaviour.warn_on_quit);
         assert_eq!(prefs.shortcuts.remove_top_scene, "Backspace");
         assert_eq!(prefs.playback.output_device, None, "the system default");
     }
