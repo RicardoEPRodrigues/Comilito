@@ -292,14 +292,18 @@ pub struct Layer {
     /// Volume in this scene. If missing, the sound's own volume is used.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub volume: Option<f32>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub role: Option<Role>,
+    /// Always written. Files from before roles were required (decision 0029) may leave it
+    /// out; `#[serde(default)]` then fills in `Role::default()`, which is Foreground.
+    #[serde(default)]
+    pub role: Role,
 }
 
 /// Lets an ambience layer escape ducking; see "Ambience and ducking" in docs/scenes.md.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// `#[derive(Default)]` plus `#[default]` on a variant says which one `Role::default()` gives.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Role {
+    #[default]
     Foreground,
     Background,
     Supporting,
@@ -720,7 +724,10 @@ mod tests {
             }],
             "scenes": [{
                 "id": "scn-forest", "name": "Forest", "music": null,
-                "ambience": [{ "sound": "snd-birds", "volume": 0.8, "role": "background" }],
+                "ambience": [
+                    { "sound": "snd-birds", "volume": 0.8, "role": "background" },
+                    { "sound": "snd-wind" }
+                ],
                 "effects": []
             }],
             "defaults": {
@@ -735,7 +742,8 @@ mod tests {
 
         let project: Project = serde_json::from_str(json).expect("example should parse");
 
-        assert_eq!(project.scenes[0].ambience[0].role, Some(Role::Background));
+        assert_eq!(project.scenes[0].ambience[0].role, Role::Background);
+        assert_eq!(project.scenes[0].ambience[1].role, Role::Foreground, "older files without a role");
         assert!(project.stack.is_empty(), "missing `stack` becomes empty");
         assert_eq!(project.backups.keep, 1, "missing `backups` uses defaults");
 
@@ -843,7 +851,7 @@ mod tests {
             ambience: vec![Layer {
                 sound: "gone".into(),
                 volume: None,
-                role: None,
+                role: Role::Foreground,
             }],
             effects: vec!["gone".into()],
             duck_level: None,

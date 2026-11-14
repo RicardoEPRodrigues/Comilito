@@ -23,7 +23,7 @@ use crate::{
     bundle,
     prefs::Preferences,
     project::{
-        BackupSettings, Category, Layer, Playlist, PresetEntry, ProjectDefaults, Scene, Sound, StackEntry,
+        BackupSettings, Category, Layer, Playlist, PresetEntry, ProjectDefaults, Role, Scene, Sound, StackEntry,
         StackPreset, folder_of_path, new_id,
     },
     state::{AppState, OpenProject, Snapshot, emit_state},
@@ -1329,7 +1329,7 @@ pub fn add_sound_to_scene(
                 scene.ambience.push(Layer {
                     sound: sound_id,
                     volume: None,
-                    role: None,
+                    role: Role::Foreground,
                 });
             }
         }
@@ -1404,6 +1404,36 @@ pub fn set_layer_volume(
         .ok_or("that layer no longer exists")?;
     layer.volume = Some(volume.clamp(0.0, 1.0));
     let problems = s.levels_changed();
+    emit_state(&app, &s, problems);
+    Ok(())
+}
+
+/// The role picker in an expanded stack entry: changes that layer's role in its scene.
+#[tauri::command]
+pub fn set_layer_role(
+    scene_id: String,
+    layer_index: usize,
+    role: Role,
+    app: AppHandle,
+    state: AppStateRef,
+) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    let open = s.open_mut()?;
+    let scene = open
+        .project
+        .scenes
+        .iter_mut()
+        .find(|sc| sc.id == scene_id)
+        .ok_or("that scene no longer exists")?;
+    let layer = scene
+        .ambience
+        .get_mut(layer_index)
+        .ok_or("that layer no longer exists")?;
+    layer.role = role;
+    // A role changes which scenes duck the layer, which can be a big jump in volume: fade it
+    // like a scene edit (the scene's transition, at most half a second).
+    let transition = millis(scene.transition_ms.unwrap_or(open.project.defaults.transition_ms));
+    let problems = s.project_changed(transition.min(Duration::from_millis(500)));
     emit_state(&app, &s, problems);
     Ok(())
 }

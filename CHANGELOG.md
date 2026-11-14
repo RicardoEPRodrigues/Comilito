@@ -58,6 +58,10 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 - The window remembers its size, position and maximised state from the last time.
 - Missing audio can be relinked; files added to a project's audio folders appear by themselves.
 - Logs (Preferences › See logs) and a "Remove all data" option for uninstalling.
+- **Ambience roles:** every layer now has a role, and new layers start as Foreground; "No role"
+  is gone (layers that had none become Foreground). The role can be changed right in the
+  Tapestry, next to each layer of an expanded scene. A scene with no ambience of its own no
+  longer ducks the ambience below it.
 - The app icon is the plain horse-skull mark at every size; the decorated version was too busy.
 
 ### Fixed

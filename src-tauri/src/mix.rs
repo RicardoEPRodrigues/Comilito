@@ -80,12 +80,8 @@ pub fn target_mix(project: &Project) -> TargetMix {
             // Multiply by the duck level of every scene above that ducks this layer.
             let ducking: f32 = scenes_above
                 .iter()
-                .filter(|(_, above)| match layer.role {
-                    // No role: every scene above ducks it.
-                    None => true,
-                    // With a role: only scenes that have a layer with the same role.
-                    Some(role) => above.ambience.iter().any(|l| l.role == Some(role)),
-                })
+                // Only scenes that have a layer with the same role take it over.
+                .filter(|(_, above)| above.ambience.iter().any(|l| l.role == layer.role))
                 .map(|(_, above)| project.scene_duck_level(above))
                 .product();
 
@@ -115,7 +111,7 @@ mod tests {
 
     // Small builders so each test reads like the tables in docs/scenes.md.
 
-    fn layer(sound: &str, volume: f32, role: Option<Role>) -> Layer {
+    fn layer(sound: &str, volume: f32, role: Role) -> Layer {
         Layer {
             sound: sound.into(),
             volume: Some(volume),
@@ -155,9 +151,9 @@ mod tests {
                 "forest",
                 &[],
                 vec![
-                    layer("birds", 0.8, Some(Role::Background)),
-                    layer("wind", 0.5, Some(Role::Background)),
-                    layer("stream", 0.4, None),
+                    layer("birds", 0.8, Role::Background),
+                    layer("wind", 0.5, Role::Background),
+                    layer("stream", 0.4, Role::Foreground),
                 ],
                 &["twig"],
             ),
@@ -165,8 +161,8 @@ mod tests {
                 "combat",
                 &["drums"],
                 vec![
-                    layer("clash", 0.8, Some(Role::Foreground)),
-                    layer("goblins", 0.6, Some(Role::Supporting)),
+                    layer("clash", 0.8, Role::Foreground),
+                    layer("goblins", 0.6, Role::Supporting),
                 ],
                 &["screech", "twig"],
             ),
@@ -252,7 +248,7 @@ mod tests {
         // Combat has no background layer, so background layers aren't ducked.
         assert!(approx(mix.ambience["birds"], 0.8));
         assert!(approx(mix.ambience["wind"], 0.5));
-        // No role: ducked to 30%.
+        // Combat has a foreground layer, so it takes over the stream's role: ducked to 30%.
         assert!(approx(mix.ambience["stream"], 0.4 * 0.3));
         assert!(approx(mix.ambience["clash"], 0.8));
         assert!(approx(mix.ambience["goblins"], 0.6));
@@ -292,8 +288,8 @@ mod tests {
     fn ducking_multiplies_and_uses_each_scenes_own_level() {
         let mut p = example_project();
         // Two more scenes above the forest: one at the default 0.3, one at 0.5.
-        p.scenes.push(scene("rain", &[], vec![layer("drops", 1.0, None)], &[]));
-        let mut quiet = scene("quiet", &[], vec![], &[]);
+        p.scenes.push(scene("rain", &[], vec![layer("drops", 1.0, Role::Foreground)], &[]));
+        let mut quiet = scene("quiet", &[], vec![layer("hush", 0.2, Role::Foreground)], &[]);
         quiet.duck_level = Some(0.5);
         p.scenes.push(quiet);
 
@@ -310,7 +306,7 @@ mod tests {
         p.scenes.push(scene(
             "storm",
             &[],
-            vec![layer("thunder", 1.0, Some(Role::Background))],
+            vec![layer("thunder", 1.0, Role::Background)],
             &[],
         ));
         set_stack(&mut p, &[("forest", true), ("storm", true)]);
@@ -318,6 +314,17 @@ mod tests {
 
         assert!(approx(mix.ambience["birds"], 0.8 * 0.3));
         assert!(approx(mix.ambience["thunder"], 1.0));
+    }
+
+    #[test]
+    fn a_scene_without_ambience_ducks_nothing() {
+        let mut p = example_project();
+        // Travelling music on top of the forest: no layer takes over any role.
+        set_stack(&mut p, &[("forest", true), ("music", true)]);
+        let mix = target_mix(&p);
+
+        assert!(approx(mix.ambience["stream"], 0.4));
+        assert!(approx(mix.ambience["birds"], 0.8));
     }
 
     #[test]

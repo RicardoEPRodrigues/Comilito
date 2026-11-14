@@ -1,6 +1,6 @@
 # 0009. Overlay scenes with layer roles
 
-- Status: Superseded by [0010](0010-scene-stack.md) (roles are kept)
+- Status: Superseded by [0010](0010-scene-stack.md) (roles are kept; "no role" removed by [0029](0029-every-layer-has-a-role.md))
 - Date: 2026-11-12
 - Extends: [0008](0008-scenes.md)
 

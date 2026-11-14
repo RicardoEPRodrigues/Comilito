@@ -15,7 +15,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0006](0006-project-folders.md) | A project is a folder; zip is only for export/import | Accepted | 2026-11-12 |
 | [0007](0007-backups.md) | Automatic backups using the export zip | Accepted (location: 0026) | 2026-11-12 |
 | [0008](0008-scenes.md) | Scenes: saved mixes with smart crossfades | Accepted | 2026-11-12 |
-| [0009](0009-overlay-scenes-and-roles.md) | Overlay scenes with layer roles | Superseded by 0010 | 2026-11-12 |
+| [0009](0009-overlay-scenes-and-roles.md) | Overlay scenes with layer roles | Superseded by 0010 (no role: 0029) | 2026-11-12 |
 | [0010](0010-scene-stack.md) | Scene stack instead of a single overlay | Amended by 0011 | 2026-11-12 |
 | [0011](0011-stack-ui-and-presets.md) | Saved stack, presets, drag-and-drop stack UI | Accepted | 2026-11-12 |
 | [0012](0012-preferences.md) | Preferences window with app and project levels | Accepted | 2026-11-12 |
@@ -35,6 +35,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0026](0026-backups-in-app-data.md) | Keep backups in the app's data folder, not the projects folder | Accepted | 2026-11-13 |
 | [0027](0027-theme-editor-files.md) | The theme editor can add a woodcut, font files and licences | Accepted | 2026-11-13 |
 | [0028](0028-scene-volumes.md) | Each scene has its own music, ambience and effects volumes | Accepted | 2026-11-14 |
+| [0029](0029-every-layer-has-a-role.md) | Every ambience layer has a role (Foreground by default) | Accepted | 2026-11-14 |
 
 ## Template
 

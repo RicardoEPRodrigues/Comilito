@@ -15,6 +15,7 @@ export const CATEGORIES: { id: Category; label: string }[] = [
 ];
 
 export const ROLES: Role[] = ["foreground", "background", "supporting"];
+export const roleLabel = (r: Role) => r[0].toUpperCase() + r.slice(1);
 
 export interface PerCategory<T> {
   music: T;
@@ -83,7 +84,8 @@ export interface Playlist {
 export interface Layer {
   sound: string;
   volume?: number;
-  role?: Role;
+  /** Always set; older files without one load as "foreground" (decision 0029). */
+  role: Role;
 }
 
 export interface Scene {

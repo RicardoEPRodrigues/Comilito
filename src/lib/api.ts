@@ -18,6 +18,7 @@ import type {
   Probe,
   ProjectDefaults,
   ProjectSummary,
+  Role,
   Scene,
   Snapshot,
   Sound,
@@ -145,6 +146,8 @@ export const api = {
   removeMissingSounds: () => invoke<void>("remove_missing_sounds"),
   setLayerVolume: (sceneId: string, layerIndex: number, volume: number) =>
     invoke<void>("set_layer_volume", { sceneId, layerIndex, volume }),
+  setLayerRole: (sceneId: string, layerIndex: number, role: Role) =>
+    invoke<void>("set_layer_role", { sceneId, layerIndex, role }),
 
   // Stack (indexes count from the bottom: 0 = bottom)
   stackInsert: (sceneId: string, index: number, mode: "move" | "duplicate") =>

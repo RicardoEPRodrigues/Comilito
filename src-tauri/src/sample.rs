@@ -69,7 +69,7 @@ pub fn fill_sample_project(dir: &Path, sample_dir: &Path, project: &mut Project)
     rainy.ambience = vec![Layer {
         sound: rain.clone(),
         volume: Some(0.8),
-        role: Some(Role::Foreground),
+        role: Role::Foreground,
     }];
     rainy.effects = vec![bell.clone()];
 
@@ -80,7 +80,7 @@ pub fn fill_sample_project(dir: &Path, sample_dir: &Path, project: &mut Project)
     combat.ambience = vec![Layer {
         sound: drummer.clone(),
         volume: Some(0.9),
-        role: Some(Role::Foreground),
+        role: Role::Foreground,
     }];
     combat.effects = vec![bell.clone()];
     combat.transition_ms = Some(1500);

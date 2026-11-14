@@ -30,7 +30,7 @@
   import { api } from "../lib/api";
   import { clearTapestry, insertScene, revertToOrigin, saveTapestryAsPreset, updateOriginPreset } from "../lib/actions";
   import { focusOn, percent, presetById, project as currentProject, run, sceneById, soundById, ui } from "../lib/store.svelte";
-  import type { Scene, StackEntry } from "../lib/types";
+  import { ROLES, roleLabel, type Role, type Scene, type StackEntry } from "../lib/types";
   import Capital from "./Capital.svelte";
   import { openMenu, type MenuItem } from "./ContextMenu.svelte";
   import Watermark from "./Watermark.svelte";
@@ -327,7 +327,17 @@
               <div class="sound">
                 <AudioLines size={14} />
                 <span class="sname">{sound?.name ?? "?"}</span>
-                <span class="role">{#if layer.role}<span class="tag">{layer.role}</span>{/if}</span>
+                <span class="role">
+                  <select
+                    class="tag"
+                    value={layer.role}
+                    title="Role: only a scene above with a layer in the same role ducks this one"
+                    aria-label="Role in this scene"
+                    onchange={(e) => run(api.setLayerRole(scene.id, i, e.currentTarget.value as Role))}
+                  >
+                    {#each ROLES as r (r)}<option value={r}>{roleLabel(r)}</option>{/each}
+                  </select>
+                </span>
                 <span class="bars" title="Gold: volume in this scene · colour: what's heard after ducking">
                   <span class="base" style:width="{base * 100}%"></span>
                   <span class="eff" style:width="{effective * 100}%"></span>
@@ -597,6 +607,13 @@
     border: 1px solid var(--rule);
     border-radius: 999px;
     padding: 0.1rem 0.5rem;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    max-width: 100%;
+  }
+  .tag:hover {
+    border-color: var(--accent);
   }
   .bars,
   .bar-space {

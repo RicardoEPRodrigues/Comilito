@@ -25,8 +25,8 @@ decides them), and each sound has its own volume, loop and fade settings.
    `audio/music`, `audio/ambience` or `audio/effects` folder; they appear within seconds.
    ▶ previews a sound; ✎ sets its volume, loop and fades. Drag a sound onto another
    category's tab to move it there.
-3. In **Scenes**, create scenes: a music playlist, ambience layers (each with a volume and an
-   optional role), effects for the pad, and optionally a hotkey.
+3. In **Scenes**, create scenes: a music playlist, ambience layers (each with a volume and a
+   role: foreground, background or supporting), effects for the pad, and optionally a hotkey.
 4. Drag scenes into the **stack** (or double-click them). Scenes higher up
    duck the ambience below them; the top-most scene with music plays its music.
    Tick a scene off to disable it without removing it; drag it out of the stack to remove it.

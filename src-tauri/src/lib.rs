@@ -191,6 +191,7 @@ pub fn run() {
             commands::scene_group_ungroup,
             commands::delete_scene,
             commands::set_layer_volume,
+            commands::set_layer_role,
             commands::add_sound_to_scene,
             commands::remove_sound_from_scene,
             commands::remove_missing_sounds,

@@ -7,7 +7,7 @@
   import { onDestroy } from "svelte";
   import { addSceneOnTop, stopPreviewOnLeave } from "../lib/actions";
   import { project, run, sceneById, soundById, ui } from "../lib/store.svelte";
-  import { ROLES, type Category, type Role, type Scene } from "../lib/types";
+  import { ROLES, roleLabel, type Category, type Role, type Scene } from "../lib/types";
   import { confirmLeave, fingerprint } from "../lib/unsaved";
   import Capital from "./Capital.svelte";
   import OverrideField from "./OverrideField.svelte";
@@ -76,7 +76,7 @@
       if (!draft.music) draft.music = { tracks: [] };
       if (!draft.music.tracks.includes(soundId)) draft.music.tracks.push(soundId);
     } else if (sound.category === "ambience") {
-      if (!draft.ambience.some((l) => l.sound === soundId)) draft.ambience.push({ sound: soundId });
+      if (!draft.ambience.some((l) => l.sound === soundId)) draft.ambience.push({ sound: soundId, role: "foreground" });
     } else if (!draft.effects.includes(soundId)) {
       draft.effects.push(soundId);
     }
@@ -205,13 +205,8 @@
       <div class="row">
         <AudioLines size={15} />
         <span class="layer-name">{name(layer.sound)}</span>
-        <select
-          class="role"
-          value={layer.role ?? ""}
-          onchange={(e) => (layer.role = (e.currentTarget.value || undefined) as Role | undefined)}
-        >
-          <option value="">No role</option>
-          {#each ROLES as r (r)}<option value={r}>{r[0].toUpperCase() + r.slice(1)}</option>{/each}
+        <select class="role" value={layer.role} onchange={(e) => (layer.role = e.currentTarget.value as Role)}>
+          {#each ROLES as r (r)}<option value={r}>{roleLabel(r)}</option>{/each}
         </select>
         <div class="grow">
           <OverrideField

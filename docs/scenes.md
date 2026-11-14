@@ -9,7 +9,7 @@
   fades), in one of three categories: Music, Ambience, Effects.
 - **Scenes** are saved mixes that say what plays together:
   - **Music:** an optional playlist (one or more tracks, optional shuffle).
-  - **Ambience:** an optional set of layers, each with its own volume and optional role in this scene.
+  - **Ambience:** an optional set of layers, each with its own volume and role in this scene.
   - **Effects:** the sounds shown on the quick-access pad for this scene.
 
 The same sound can appear in many scenes at different volumes. A scene may contain only music,
@@ -60,14 +60,17 @@ scene above that ducks the layer:
 
 Each scene uses its own `duckLevel`, so a scene with `duckLevel` 0.5 above one with 0.3 gives 40% × 0.3 × 0.5 = 6%.
 
-**Roles** let a layer escape ducking. Each ambience layer can have a role: `foreground`,
-`background` or `supporting`. For each enabled scene above a layer:
+**Roles** let a layer escape ducking. Each ambience layer has a role: `foreground` (the
+default for new layers), `background` or `supporting` ([0029](decisions/0029-every-layer-has-a-role.md)).
+For each enabled scene above a layer with role R:
 
-| Layer below | Scene above… | Effect |
-|---|---|---|
-| no role | (any) | ducked |
-| role R | has a layer with role R | ducked (that role is taken over) |
-| role R | has no layer with role R | not ducked by this scene |
+| Scene above… | Effect |
+|---|---|
+| has a layer with role R | ducked (that role is taken over) |
+| has no layer with role R | not ducked by this scene |
+
+So a scene with no ambience (music only, say) ducks nothing below it. The role is set in the
+scene editor, or from the role picker next to each layer in an expanded tapestry entry.
 
 ### Volumes
 
@@ -95,7 +98,7 @@ volume (after its own ducking) is used. This also covers the same scene added tw
 | 🎵 Battle drums (Combat) | — | ▶ fades in |
 | 🌲 Birds (Forest, background, 80%) | 80% | 80%: Combat has no background layer |
 | 🌲 Wind (Forest, background, 50%) | 50% | 50% |
-| 🌲 Stream (Forest, no role, 40%) | 40% | 12% (ducked to 30%) |
+| 🌲 Stream (Forest, foreground, 40%) | 40% | 12% (ducked to 30%: Combat has a foreground layer) |
 | ⚔️ Battle clash (Combat, foreground, 80%) | — | 80% |
 | ⚔️ Goblin chatter (Combat, supporting, 60%) | — | 60% |
 
@@ -118,7 +121,7 @@ The stack is the focus, and it's driven mainly by drag and drop.
 |---|---|
 | Add a scene | drag it from the list into the stack, at any position (top, bottom, between two scenes) |
 | Add a sound to a scene | drag it from the Sounds tab onto the scene in the stack (music joins the playlist, ambience becomes a layer, effects go on the pad) |
-| Scene groups | ⋯ on a group heading (or right-click it): new scene in the group, rename, ungroup. A scene's ⋯ menu has *Move to group* |
+| Scene groups | ⋯ on a group heading (or right-click it): new scene in the group, rename, ungroup. A scene's ⋯ menu has *Move to group*; or drag a scene onto a group's heading or one of its scenes (onto an ungrouped scene to leave its group) |
 | Import audio files | drop them onto the window from the file manager; after choosing a category and folder, copies go into the project |
 | Remove a sound from a scene | Expand the entry in the stack and press ✕ next to the sound (it stays in the library) |
 | Reorder | drag an entry within the stack |
@@ -200,7 +203,7 @@ or preset load it's the top scene's.
     "ambience": [
       { "sound": "snd-birds",  "volume": 0.8, "role": "background" },
       { "sound": "snd-wind",   "volume": 0.5, "role": "background" },
-      { "sound": "snd-stream", "volume": 0.4 }
+      { "sound": "snd-stream", "volume": 0.4, "role": "foreground" }
     ],
     "effects": ["snd-twig"],
     "duckLevel": 0.3,
@@ -246,6 +249,7 @@ or preset load it's the top scene's.
   Optional: if missing, the project default is used (see [preferences.md](preferences.md)).
 - `volumes`: optional, `{ "music": 0.3, "ambience": 0.9, "effects": 1.0 }`. The category volumes
   while this is the top-most enabled scene. If missing, the project's `categories` volumes are used.
-- `role`: optional; one of `foreground`, `background`, `supporting`.
+- `role`: one of `foreground`, `background`, `supporting`. Always written; a layer without one
+  (files from before [0029](decisions/0029-every-layer-has-a-role.md)) loads as `foreground`.
 - `stack`: ordered **bottom to top**. Each entry has its own `id`, so a scene can appear twice.
   It's saved automatically (debounced) whenever it changes.
