@@ -68,7 +68,7 @@ transferred. Avoid having the same project open on two devices at the same time.
 ```
 
 - `scenes`, `stack`, `stackPresets`: see [scenes.md](scenes.md).
-- `defaults`: project-wide default levels; see [preferences.md](preferences.md). Per-sound `volume`, `loop`, `fadeInMs` and `fadeOutMs` are optional and inherit from it.
+- `defaults`: project-wide default levels; see [preferences.md](preferences.md). Per-sound `volume`, `loop`, `fadeInMs`, `fadeOutMs` and `normalize` are optional and inherit from it (`normalize` from `defaults.normalize`, the switch for the sound's category).
 
 - `formatVersion`: bumped on breaking changes. Older versions must still load (migrated on load).
   Adding an optional field (like a scene's `blocksMusic`) isn't a breaking change: older files

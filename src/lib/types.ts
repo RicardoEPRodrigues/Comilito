@@ -70,6 +70,8 @@ export interface Sound {
   loop?: boolean;
   fadeInMs?: number;
   fadeOutMs?: number;
+  /** Loudness normalization; missing follows the project's switch for the category. */
+  normalize?: boolean;
   tags?: string[];
   favourite?: boolean;
   source?: Source;

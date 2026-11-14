@@ -51,6 +51,8 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
   your headset is on a call). By default Comilito follows the desktop's default output.
 - **Media keys and the desktop's media controls** play, pause and stop the Tapestry: Comilito
   registers with the OS as a media player, showing the top scene and the music playing.
+- **Loudness normalization can be turned on or off for one sound**, in its Loudness section in
+  the Library, overriding its category's setting in Project settings.
 - **Smoother opening and closing:** the Library drawer slides open and shut, menus and dialogs
   ease in, and groups, folders and Tapestry entries unfold instead of jumping. All of it is
   turned off when the desktop asks for reduced motion.

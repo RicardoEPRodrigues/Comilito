@@ -610,6 +610,7 @@ pub fn update_sounds(sounds: Vec<Sound>, app: AppHandle, state: AppStateRef) -> 
         existing.looping = sound.looping;
         existing.fade_in_ms = sound.fade_in_ms;
         existing.fade_out_ms = sound.fade_out_ms;
+        existing.normalize = sound.normalize;
         existing.favourite = sound.favourite;
         // Tags are stored without `#`, trimmed, lower-case and without duplicates.
         let mut tags: Vec<String> = sound

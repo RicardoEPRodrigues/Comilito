@@ -41,6 +41,7 @@
     loop: s.loop,
     fadeInMs: s.fadeInMs,
     fadeOutMs: s.fadeOutMs,
+    normalize: s.normalize,
     tags: [...(s.tags ?? [])],
     favourite: s.favourite ?? false,
   });
@@ -56,7 +57,8 @@
   const usedIn = $derived(scenesUsing(id));
   const folders = $derived(ui.snapshot!.folders[sound.category]);
   const ext = $derived(sound.file.path.split(".").pop()?.toUpperCase() ?? "");
-  const gain = $derived(normalizationGainDb(project, sound));
+  // From the draft, so flipping the switch shows its effect before saving.
+  const gain = $derived(normalizationGainDb(project, { ...sound, normalize: draft.normalize }));
 
   let peaks = $state<number[]>([]);
   let durationMs = $state<number | null>(null);
@@ -263,11 +265,22 @@
 
   <section>
     <div class="section-head"><span class="caps">Loudness</span><span class="hint">Evens out quiet and loud files</span></div>
+    <div class="grid four">
+      <OverrideField
+        label="Normalize"
+        kind="toggle"
+        value={draft.normalize}
+        inherited={project.defaults.normalize[sound.category]}
+        onchange={(v) => (draft.normalize = v as boolean | undefined)}
+      />
+    </div>
     <div class="line">
       {#if sound.file.loudness}
         <span>Measured <strong>{sound.file.loudness.lufs.toFixed(1)} LUFS</strong></span>
         {#if gain !== null}
           <span class="muted">→ plays at {project.defaults.normalize.targetLufs} LUFS ({formatDb(gain)})</span>
+        {:else if draft.normalize === false}
+          <span class="muted">· normalization is off for this sound</span>
         {:else}
           <span class="muted">· normalization is off for {sound.category} (Project settings)</span>
         {/if}

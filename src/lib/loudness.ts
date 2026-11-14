@@ -9,7 +9,8 @@ const MAX_BOOST_DB = 12;
 export function normalizationGainDb(project: Project, sound: Sound): number | null {
   const n = project.defaults.normalize;
   const l = sound.file.loudness;
-  if (!l || !n[sound.category] || l.lufs < -60) return null;
+  const enabled = sound.normalize ?? n[sound.category];
+  if (!l || !enabled || l.lufs < -60) return null;
   const wanted = n.targetLufs - l.lufs;
   if (wanted <= 0) return wanted;
   const headroom = l.peak > 0 ? Math.max(0, -20 * Math.log10(l.peak)) : 0;

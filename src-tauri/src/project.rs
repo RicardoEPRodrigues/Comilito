@@ -133,6 +133,10 @@ pub struct Sound {
     pub fade_in_ms: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fade_out_ms: Option<u32>,
+    /// Loudness normalization for this sound; missing follows the project's switch for its
+    /// category (`defaults.normalize`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub normalize: Option<bool>,
     /// Free-form labels for searching ("forest", "combat"), without the `#`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
@@ -530,7 +534,8 @@ impl Project {
     }
 
     /// How many decibels to turn a sound up (positive) or down (negative) so it plays at the
-    /// project's target loudness. 0 if normalization is off for its category or it hasn't
+    /// project's target loudness. 0 if normalization is off for it (its own switch, or else
+    /// its category's) or it hasn't
     /// been measured yet.
     pub fn normalization_gain_db(&self, sound: &Sound) -> f32 {
         let n = &self.defaults.normalize;
@@ -538,7 +543,8 @@ impl Project {
             return 0.0;
         };
         // Silent or near-silent files can't be meaningfully normalized.
-        if !n.applies_to(sound.category) || !loudness.lufs.is_finite() || loudness.lufs < -60.0 {
+        let enabled = sound.normalize.unwrap_or(n.applies_to(sound.category));
+        if !enabled || !loudness.lufs.is_finite() || loudness.lufs < -60.0 {
             return 0.0;
         }
         let wanted = n.target_lufs - loudness.lufs;
@@ -664,6 +670,7 @@ impl Sound {
             looping: None,
             fade_in_ms: None,
             fade_out_ms: None,
+            normalize: None,
             tags: Vec::new(),
             favourite: false,
             source: None,
@@ -776,6 +783,7 @@ mod tests {
             looping: Some(true),
             fade_in_ms: None,
             fade_out_ms: None,
+            normalize: None,
             tags: Vec::new(),
             favourite: false,
             source: None,
@@ -786,6 +794,7 @@ mod tests {
         assert!(json.contains(r#""loop":true"#));
         assert!(!json.contains("fadeInMs\":null"));
         assert!(!json.contains("sha256"));
+        assert!(!json.contains("normalize\":null"));
     }
 
     fn sound_with_loudness(category: Category, lufs: f32, peak: f32) -> Sound {
@@ -804,6 +813,7 @@ mod tests {
             looping: None,
             fade_in_ms: None,
             fade_out_ms: None,
+            normalize: None,
             tags: Vec::new(),
             favourite: false,
             source: None,
@@ -839,6 +849,17 @@ mod tests {
         p.defaults.normalize.music = false;
         let music = sound_with_loudness(Category::Music, -10.0, 1.0);
         assert_eq!(p.normalization_gain_db(&music), 0.0);
+    }
+
+    #[test]
+    fn a_sound_can_override_its_category_switch() {
+        let p = Project::new("Test", ProjectDefaults::default());
+        let mut effect = sound_with_loudness(Category::Effects, -10.0, 1.0);
+        effect.normalize = Some(true);
+        assert_eq!(p.normalization_gain_db(&effect), -8.0, "turned on although effects are off");
+        let mut music = sound_with_loudness(Category::Music, -10.0, 1.0);
+        music.normalize = Some(false);
+        assert_eq!(p.normalization_gain_db(&music), 0.0, "turned off although music is on");
     }
 
     #[test]
