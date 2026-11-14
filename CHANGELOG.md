@@ -62,6 +62,11 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 
 ### Fixed
 
+- In the Library drawer, folding a folder now hides its subfolders too.
+- Scenes can be dragged into a group: drop one on the group's heading or on a scene in it (or
+  on an ungrouped scene to take it out of its group).
+- The start and end times for downloading part of a video are typed as `00:00:00` in one field
+  each, and no longer overflow the dialog.
 - Comilito no longer crashes at start on systems without a Documents folder set up; it uses
   `~/Documents` then.
 - Titles in wide display fonts (for example "Comilito" on the home screen in the Alliance theme)

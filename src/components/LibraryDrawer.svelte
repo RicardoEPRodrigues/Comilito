@@ -73,6 +73,15 @@
     return ui.collapsed.includes(`lib:${category}:${folder}`);
   }
 
+  /** True when a folder above this one is folded, so this one isn't shown at all. */
+  function insideFolded(category: Category, folder: string) {
+    const parts = folder.split("/");
+    for (let i = 1; i < parts.length; i++) {
+      if (folded(category, parts.slice(0, i).join("/"))) return true;
+    }
+    return false;
+  }
+
   function toggleFolder(category: Category, folder: string) {
     const key = `lib:${category}:${folder}`;
     ui.collapsed = ui.collapsed.includes(key) ? ui.collapsed.filter((k) => k !== key) : [...ui.collapsed, key];
@@ -159,7 +168,7 @@
             {#each groups as g (g.folder)}
               {#if g.folder === ""}
                 {#each g.sounds as s (s.id)}<SoundRow sound={s} />{/each}
-              {:else}
+              {:else if !insideFolded(c.id, g.folder)}
                 {@const label = folderLabel(g.folder)}
                 {@const isFolded = folded(c.id, g.folder)}
                 <button class="folder" style:padding-left="{label.depth * 0.9}rem" onclick={() => toggleFolder(c.id, g.folder)}>
