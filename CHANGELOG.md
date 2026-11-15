@@ -88,6 +88,8 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 
 ### Fixed
 
+- Downloading part of a video now shows its progress in percent, instead of only
+  "downloading the selected part…".
 - With an audio output chosen in Preferences, every sound started 1 to 2 seconds late.
 - The bottom bar's Music, Ambience and Effects sliders jumped when another scene came on top;
   they now glide to the new volumes in step with the sound.

@@ -477,7 +477,8 @@ fn run(app: &AppHandle, id: &str, request: &DownloadRequest, _dir: &Path) -> Res
     if let Ok(mut s) = app.state::<Mutex<AppState>>().lock() {
         s.download_process = Some(child.clone());
     }
-    let result = watch_yt_dlp(app, id, &tmp, &child, stdout, stderr);
+    let section_ms = request.range.map(|r| r.end_ms.saturating_sub(r.start_ms));
+    let result = watch_yt_dlp(app, id, &tmp, &child, section_ms, stdout, stderr);
     if let Ok(mut s) = app.state::<Mutex<AppState>>().lock() {
         s.download_process = None;
     }
@@ -485,16 +486,17 @@ fn run(app: &AppHandle, id: &str, request: &DownloadRequest, _dir: &Path) -> Res
 }
 
 /// Follows a running yt-dlp until it ends (or the download is cancelled) and returns the
-/// audio file it left.
+/// audio file it left. `section_ms` is the length of the part being downloaded, if only a
+/// part is: ffmpeg downloads that, and its progress is worked out from its `time=` output.
 fn watch_yt_dlp(
     app: &AppHandle,
     id: &str,
     tmp: &Path,
     child: &Mutex<Child>,
+    section_ms: Option<u64>,
     stdout: impl Read + Send + 'static,
     stderr: impl Read + Send + 'static,
 ) -> Result<PathBuf, String> {
-
     // Read yt-dlp's output on other threads, so this one can watch for "cancel". Progress
     // lines can arrive on stdout or stderr depending on the version, so both are read; error
     // lines from stderr are kept for the message if the download fails.
@@ -505,7 +507,7 @@ fn watch_yt_dlp(
         let (app2, id2, errors) = (app.clone(), id.to_string(), errors.clone());
         thread::spawn(move || {
             let mut last = Instant::now() - Duration::from_secs(1);
-            for line in BufReader::new(stream).lines().map_while(Result::ok) {
+            for line in output_lines(stream) {
                 if let Some(rest) = line.trim().strip_prefix("COMILITO") {
                     // "N/A" (unknown size) is skipped rather than shown as 0%.
                     let Ok(percent) = rest.trim().trim_end_matches('%').trim().parse::<f32>() else {
@@ -514,6 +516,15 @@ fn watch_yt_dlp(
                     if last.elapsed() > Duration::from_millis(250) || percent >= 100.0 {
                         last = Instant::now();
                         update(&app2, &id2, |j| j.progress = (percent / 100.0).clamp(0.0, 1.0));
+                    }
+                } else if let (Some(total), Some(done)) = (section_ms.filter(|&t| t > 0), ffmpeg_time_ms(&line)) {
+                    if last.elapsed() > Duration::from_millis(250) {
+                        last = Instant::now();
+                        update(&app2, &id2, |j| {
+                            j.progress = (done as f32 / total as f32).clamp(0.0, 1.0);
+                            // Replaces "downloading the selected part…" with the percentage.
+                            j.message = None;
+                        });
                     }
                 } else if line.contains("[ExtractAudio]") || line.contains("[Merger]") {
                     update(&app2, &id2, |j| {
@@ -563,6 +574,38 @@ fn watch_yt_dlp(
                 .is_some_and(|e| storage::AUDIO_EXTENSIONS.contains(&e.to_string_lossy().to_lowercase().as_str()))
         })
         .ok_or_else(|| "yt-dlp finished but left no audio file".to_string())
+}
+
+/// Splits a program's output into lines at `\n` *and* `\r`. ffmpeg redraws its status line
+/// in place by ending it with `\r` (carriage return: back to the start of the line) instead
+/// of `\n`, so `BufRead::lines` would only hand over all its updates glued together when
+/// ffmpeg finishes. Windows' `\r\n` line ends just give an empty piece, which is skipped.
+fn output_lines(stream: impl Read) -> impl Iterator<Item = String> {
+    BufReader::new(stream)
+        .split(b'\r')
+        .map_while(Result::ok)
+        .flat_map(|chunk| {
+            String::from_utf8_lossy(&chunk)
+                .split('\n')
+                .map(str::to_string)
+                .collect::<Vec<_>>()
+        })
+        .filter(|line| !line.trim().is_empty())
+}
+
+/// The `time=` of an ffmpeg status line (`size= 206KiB time=00:01:13.50 bitrate=…`), in
+/// milliseconds: how much audio has been written so far, counted from the start of the part.
+/// `None` for other lines, and for `time=N/A` (before anything is written).
+fn ffmpeg_time_ms(line: &str) -> Option<u64> {
+    let value = line.split("time=").nth(1)?.split_whitespace().next()?;
+    // "-00:00:00.02" can appear at the very start; nothing has been written yet.
+    if value.starts_with('-') {
+        return None;
+    }
+    let mut parts = value.split(':');
+    let (h, m, s) = (parts.next()?, parts.next()?, parts.next()?);
+    let seconds = h.parse::<f64>().ok()? * 3600.0 + m.parse::<f64>().ok()? * 60.0 + s.parse::<f64>().ok()?;
+    Some((seconds * 1000.0).round() as u64)
 }
 
 /// Downloads a direct link into `dest`, through `dest.part` so an interrupted download can
@@ -741,6 +784,24 @@ mod tests {
         assert_eq!(direct_extension("https://x.org/page.html"), None);
         assert_eq!(host_of("https://www.freesound.org/s/1"), "freesound.org");
         assert_eq!(percent_decode("rain%20loop+2"), "rain loop 2");
+    }
+
+    #[test]
+    fn reads_ffmpeg_progress() {
+        // As seen from a real part-of-a-video download (decision 0019).
+        let line = "size=     206KiB time=00:00:13.00 bitrate= 129.9kbits/s speed= 227x elapsed=0:00:00.05";
+        assert_eq!(ffmpeg_time_ms(line), Some(13_000));
+        assert_eq!(ffmpeg_time_ms("size= 1KiB time=01:02:03.45 bitrate=1"), Some(3_723_450));
+        assert_eq!(ffmpeg_time_ms("size= 0KiB time=N/A bitrate=N/A"), None);
+        assert_eq!(ffmpeg_time_ms("size= 0KiB time=-00:00:00.02 bitrate=N/A"), None);
+        assert_eq!(ffmpeg_time_ms("[download] Destination: audio.m4a"), None);
+    }
+
+    #[test]
+    fn output_is_split_at_carriage_returns_too() {
+        let output = "[info] one\r\nframe time=00:00:01.00\rframe time=00:00:02.00\r[ExtractAudio] two\n";
+        let lines: Vec<String> = output_lines(output.as_bytes()).collect();
+        assert_eq!(lines, ["[info] one", "frame time=00:00:01.00", "frame time=00:00:02.00", "[ExtractAudio] two"]);
     }
 
     #[test]

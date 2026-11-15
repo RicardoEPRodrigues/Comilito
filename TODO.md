@@ -18,6 +18,9 @@
   hosts there; untested.
 - Windows and macOS: the OS media controls (decision 0030) compile but are untested. On
   Windows they're tied to the main window's handle, created from a background thread.
+- Windows and macOS: the progress of downloading part of a video comes from ffmpeg's status
+  line, which it redraws with `\r`. Output is split at `\r` and `\n` (so Windows' `\r\n` works
+  too), and ffmpeg prints the same `time=` everywhere, so it should work; untested.
 - Windows and macOS: dropping audio files onto the window (decision 0022) uses a different path
   from Linux (file contents sent from the webview) and is untested.
 - macOS and Android are listed as planned in the README. Android also needs checking that kira's
@@ -35,9 +38,6 @@
   category) were checked by type-checks and unit tests only (no virtual display available this
   time). Worth one manual try: start a long download, close the window, choose *Quit anyway*, reopen the project and see
   it continue from where it stopped.
-- Downloads of only part of a video can't report a percentage (ffmpeg does the download), so they
-  show "downloading the selected part…" instead. Consider estimating progress from ffmpeg's
-  `time=` output.
 - Moving the projects folder across disks (the slow, copying case) was only tested by unit
   tests; on the virtual display both folders were on one disk, so the move was an instant rename.
   Worth trying once with a big project and a USB drive to see the progress dialog.
