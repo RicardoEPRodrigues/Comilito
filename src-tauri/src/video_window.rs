@@ -56,6 +56,20 @@ fn move_to_screen(app: &AppHandle, window: &tauri::WebviewWindow, name: &str) {
     }
 }
 
+/// Puts an open video window on `screen` (`None`: the main screen) and in or out of fullscreen.
+/// A fullscreen window can't be moved, so it leaves fullscreen first.
+pub fn place(app: &AppHandle, screen: Option<&str>, fullscreen: bool) {
+    let Some(window) = app.get_webview_window(LABEL) else { return };
+    if window.is_fullscreen().unwrap_or(false) {
+        let _ = window.set_fullscreen(false);
+    }
+    let main = app.primary_monitor().ok().flatten().and_then(|m| m.name().cloned());
+    if let Some(name) = screen.map(str::to_string).or(main) {
+        move_to_screen(app, &window, &name);
+    }
+    let _ = window.set_fullscreen(fullscreen);
+}
+
 /// Opens the video window (or brings it to the front), on the chosen screen and in fullscreen
 /// if that's how it was left.
 pub fn open(app: &AppHandle, state: &mut AppState) -> Result<(), String> {
@@ -121,17 +135,11 @@ pub fn list_screens(app: AppHandle) -> Vec<Screen> {
 #[tauri::command]
 pub fn set_video_screen(name: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
     let mut s = lock(&state)?;
-    if let Some(window) = app.get_webview_window(LABEL) {
-        // Leave fullscreen first: a fullscreen window can't be moved.
-        let was_fullscreen = window.is_fullscreen().unwrap_or(false);
-        if was_fullscreen {
-            let _ = window.set_fullscreen(false);
-        }
-        move_to_screen(&app, &window, &name);
-        if was_fullscreen {
-            let _ = window.set_fullscreen(true);
-        }
-    }
+    let fullscreen = app
+        .get_webview_window(LABEL)
+        .and_then(|w| w.is_fullscreen().ok())
+        .unwrap_or(false);
+    place(&app, Some(&name), fullscreen);
     s.prefs.video.screen = Some(name);
     s.save_prefs()?;
     let _ = app.emit("preferences-changed", &s.prefs);

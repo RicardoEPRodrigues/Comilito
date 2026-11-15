@@ -100,12 +100,16 @@ pub fn set_preferences(mut prefs: Preferences, app: AppHandle, state: AppStateRe
     prefs.recent_projects = std::mem::take(&mut s.prefs.recent_projects);
     let output_changed = prefs.playback.output_device != s.prefs.playback.output_device;
     let video_turned_off = s.prefs.video.enabled && !prefs.video.enabled;
+    // The screen or fullscreen changed in Preferences: an open video window follows now.
+    let video_moved = s.prefs.video.screen != prefs.video.screen || s.prefs.video.fullscreen != prefs.video.fullscreen;
     s.prefs = prefs;
     s.save_prefs()?;
     // The video window (decision 0035) follows its settings live.
     let _ = app.emit("preferences-changed", &s.prefs);
     if video_turned_off {
         crate::video_window::close(&app);
+    } else if video_moved {
+        crate::video_window::place(&app, s.prefs.video.screen.as_deref(), s.prefs.video.fullscreen);
     }
     if output_changed {
         let device = s.prefs.playback.output_device.clone();

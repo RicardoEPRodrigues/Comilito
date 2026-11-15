@@ -14,8 +14,6 @@
     videos apart; videos are relinked by name and size only for now.
   - Conversions don't resume after a restart (downloads do); the video stays "may not play"
     with its Convert button.
-  - Moving the video window to another screen from Preferences only applies the next time it
-    opens (its own screen picker moves it straight away).
   - Video plugins, once plugins exist: the video feature has its own folders and data keys, so
     it could be moved into one.
 - Support projects outside of the projects folder.
