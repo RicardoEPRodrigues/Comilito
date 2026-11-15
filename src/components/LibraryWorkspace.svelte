@@ -16,6 +16,7 @@
   import LibraryTree from "./LibraryTree.svelte";
   import SoundEditor from "./SoundEditor.svelte";
   import VideoLibrary from "./VideoLibrary.svelte";
+  import { videoEnabled } from "../lib/video";
 
   const snapshot = $derived(ui.snapshot!);
   const project = $derived(snapshot.project!);
@@ -54,6 +55,11 @@
   const missing = $derived(new Set(snapshot.missing));
   const selected = $derived(new Set(lib.selected));
   const selectedSounds = $derived(lib.selected.map((id) => project.sounds.find((s) => s.id === id)).filter(Boolean) as Sound[]);
+
+  // Video turned off (Preferences) while its shelf was showing: back to all sounds.
+  $effect(() => {
+    if (lib.category === "video" && !videoEnabled()) lib.category = null;
+  });
 
   // Drop selections of sounds that no longer exist (removed, or filtered away by a move).
   $effect(() => {

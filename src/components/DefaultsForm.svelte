@@ -1,11 +1,12 @@
 <script lang="ts">
-  // The "Levels", "Sound defaults per category" and "Backups" sections, shared by
+  // The "Levels", "Sound defaults per category", "Video" and "Backups" sections, shared by
   // Project settings and Preferences (docs/preferences.md).
   //
   // The parent passes draft objects with `bind:defaults={...}`; `$bindable()` allows this
   // component to change them in place.
   import type { BackupSettings, ProjectDefaults } from "../lib/types";
   import { CATEGORIES } from "../lib/types";
+  import { videoEnabled } from "../lib/video";
 
   let {
     defaults = $bindable(),
@@ -87,6 +88,29 @@
   </label>
 </section>
 
+{#if videoEnabled() && defaults.video}
+  <section>
+    <h2>Video</h2>
+    <p class="muted help">What scenes' video playlists use unless they set their own (decision 0035).</p>
+    <label class="row">
+      <span>Switch videos every</span>
+      <input type="number" min="0" max="240" step="1" bind:value={defaults.video.switchMinutes} />
+      <span class="v">min (0 = play each to its end)</span>
+    </label>
+    <label class="row">
+      <span>Coming back to a video</span>
+      <select bind:value={defaults.video.resume}>
+        <option value={true}>Resume where it left off</option>
+        <option value={false}>Start it over</option>
+      </select>
+    </label>
+    <label class="row">
+      <span>Shuffle</span>
+      <input type="checkbox" bind:checked={defaults.video.shuffle} />
+    </label>
+  </section>
+{/if}
+
 <section>
   <h2>Backups</h2>
   <label class="row">
@@ -102,6 +126,13 @@
     <span>Include audio</span>
     <input type="checkbox" bind:checked={backups.includeAudio} />
   </label>
+  {#if videoEnabled()}
+    <label class="row">
+      <span>Include videos</span>
+      <input type="checkbox" checked={backups.includeVideo ?? false} onchange={(e) => (backups.includeVideo = e.currentTarget.checked)} />
+      <span class="v">videos are big</span>
+    </label>
+  {/if}
 </section>
 
 <style>

@@ -2,12 +2,12 @@
   // App preferences (this computer, docs/preferences.md): levels for new projects, playback,
   // projects folder and download tools, behaviour, and appearance. Never changes existing
   // projects. Appearance changes preview live and are undone if you cancel.
-  import { FolderOpen, MousePointerClick, Palette, Play, RefreshCw, SlidersHorizontal } from "@lucide/svelte";
+  import { Film, FolderOpen, MousePointerClick, Palette, Play, RefreshCw, SlidersHorizontal } from "@lucide/svelte";
   import { open } from "@tauri-apps/plugin-dialog";
   import type { Component } from "svelte";
   import { api } from "../lib/api";
   import { ask, confirmAction, formatBytes, moveProjects, notify, openLogs, refreshTools, run, ui } from "../lib/store.svelte";
-  import type { OutputDevice, Preferences } from "../lib/types";
+  import type { OutputDevice, Preferences, Screen } from "../lib/types";
   import { CATEGORIES } from "../lib/types";
   import { closeEditor, fingerprint } from "../lib/unsaved";
   import AppearancePage from "./AppearancePage.svelte";
@@ -21,6 +21,7 @@
   const PAGES: { id: string; label: string; icon: Component }[] = [
     { id: "levels", label: "Levels", icon: SlidersHorizontal },
     { id: "playback", label: "Playback", icon: Play },
+    { id: "video", label: "Video", icon: Film },
     { id: "projects", label: "Projects & tools", icon: FolderOpen },
     { id: "behaviour", label: "Behaviour", icon: MousePointerClick },
     { id: "appearance", label: "Appearance", icon: Palette },
@@ -111,6 +112,11 @@
   $effect(() => {
     if (page === "playback" && outputs === null) refreshOutputs();
   });
+  // Screens for the video window, listed when the Video page is shown.
+  let screens = $state<Screen[] | null>(null);
+  $effect(() => {
+    if (page === "video" && screens === null) run(api.listScreens()).then((s) => (screens = s ?? []));
+  });
   const defaultName = $derived(outputs?.devices.find((d) => d.id === outputs?.defaultId)?.name);
   /** The saved output, when it isn't connected right now (so it's still shown as chosen). */
   const missingOutput = $derived(
@@ -186,6 +192,77 @@
               <span class="muted">s</span>
             </label>
           </section>
+        {:else if page === "video"}
+          <!-- Decision 0035. The project's own video defaults are under Levels (new projects)
+               and in Project settings. -->
+          <section class="form">
+            <label class="switch">
+              <input type="checkbox" bind:checked={draft.video.enabled} />
+              <span>Use videos</span>
+            </label>
+            <p class="muted small">
+              Off hides the video window, the Video sections, the video effects and the Library's
+              Video shelf on this computer. Projects keep their videos and video settings, and
+              they come back when it's turned on.
+            </p>
+          </section>
+          {#if draft.video.enabled}
+            <section class="form">
+              <div class="section-head"><span class="caps">Video window</span></div>
+              <label class="row">
+                <span>Screen</span>
+                <select value={draft.video.screen ?? ""} onchange={(e) => (draft!.video.screen = e.currentTarget.value || null)}>
+                  <option value="">The main screen</option>
+                  {#each screens ?? [] as s (s.name)}<option value={s.name}>{s.name} · {s.width}×{s.height}{s.primary ? " (main)" : ""}</option>{/each}
+                  {#if draft.video.screen && screens && !screens.some((s) => s.name === draft!.video.screen)}
+                    <option value={draft.video.screen}>{draft.video.screen} (not connected)</option>
+                  {/if}
+                </select>
+              </label>
+              <label class="row">
+                <span>Picture</span>
+                <select bind:value={draft.video.fit}>
+                  <option value="cover">Fill the window (crop the edges)</option>
+                  <option value="contain">Show the whole picture (black bars)</option>
+                </select>
+              </label>
+              <label class="row">
+                <span>Crossfade between videos</span>
+                <input type="number" min="0" max="10" step="0.1" value={seconds(draft.video.crossfadeMs)}
+                  onchange={(e) => (draft!.video.crossfadeMs = toMs(e.currentTarget.valueAsNumber))} />
+                <span class="muted">s</span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" bind:checked={draft.video.fullscreen} />
+                <span>Open the video window in fullscreen</span>
+              </label>
+            </section>
+            <section class="form">
+              <div class="section-head"><span class="caps">Downloads and import</span></div>
+              <label class="row">
+                <span>Video resolution when downloading</span>
+                <select bind:value={draft.video.downloadHeight}>
+                  <option value={720}>Up to 720p</option>
+                  <option value={1080}>Up to 1080p</option>
+                  <option value={1440}>Up to 1440p</option>
+                  <option value={0}>Best available</option>
+                </select>
+              </label>
+              <label class="row">
+                <span>Videos that may not play</span>
+                <select bind:value={draft.video.convert}>
+                  <option value="ask">Ask (convert or not)</option>
+                  <option value="always">Always convert to WebM</option>
+                  <option value="never">Never convert</option>
+                </select>
+              </label>
+              <p class="muted small">
+                WebM videos play everywhere. Others (MP4, MOV…) may need extra codecs on Linux, so
+                Comilito can convert them with its ffmpeg. Defaults for new projects' video
+                playlists are under Levels.
+              </p>
+            </section>
+          {/if}
         {:else if page === "projects"}
           <section>
             <div class="section-head"><span class="caps">Projects folder</span></div>

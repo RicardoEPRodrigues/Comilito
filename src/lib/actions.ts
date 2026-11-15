@@ -312,24 +312,28 @@ export async function newFolder(category: Shelf, parent: string | null = null) {
 
 // ---- Projects ---------------------------------------------------------------------------------
 
-/** Export as a .comilito zip, asking first whether to include the audio. */
+/** Export as a .comilito zip, asking first whether to include the audio (and the videos,
+ *  which are asked about separately because they're big; decision 0035). */
 export async function exportProject() {
   const p = project();
   if (!p) return;
+  const videos = (p.videos?.length ?? 0) > 0;
   const answer = await ask({
     title: "Export project",
     message:
       "With audio: one self-contained file.\nWithout audio: a small file with only the settings; " +
-      "on import you'll be asked where the audio is.",
+      "on import you'll be asked where the audio is." +
+      (videos ? "\nVideos make the file much bigger; without them, they're listed as missing after import." : ""),
     choices: [
       { label: "Cancel", value: "cancel" },
       { label: "Without audio", value: "without" },
-      { label: "With audio", value: "with", primary: true },
+      { label: "With audio", value: "with", primary: !videos },
+      ...(videos ? [{ label: "With audio and videos", value: "all", primary: true }] : []),
     ],
   });
   if (!answer || answer.choice === "cancel") return;
   const dest = await save({ title: "Export project", defaultPath: `${p.name}.comilito`, filters: COMILITO_FILTER });
-  if (dest) await run(api.exportProject(dest, answer.choice === "with"));
+  if (dest) await run(api.exportProject(dest, answer.choice !== "without", answer.choice === "all"));
 }
 
 export async function importProject() {

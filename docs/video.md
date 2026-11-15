@@ -1,6 +1,6 @@
 # Video
 
-> Status: being built on the `video` branch. Decision [0035](decisions/0035-video.md); design in
+> Status: built on the `video` branch, waiting for manual testing before merging. Decision [0035](decisions/0035-video.md); design in
 > `pencil/video-player.pen`.
 
 Scenes can have videos. The top-most enabled scene with videos plays them in a window of its
@@ -87,5 +87,5 @@ Each step is committed and can be tried on its own.
 6. [x] Playlists: shuffle, switching every N minutes, resuming, crossfades.
 7. [x] Video effects on the right column, sharing the space with the sound effects.
 8. [x] The video downloader.
-9. [ ] Preferences › Video, Project settings, export and backups with videos, and the on/off
+9. [x] Preferences › Video, Project settings, export and backups with videos, and the on/off
    switch hiding everything.

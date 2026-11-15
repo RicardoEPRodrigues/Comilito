@@ -68,7 +68,8 @@ See [docs/architecture.md](docs/architecture.md) and [docs/decisions/](docs/deci
 
 First version: projects, a sound library, scenes, the scene stack with ducking and roles,
 presets, an effects pad, export/import, relinking missing audio, hashing and automatic backups,
-downloads that resume after a restart, and a warning when quitting while work is running.
+downloads that resume after a restart, a warning when quitting while work is running, and
+videos for scenes in a window of their own (docs/video.md).
 
 ## Uninstalling
 

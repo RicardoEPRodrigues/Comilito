@@ -127,6 +127,11 @@ pub fn flush_offer(app: &AppHandle, state: &mut AppState) {
     if state.video_offers.offer.is_empty() {
         return;
     }
+    // Video turned off on this computer: nothing to offer.
+    if !state.prefs.video.enabled {
+        state.video_offers.offer.clear();
+        return;
+    }
     let batch = std::mem::take(&mut state.video_offers.offer);
     let ids: Vec<String> = batch.iter().map(|(id, _)| id.clone()).collect();
     match state.prefs.video.convert.as_str() {

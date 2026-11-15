@@ -18,8 +18,9 @@ use crate::{
     storage::{self, PROJECT_FILE},
 };
 
-/// Writes `project` (and, if asked, its audio) to a `.comilito` zip at `dest`.
-pub fn export_zip(dir: &Path, project: &Project, dest: &Path, include_audio: bool) -> Result<(), String> {
+/// Writes `project` (and, if asked, its audio and its videos) to a `.comilito` zip at `dest`.
+/// Videos are asked about separately: they're much bigger (decision 0035).
+pub fn export_zip(dir: &Path, project: &Project, dest: &Path, include_audio: bool, include_video: bool) -> Result<(), String> {
     let err = |e: &dyn std::fmt::Display| format!("could not write {}: {e}", dest.display());
 
     // Write to a temporary name first, so a failed export never leaves a broken file
@@ -33,20 +34,19 @@ pub fn export_zip(dir: &Path, project: &Project, dest: &Path, include_audio: boo
     zip.start_file(PROJECT_FILE, deflated).map_err(|e| err(&e))?;
     zip.write_all(&json).map_err(|e| err(&e))?;
 
-    if include_audio {
-        let stored = SimpleFileOptions::default()
-            .compression_method(CompressionMethod::Stored)
-            // Audio files can be bigger than 4 GB in theory; this keeps the zip valid then.
-            .large_file(true);
-        for sound in &project.sounds {
-            let path = storage::absolute_audio_path(dir, &sound.file);
-            // A missing file is skipped, not fatal: export what we have.
-            let Ok(mut source) = File::open(&path) else {
-                continue;
-            };
-            zip.start_file(&sound.file.path, stored).map_err(|e| err(&e))?;
-            io::copy(&mut source, &mut zip).map_err(|e| err(&e))?;
-        }
+    // Media files are already compressed, so they're stored as they are. `large_file` keeps
+    // the zip valid for files over 4 GB (long videos).
+    let stored = SimpleFileOptions::default().compression_method(CompressionMethod::Stored).large_file(true);
+    let audio = project.sounds.iter().map(|s| &s.file).filter(|_| include_audio);
+    let video = project.videos.iter().map(|v| &v.file).filter(|_| include_video);
+    for file in audio.chain(video) {
+        let path = storage::absolute_audio_path(dir, file);
+        // A missing file is skipped, not fatal: export what we have.
+        let Ok(mut source) = File::open(&path) else {
+            continue;
+        };
+        zip.start_file(&file.path, stored).map_err(|e| err(&e))?;
+        io::copy(&mut source, &mut zip).map_err(|e| err(&e))?;
     }
 
     zip.finish().map_err(|e| err(&e))?;
@@ -87,7 +87,7 @@ pub fn import_zip(zip_path: &Path, root: &Path) -> Result<PathBuf, String> {
             continue;
         };
         // Only take what belongs in a project.
-        let wanted = relative == Path::new(PROJECT_FILE) || relative.starts_with("audio");
+        let wanted = relative == Path::new(PROJECT_FILE) || relative.starts_with("audio") || relative.starts_with("video");
         if !wanted || entry.is_dir() {
             continue;
         }
@@ -111,7 +111,7 @@ pub fn write_backup(dir: &Path, project: &Project, backups_dir: &Path) -> Result
 
     let stamp = chrono::Local::now().format("%Y-%m-%d %H-%M");
     let dest = storage::unique_path(&folder, Path::new(&format!("{name} {stamp}.comilito")));
-    export_zip(dir, project, &dest, project.backups.include_audio)?;
+    export_zip(dir, project, &dest, project.backups.include_audio, project.backups.include_video)?;
     read_zip_project(&dest).map_err(|e| format!("the new backup didn't verify: {e}"))?;
 
     // Oldest first, by modification time. (Not by name: two backups in the same minute are
@@ -235,7 +235,7 @@ mod tests {
         let root = TempDir::new();
         let (dir, project) = project_with_sound(&root.0);
         let zip = root.0.join("out.comilito");
-        export_zip(&dir, &project, &zip, true).unwrap();
+        export_zip(&dir, &project, &zip, true, true).unwrap();
 
         let other_root = TempDir::new();
         let imported = import_zip(&zip, &other_root.0).unwrap();
@@ -249,13 +249,40 @@ mod tests {
         let root = TempDir::new();
         let (dir, project) = project_with_sound(&root.0);
         let zip = root.0.join("small.comilito");
-        export_zip(&dir, &project, &zip, false).unwrap();
+        export_zip(&dir, &project, &zip, false, false).unwrap();
 
         // Importing next to the original: the folder name is taken, so it gets "(2)".
         let imported = import_zip(&zip, &root.0).unwrap();
         assert!(imported.ends_with("Strahd (2)"));
         let loaded = storage::load_project(&imported).unwrap();
         assert_eq!(storage::missing_sounds(&imported, &loaded), vec!["snd-rain"]);
+    }
+
+    #[test]
+    fn videos_are_exported_only_when_asked() {
+        let root = TempDir::new();
+        let (dir, mut project) = project_with_sound(&root.0);
+        std::fs::create_dir_all(dir.join("video/Castle")).unwrap();
+        std::fs::write(dir.join("video/Castle/gate.webm"), b"video").unwrap();
+        let file = storage::file_info(&dir, Path::new("video/Castle/gate.webm")).unwrap();
+        project.videos.push(crate::video::new_video("Gate".into(), file));
+        storage::save_project(&dir, &project).unwrap();
+
+        let with = root.0.join("with.comilito");
+        export_zip(&dir, &project, &with, true, true).unwrap();
+        // Named, so the folder lives until the end of the test (a temporary `TempDir` would be
+        // dropped, and its folder deleted, at the end of the statement).
+        let target = TempDir::new();
+        let imported = import_zip(&with, &target.0).unwrap();
+        assert!(imported.join("video/Castle/gate.webm").is_file());
+
+        let audio_only = root.0.join("audio-only.comilito");
+        export_zip(&dir, &project, &audio_only, true, false).unwrap();
+        let other = TempDir::new();
+        let imported = import_zip(&audio_only, &other.0).unwrap();
+        assert!(!imported.join("video/Castle/gate.webm").exists());
+        let loaded = storage::load_project(&imported).unwrap();
+        assert_eq!(crate::video::missing(&imported, &loaded).len(), 1, "the video is listed, its file missing");
     }
 
     #[test]

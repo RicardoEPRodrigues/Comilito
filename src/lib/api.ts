@@ -67,8 +67,8 @@ export const api = {
     invoke<void>("delete_project", { path, deleteAudio }),
   keepMyVersion: () => invoke<void>("keep_my_version"),
   renameProject: (name: string) => invoke<void>("rename_project", { name }),
-  exportProject: (dest: string, includeAudio: boolean) =>
-    invoke<void>("export_project", { dest, includeAudio }),
+  exportProject: (dest: string, includeAudio: boolean, includeVideo = false) =>
+    invoke<void>("export_project", { dest, includeAudio, includeVideo }),
   importProject: (path: string) => invoke<void>("import_project", { path }),
   backupsFolder: () => invoke<string>("backups_folder"),
   relinkFromFolder: (folder: string) => invoke<void>("relink_from_folder", { folder }),

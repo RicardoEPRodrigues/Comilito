@@ -413,17 +413,18 @@ pub fn rename_project(name: String, app: AppHandle, state: AppStateRef) -> Resul
     Ok(())
 }
 
-/// Exports the open project as a `.comilito` zip, with or without its audio.
+/// Exports the open project as a `.comilito` zip, with or without its audio (and videos).
 #[tauri::command]
 pub fn export_project(
     dest: PathBuf,
     include_audio: bool,
+    include_video: Option<bool>,
     app: AppHandle,
     state: AppStateRef,
 ) -> Result<(), String> {
     let s = lock(&state)?;
     let open = s.open_ref()?;
-    bundle::export_zip(&open.dir, &open.project, &dest, include_audio)?;
+    bundle::export_zip(&open.dir, &open.project, &dest, include_audio, include_video.unwrap_or(false))?;
     let _ = app.emit("notice", format!("Exported to {}", dest.display()));
     Ok(())
 }

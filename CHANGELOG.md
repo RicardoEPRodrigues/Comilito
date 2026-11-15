@@ -51,6 +51,17 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
   your headset is on a call). By default Comilito follows the desktop's default output.
 - **Media keys and the desktop's media controls** play, pause and stop the Tapestry: Comilito
   registers with the OS as a media player, showing the top scene and the music playing.
+- **Videos for scenes**, shown in a window of their own for a TV or projector (their sound is
+  never played). Scenes get a video playlist: shuffled or in order, switching every few minutes
+  and resuming each video where it left off. The top-most scene with videos shows them, like
+  music; a scene can hide the video below. Video effects (a lightning strike, a reveal) play
+  over the playlist until they end, from a pad under the sound effects. The video window has no
+  title bar (drag its top bar), goes fullscreen on the screen you choose, and the header's Video
+  button opens it. Videos live in the project's `video/` folder and the Library's Video shelf;
+  videos that may not play (MP4 and others on Linux) are offered for conversion to WebM.
+  Videos can be downloaded from URLs too (the picture only, up to a chosen resolution), and
+  exported or backed up with the project if you want. Everything video can be turned off in
+  Preferences › Video.
 - **Loudness normalization can be turned on or off for one sound**, in its Loudness section in
   the Library, overriding its category's setting in Project settings.
 - **Downloads continue after a restart.** Downloads still queued or running when Comilito quits
