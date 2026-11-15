@@ -129,6 +129,7 @@ pub fn run() {
                 video_window_open: false,
                 video_effect: None,
                 video_positions: Default::default(),
+                positions_saved: Instant::now(),
                 waveforms: Vec::new(),
             }));
 

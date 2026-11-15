@@ -7,7 +7,7 @@
 //! crossfades. Where each video stopped is kept here (`video_positions`), so it survives the
 //! window being closed and opened again while the app runs.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder};
@@ -187,15 +187,98 @@ pub fn video_effect_ended(id: String, app: AppHandle, state: AppStateRef) -> Res
     Ok(())
 }
 
-/// Remembers where a video stopped (ms), so it can resume there (decision 0035: kept while the
-/// app runs, not saved).
+// ---- Where each video left off, across restarts ---------------------------------------------
+//
+// Kept in `video-positions.json` in the app data folder, per project folder, not in the
+// project: positions change every few seconds while videos play, and a synced project folder
+// would upload comilito.json each time. Written when the project closes (quitting included)
+// and at most every 30 seconds meanwhile.
+
+const POSITIONS_FILE: &str = "video-positions.json";
+
+type AllPositions = HashMap<String, HashMap<String, u64>>;
+
+fn read_all_positions(data_dir: &Path) -> AllPositions {
+    std::fs::read_to_string(data_dir.join(POSITIONS_FILE))
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_default()
+}
+
+/// Where the videos of the project in `project_dir` left off (ms), from the last time.
+pub fn load_positions(data_dir: &Path, project_dir: &Path) -> HashMap<String, u64> {
+    read_all_positions(data_dir).remove(&project_dir.to_string_lossy().to_string()).unwrap_or_default()
+}
+
+/// Saves `positions` for the project in `project_dir`, keeping only videos it still has.
+pub fn store_positions(data_dir: &Path, project_dir: &Path, project: &crate::project::Project, positions: &HashMap<String, u64>) {
+    let mut all = read_all_positions(data_dir);
+    let kept: HashMap<String, u64> = positions
+        .iter()
+        .filter(|(id, _)| project.video(id).is_some())
+        .map(|(id, ms)| (id.clone(), *ms))
+        .collect();
+    let key = project_dir.to_string_lossy().to_string();
+    if kept.is_empty() {
+        all.remove(&key);
+    } else {
+        all.insert(key, kept);
+    }
+    let result = serde_json::to_vec_pretty(&all)
+        .map_err(|e| e.to_string())
+        .and_then(|json| crate::storage::write_atomically(&data_dir.join(POSITIONS_FILE), &json));
+    if let Err(e) = result {
+        crate::logging::warn(&format!("could not remember where the videos left off: {e}"));
+    }
+}
+
+/// Remembers where a video stopped (ms), so it can resume there, also after a restart.
 #[tauri::command]
 pub fn save_video_position(id: String, position_ms: u64, state: AppStateRef) -> Result<(), String> {
-    lock(&state)?.video_positions.insert(id, position_ms);
+    let mut s = lock(&state)?;
+    s.video_positions.insert(id, position_ms);
+    // Also to disk now and then, so a crash loses at most half a minute.
+    if s.positions_saved.elapsed() >= std::time::Duration::from_secs(30)
+        && let Some(open) = &s.open
+    {
+        store_positions(&s.data_dir, &open.dir, &open.project, &s.video_positions);
+        s.positions_saved = std::time::Instant::now();
+    }
     Ok(())
 }
 
 #[tauri::command]
 pub fn video_positions(state: AppStateRef) -> Result<HashMap<String, u64>, String> {
     Ok(lock(&state)?.video_positions.clone())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{project::ProjectDefaults, storage::test_support::TempDir};
+
+    #[test]
+    fn positions_are_kept_per_project_and_only_for_existing_videos() {
+        let data = TempDir::new();
+        let mut project = crate::project::Project::new("P", ProjectDefaults::default());
+        let file = crate::project::FileInfo {
+            path: "video/ambience/a.webm".into(),
+            size: 1,
+            modified: String::new(),
+            sha256: None,
+            loudness: None,
+        };
+        let video = crate::video::new_video("a".into(), file, crate::project::VideoKind::Ambience);
+        let id = video.id.clone();
+        project.videos.push(video);
+
+        let positions = HashMap::from([(id.clone(), 42_000), ("vid-gone".to_string(), 7)]);
+        store_positions(&data.0, Path::new("/projects/Strahd"), &project, &positions);
+        store_positions(&data.0, Path::new("/projects/Other"), &project, &HashMap::from([(id.clone(), 1)]));
+
+        let back = load_positions(&data.0, Path::new("/projects/Strahd"));
+        assert_eq!(back, HashMap::from([(id.clone(), 42_000)]), "the removed video's position is dropped");
+        assert_eq!(load_positions(&data.0, Path::new("/projects/Other"))[&id], 1);
+        assert!(load_positions(&data.0, Path::new("/projects/New")).is_empty());
+    }
 }

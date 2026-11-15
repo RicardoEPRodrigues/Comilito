@@ -71,7 +71,10 @@ whole feature can be turned off in Preferences › Video.
   minutes of play (paused time doesn't count), resuming, and the crossfades (two `<video>`
   layers; a third above them for video effects).
 - Where each video stopped is sent to Rust every few seconds and when it's switched away, so
-  closing and reopening the window resumes too. It's cleared when the project closes.
+  closing and reopening the window resumes too. It's kept across restarts in
+  `video-positions.json` in the app data folder (per project folder, not in the project, so a
+  synced folder isn't re-uploaded every few seconds), written when the project closes and at
+  most every 30 seconds meanwhile.
 - The window reports what it shows about once a second (`video-status` event), for the bottom
   bar's now-playing.
 - Closing the main window closes the video window (the app only exits when every window is

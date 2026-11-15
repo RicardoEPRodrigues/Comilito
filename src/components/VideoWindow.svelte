@@ -163,6 +163,15 @@
     current = { sceneId: t.sceneId, videoId };
   }
 
+  // Another project opened: its videos' positions (kept across restarts) replace these.
+  let positionsFor: string | null = null;
+  $effect(() => {
+    const dir = snapshot?.projectDir ?? null;
+    if (dir === positionsFor) return;
+    positionsFor = dir;
+    if (dir) api.videoPositions().then((p) => (positions = p)).catch(() => {});
+  });
+
   // React to what Rust wants shown. Only `target` is a dependency: `untrack` keeps the layer
   // state read and written by show()/blank() from re-running this effect.
   $effect(() => {

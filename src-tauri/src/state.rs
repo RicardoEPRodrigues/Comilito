@@ -70,6 +70,8 @@ pub struct AppState {
     pub video_window_open: bool,
     pub video_effect: Option<String>,
     pub video_positions: HashMap<String, u64>,
+    /// When `video_positions` was last written to disk (see `video_window::save_video_position`).
+    pub positions_saved: Instant,
     /// Waveform peaks of recently viewed files, keyed by path and modification time.
     pub waveforms: Vec<(String, Arc<crate::waveform::Peaks>)>,
 }
@@ -331,6 +333,8 @@ impl AppState {
         if let Some(open) = &self.open {
             let dir = open.dir.clone();
             crate::downloads::resume_for(self, &dir);
+            // Where its videos left off last time (resumed by the video window).
+            self.video_positions = crate::video_window::load_positions(&self.data_dir, &dir);
             self.prefs.note_opened(&dir);
             // Not being able to remember it isn't worth failing the open for.
             if let Err(e) = self.save_prefs() {
@@ -350,6 +354,9 @@ impl AppState {
             && let Err(e) = bundle::write_backup(&open.dir, &open.project, &backups_dir)
         {
             eprintln!("backup on close failed: {e}");
+        }
+        if let Some(open) = &self.open {
+            crate::video_window::store_positions(&self.data_dir, &open.dir, &open.project, &self.video_positions);
         }
         self.engine.stop_all(Duration::from_millis(200));
         self.engine.clear_cache();
