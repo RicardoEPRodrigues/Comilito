@@ -461,6 +461,7 @@ fn run(app: &AppHandle, id: &str, request: &DownloadRequest, _dir: &Path) -> Res
         cmd.arg("--download-sections")
             .arg(format!("*{:.3}-{:.3}", r.start_ms as f64 / 1000.0, r.end_ms as f64 / 1000.0));
     }
+    tools::own_process_group(&mut cmd);
     let mut child = cmd
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -532,8 +533,7 @@ fn watch_yt_dlp(
     let status = loop {
         let mut process = child.lock().map_err(|_| "busy")?;
         if is_cancelled(app, id) {
-            let _ = process.kill();
-            let _ = process.wait();
+            tools::kill_tree(&mut process);
             return Err("CANCELLED".into());
         }
         match process.try_wait().map_err(|e| e.to_string())? {

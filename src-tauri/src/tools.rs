@@ -107,6 +107,44 @@ pub fn hidden_command(program: &Path) -> Command {
     cmd
 }
 
+/// Makes a command start in a process group of its own (Unix), so `kill_tree` can later stop it
+/// together with the programs it starts (yt-dlp starts ffmpeg). On Windows `kill_tree` finds
+/// those through the process tree instead.
+pub fn own_process_group(cmd: &mut Command) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        // 0 means "a new group, numbered after the child's own process id".
+        cmd.process_group(0);
+    }
+    #[cfg(not(unix))]
+    let _ = cmd;
+}
+
+/// Stops a process and everything it started, then waits for it. `Child::kill` alone stops
+/// only the process itself: an ffmpeg started by yt-dlp would keep running.
+pub fn kill_tree(child: &mut std::process::Child) {
+    #[cfg(unix)]
+    {
+        // A negative id sends the signal to the whole group (needs `own_process_group`).
+        // `unsafe` because it's a raw C call; it touches no Rust memory, so nothing can go wrong
+        // on our side.
+        let group = child.id() as libc::pid_t;
+        unsafe {
+            libc::kill(-group, libc::SIGKILL);
+        }
+    }
+    #[cfg(windows)]
+    {
+        let _ = hidden_command(Path::new("taskkill"))
+            .args(["/T", "/F", "/PID", &child.id().to_string()])
+            .output();
+    }
+    // In case the above failed (or on other systems): at least the process itself.
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
 fn folder_size(dir: &Path) -> u64 {
     let Ok(entries) = fs::read_dir(dir) else { return 0 };
     entries
@@ -364,5 +402,28 @@ mod tests {
         assert!(st.yt_dlp.is_some());
         assert!(st.ffmpeg);
         assert_eq!(yt_dlp_update_available(&dir.0), Some(false));
+    }
+
+    /// Like yt-dlp starting ffmpeg: a shell starts `sleep`, and both must stop.
+    #[cfg(unix)]
+    #[test]
+    fn kill_tree_stops_the_programs_a_process_started() {
+        let mut cmd = Command::new("sh");
+        cmd.args(["-c", "sleep 30 & echo $!; wait"]).stdout(std::process::Stdio::piped());
+        own_process_group(&mut cmd);
+        let mut child = cmd.spawn().unwrap();
+        let mut line = String::new();
+        std::io::BufRead::read_line(&mut std::io::BufReader::new(child.stdout.take().unwrap()), &mut line).unwrap();
+        let grandchild: libc::pid_t = line.trim().parse().unwrap();
+
+        kill_tree(&mut child);
+        // Signal 0 only checks whether the process exists. A killed one may linger a moment
+        // as a "zombie" until init reaps it, so allow it a little time.
+        let gone = (0..50).any(|_| {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+            (unsafe { libc::kill(grandchild, 0) }) != 0
+                || std::fs::read_to_string(format!("/proc/{grandchild}/stat")).is_ok_and(|s| s.contains(") Z "))
+        });
+        assert!(gone, "the grandchild is still running");
     }
 }

@@ -263,13 +263,13 @@ pub fn run() {
             let state = app.state::<Mutex<AppState>>();
             if let Ok(mut s) = state.lock() {
                 s.quitting = true;
-                // A child process outlives its parent; stop a running yt-dlp so it doesn't
-                // keep writing into the folder the download resumes from next time.
+                // A child process outlives its parent; stop a running yt-dlp (and the ffmpeg
+                // it may have started) so they don't keep writing into the folder the download
+                // resumes from next time.
                 if let Some(process) = s.download_process.take()
                     && let Ok(mut child) = process.lock()
                 {
-                    let _ = child.kill();
-                    let _ = child.wait();
+                    tools::kill_tree(&mut child);
                 }
                 if let Err(e) = s.close_project() {
                     eprintln!("could not save on exit: {e}");

@@ -34,7 +34,9 @@ never built.
   doesn't support it, the download starts over). Anything else left in the cache folder may be a
   cut-off conversion and is deleted. A part of a video is cut by ffmpeg, which can't continue,
   so it starts over.
-- On exit, a running yt-dlp is stopped. The worker sees `AppState::quitting` and leaves the job
+- On exit (and on cancel), a running yt-dlp is stopped together with any ffmpeg it started:
+  on Unix yt-dlp runs in a process group of its own and the whole group is killed; on Windows
+  `taskkill /T` stops the process tree. The worker sees `AppState::quitting` and leaves the job
   alone instead of recording a failure.
 - Closing the main window while downloads, fingerprinting, a backup or a projects-folder move
   are running asks first ("Keep running" / "Quit anyway"), with a list of what would be
@@ -45,7 +47,4 @@ never built.
 
 - A download for a project that is never opened again waits forever in `downloads.json`, until
   the project folder is deleted.
-- Killing yt-dlp doesn't kill an ffmpeg it started (downloading part of a video); that one runs
-  to the end on its own. The resumed download deletes and redoes the part, so at worst some work
-  is done twice.
 - "Remove all data and quit" exits straight away, without the warning.

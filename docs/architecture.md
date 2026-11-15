@@ -103,7 +103,8 @@ Closing the main window runs `on_window_event` in `lib.rs`. If downloads, finger
 backup or a projects-folder move are running (`AppState::busy_work`) and the *Warn when quitting*
 preference is on, the close is held back and `quit-requested` is emitted; the UI asks, and
 *Quit anyway* calls `confirm_quit`, which sets `AppState::quitting` and closes the window again.
-On exit, a running yt-dlp is stopped (a child process outlives its parent) and the project is
+On exit, a running yt-dlp and any ffmpeg it started are stopped (`tools::kill_tree`; a child
+process outlives its parent) and the project is
 saved. Unfinished downloads are kept in `downloads.json` in the app data folder and resume when
 their project is next opened ([0033](decisions/0033-resuming-downloads-and-quit-warning.md)).
 

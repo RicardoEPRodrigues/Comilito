@@ -31,12 +31,10 @@
 
 ### Other checks
 
-- The quit warning, resuming downloads and the drawer's fold/unfold-all buttons were checked by
-  type-checks and unit tests only (no virtual display available this time). Worth one manual
-  try: start a long download, close the window, choose *Quit anyway*, reopen the project and see
+- The quit warning, resuming downloads and the drawer's fold/unfold-all buttons (all and per
+  category) were checked by type-checks and unit tests only (no virtual display available this
+  time). Worth one manual try: start a long download, close the window, choose *Quit anyway*, reopen the project and see
   it continue from where it stopped.
-- Quitting during a download of part of a video stops yt-dlp but not the ffmpeg it started,
-  which runs to the end on its own (decision 0033). Harmless, but could be stopped too.
 - Downloads of only part of a video can't report a percentage (ffmpeg does the download), so they
   show "downloading the selected part…" instead. Consider estimating progress from ffmpeg's
   `time=` output.
