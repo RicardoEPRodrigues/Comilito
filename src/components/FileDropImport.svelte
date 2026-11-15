@@ -78,23 +78,32 @@
     // Every drag of files is stopped, even when it can't be imported here: the webview's
     // default for a dropped file is to open it, which would replace the whole app with the
     // file (and play it in the webview).
+    // Set once Tauri's native drag events arrive (only on Linux, see the top of this file).
+    // WebKitGTK still sends the page its own drag events too, but with wrong pointer
+    // positions; acting on both made the outline flicker and the hover end too early. From
+    // then on the page's events only stop the webview from opening the file.
+    let nativeEvents = false;
+
     function over(e: DragEvent) {
       if (!fromOutside(e)) return;
       e.preventDefault();
+      if (nativeEvents) return;
       const accept = !!project() && !files.length;
       e.dataTransfer!.dropEffect = accept ? "copy" : "none";
       hovering = accept;
       if (accept) point(e.clientX, e.clientY);
     }
     function leave(e: DragEvent) {
+      if (nativeEvents) return;
       // WebKitGTK sends dragleave without relatedTarget, so leaving the window is detected
       // by the pointer being outside it.
       if (e.clientX <= 0 || e.clientY <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) hovering = false;
     }
     function drop(e: DragEvent) {
-      hovering = false;
       if (!fromOutside(e)) return;
       e.preventDefault();
+      if (nativeEvents) return;
+      hovering = false;
       if (!project() || files.length) return;
       receive(
         Array.from(e.dataTransfer!.files).map((file) => ({ name: file.name, size: file.size, file })),
@@ -103,6 +112,7 @@
     }
     // Linux: the native drop event (see the top of this file).
     const native = getCurrentWebview().onDragDropEvent(({ payload }) => {
+      nativeEvents = true;
       if (payload.type === "leave") hovering = false;
       else if (payload.type === "enter") hovering = !!project() && !files.length && payload.paths.length > 0;
       else if (payload.type === "over") {
