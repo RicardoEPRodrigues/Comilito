@@ -4,13 +4,23 @@
 
 - flatpak version (not now)
 - Create a first time experience.
+- add ability to scale the UI. Font and whole UI.
 - Add ability to have plugins.
 - Add a plug in that associates a video with a scene and the top scene's video plays on a seperate window. some ideas to complement:
+  - Status: being built as a feature that can be turned off (not a plugin), on the `video`
+    branch. Design: pencil/video-player.pen.
+  - the video audio is never played.
   - we can have a list similar to the songs where we might want to shuffle.
   - when playing this list, we might want to move between videos before they reach its end. play 5 minutes of one, then switch every 5 minutes going back to the previous point it was at. All this should be editable in settings.
   - a button to show the video playback should be added to the main UI.
   - new section should be added below the effects section (or tab) where we could play a video effect. This video would replace the currently playing video and when it is finished we go back to the playlist.
-- add ability to scale the UI. Font and whole UI.
+  - Video downloader akin to the audio downloader.
+  - Later, not in the first version (from the design review):
+    - Trimming videos (like cropping sounds).
+    - Remembering where each video left off across restarts (the first version remembers it
+      only while the app is open).
+    - Video plugins, once plugins exist: the video feature has its own folders and data keys so
+      it could be moved into one.
 
 ## Bugs
 
