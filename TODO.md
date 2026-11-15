@@ -25,11 +25,10 @@
     Video shelf.
   - Video plugins, once plugins exist: the video feature has its own folders and data keys, so
     it could be moved into one.
+- Support projects outside of the projects folder.
 
 ## Bugs
 
-- the video player in the editor scales porly and does not respect aspect ratio.
-- add option to keep video playing even if the audio is not playing. on by default.
 
 ## Platforms
 

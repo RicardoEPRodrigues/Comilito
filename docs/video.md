@@ -12,7 +12,8 @@ whole feature can be turned off in Preferences › Video.
 
 - **Which video shows:** the same rule as music. The top-most enabled scene with videos plays
   its playlist. A scene without videos leaves the video below showing, unless its *Hide the
-  video of the scenes below* switch is on. Esc (stop all) blanks the window; Space pauses it.
+  video of the scenes below* switch is on. Esc (stop all) blanks the window. Space pauses the
+  sound but the video keeps playing, unless that's turned off in Preferences › Video.
 - **Playlist:** in order or shuffled. *Switch videos every N minutes* plays a video for N
   minutes, then the next; *Coming back to a video* resumes where it stopped or starts it over.
   `0` minutes plays each video to its end. These follow the project's defaults unless the scene

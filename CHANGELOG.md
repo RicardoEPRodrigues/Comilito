@@ -60,8 +60,8 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
   button opens it. Videos live in the project's `video/` folder and the Library's Video shelf;
   videos that may not play (MP4 and others on Linux) are offered for conversion to WebM.
   Videos can be downloaded from URLs too (the picture only, up to a chosen resolution), and
-  exported or backed up with the project if you want. Everything video can be turned off in
-  Preferences › Video.
+  exported or backed up with the project if you want. Space pauses only the sound (the video
+  keeps playing; Esc blanks it). Everything video can be turned off in Preferences › Video.
 - **Loudness normalization can be turned on or off for one sound**, in its Loudness section in
   the Library, overriding its category's setting in Project settings.
 - **Downloads continue after a restart.** Downloads still queued or running when Comilito quits

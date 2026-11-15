@@ -80,6 +80,9 @@ pub struct VideoPrefs {
     pub download_height: u32,
     /// Videos that may not play: "ask", "always" (convert) or "never".
     pub convert: String,
+    /// Space pauses the sound but the video keeps playing (a still screen looks broken). Esc
+    /// still blanks it.
+    pub keep_playing_when_paused: bool,
 }
 
 impl Default for VideoPrefs {
@@ -92,6 +95,7 @@ impl Default for VideoPrefs {
             crossfade_ms: 1000,
             download_height: 1080,
             convert: ask(),
+            keep_playing_when_paused: true,
         }
     }
 }

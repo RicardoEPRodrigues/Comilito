@@ -53,7 +53,9 @@
   let lastTick = performance.now();
 
   const target = $derived<VideoTarget | null>(snapshot?.project && snapshot.playback.transport !== "stopped" ? snapshot.mix.video : null);
-  const paused = $derived(snapshot?.playback.transport === "paused");
+  // Space pauses the sound; the video follows only if "keep playing while paused" is off.
+  // (Esc stops everything: `target` is null then, and the window goes black.)
+  const paused = $derived(snapshot?.playback.transport === "paused" && !(prefs?.video.keepPlayingWhenPaused ?? true));
 
   function shuffled(n: number, avoidFirst?: number): number[] {
     const order = [...Array(n).keys()];

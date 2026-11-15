@@ -90,6 +90,8 @@ export interface VideoPrefs {
   /** 720, 1080, 1440, or 0 for the best available. */
   downloadHeight: number;
   convert: "ask" | "always" | "never";
+  /** Space pauses the sound only; the video keeps playing. Esc still blanks it. */
+  keepPlayingWhenPaused: boolean;
 }
 
 export interface Video {

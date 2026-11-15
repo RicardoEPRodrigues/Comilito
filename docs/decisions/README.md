@@ -41,9 +41,10 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0032](0032-choosing-the-audio-output.md) | Choosing the audio output | Accepted | 2026-11-14 |
 | [0033](0033-resuming-downloads-and-quit-warning.md) | Resuming downloads after a restart, and warning when quitting while busy | Accepted | 2026-11-14 |
 | [0034](0034-dropping-files-on-a-library-folder.md) | Dropping files on a Library folder imports them there | Accepted | 2026-11-15 |
-| [0035](0035-video.md) | Videos for scenes, in a window of their own | Accepted (loading on Linux: 0037) | 2026-11-15 |
+| [0035](0035-video.md) | Videos for scenes, in a window of their own | Accepted (loading on Linux: 0037; Space: 0038) | 2026-11-15 |
 | [0036](0036-ui-testing-with-webdriver.md) | Test the running app with WebDriver, on the real Wayland desktop | Accepted | 2026-11-15 |
 | [0037](0037-streaming-videos-on-linux.md) | Streaming videos into a MediaSource on Linux | Accepted | 2026-11-15 |
+| [0038](0038-video-keeps-playing-on-pause.md) | The video keeps playing while the sound is paused | Accepted | 2026-11-15 |
 
 ## Template
 

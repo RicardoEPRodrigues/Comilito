@@ -93,7 +93,8 @@ Scenes can have videos ([0035](decisions/0035-video.md), [video.md](video.md)). 
 as music decides what the video window shows: the top-most enabled scene with videos. A scene
 without videos lets the video below show through, unless its *Hide the video of the scenes
 below* switch is on (a black screen). Video effects of every enabled scene are listed under the
-effects pad. Space pauses the video with the sound; Esc blanks it.
+effects pad. Esc blanks the video; Space pauses only the sound, the video keeps playing
+([0038](decisions/0038-video-keeps-playing-on-pause.md); a preference brings back pausing both).
 
 ### Same sound in several scenes
 

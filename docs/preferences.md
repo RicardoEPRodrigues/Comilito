@@ -83,6 +83,7 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 | Open the video window in fullscreen | off | this computer |
 | Picture | fill the window (crop the edges); or show the whole picture | this computer |
 | Crossfade between videos | 1 s | this computer |
+| Keep the video playing while the sound is paused (Space; Esc still blanks it) | on | this computer |
 | Video resolution when downloading | up to 1080p | this computer |
 | Videos that may not play | ask (other choices: always convert, never convert) | this computer |
 | Switch videos every | 5 min (0 = play each to its end) | default for new projects |
@@ -145,7 +146,8 @@ App `preferences.json` (`src-tauri/src/prefs.rs`), with its defaults:
     "fit": "cover",
     "crossfadeMs": 1000,
     "downloadHeight": 1080,
-    "convert": "ask"
+    "convert": "ask",
+    "keepPlayingWhenPaused": true
   },
   "newProjectDefaults": { "...": "masterVolume, categories, defaults and backups, as in a project" }
 }

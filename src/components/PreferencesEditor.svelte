@@ -236,6 +236,10 @@
                 <input type="checkbox" bind:checked={draft.video.fullscreen} />
                 <span>Open the video window in fullscreen</span>
               </label>
+              <label class="switch">
+                <input type="checkbox" bind:checked={draft.video.keepPlayingWhenPaused} />
+                <span>Keep the video playing while the sound is paused (Space); Esc still blanks it</span>
+              </label>
             </section>
             <section class="form">
               <div class="section-head"><span class="caps">Downloads and import</span></div>
