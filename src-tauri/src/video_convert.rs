@@ -291,6 +291,9 @@ fn convert(app: &AppHandle, work: &Work) -> Result<PathBuf, String> {
         // and row-mt uses every core.
         .args(["-c:v", "libvpx-vp9", "-crf", "32", "-b:v", "0", "-deadline", "good", "-cpu-used", "4"])
         .args(["-row-mt", "1", "-pix_fmt", "yuv420p"])
+        // The seek index (Cues) at the front of the file, so the player can read it with the
+        // first request and start in the middle straight away (decision 0037).
+        .args(["-cues_to_front", "1"])
         // Machine-readable progress on stdout: "out_time_us=12345678" lines.
         .args(["-progress", "pipe:1"])
         .arg(&output);

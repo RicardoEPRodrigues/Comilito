@@ -33,18 +33,23 @@ Windows (WebView2) and macOS (WKWebView) play from asset URLs directly.
 - On Linux (`video_streaming` command), videos are streamed into a MediaSource
   (`src/lib/videoStream.ts`): about 1 MB per range request, about 90 s kept buffered ahead
   of the playhead, data more than 20 s behind dropped. A seek ahead keeps reading forward; a seek
-  before the buffered data (looping, resuming earlier) reads again from the start.
+  before the buffered data (looping, resuming earlier) reads again from the start, for files
+  without a seek index (see below).
 - The asset protocol answers at most 1,024,000 bytes per range request whatever is asked, so the
   next request starts where the last answer ended (asking for 1 MB and assuming it came skipped
   bytes and cut the video in half).
 - Only WebM is streamed: MSE needs MP4 to be fragmented. Other videos fall back to a plain `src`,
   which on Linux won't play; they're the ones offered for conversion (0035) anyway.
 - Windows and macOS keep a plain `src` with the asset URL.
+- Seeking uses the WebM's seek index (its Cues) when it has one (`src/lib/webmIndex.ts`):
+  starting in the middle appends the header, then reads from the cluster holding that point; a
+  seek outside the buffered data jumps the same way (resetting the SourceBuffer's parser with
+  `abort()` first, since chunks are cut mid-cluster). Comilito's conversions write the Cues at
+  the front (`-cues_to_front 1`); other files usually have them at the end, found through the
+  SeekHead. Tested: seeking to 2:30 of a 3-minute 720p video read 4 MB in about 40 ms, either way.
 
 ## Consequences
 
-- Resuming far into a long video reads the file from the start up to that point (there's no
-  index of where each second is in the file): a few seconds for a long 1080p video on a local
-  disk. Parsing the WebM's Cues to jump straight there could fix it later (TODO.md).
+- A WebM without Cues (rare) still reads forward from the start to reach a point in the middle.
 - Thumbnails stream only enough for one frame.
 - No HTTP server, so nothing listens on the network.

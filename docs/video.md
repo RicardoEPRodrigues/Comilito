@@ -76,7 +76,9 @@ whole feature can be turned off in Preferences › Video.
 `src/lib/videoStream.ts` (`loadVideo`, and the `videoSource` action for the Library). On
 Linux, WebKitGTK won't play `<video src="asset://…">`, so the file is streamed into a
 MediaSource with `fetch` range requests over the asset protocol ([0037](decisions/0037-streaming-videos-on-linux.md));
-only WebM can be streamed that way. On Windows and macOS a plain `src` is used.
+only WebM can be streamed that way. Seeks and starts in the middle use the WebM's seek index
+(`src/lib/webmIndex.ts`), which conversions put at the front of the file. On Windows and macOS a
+plain `src` is used.
 
 ## Build plan
 

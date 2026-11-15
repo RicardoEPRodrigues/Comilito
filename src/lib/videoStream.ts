@@ -7,6 +7,9 @@
 // playhead and dropping what's well behind, so a long video never sits whole in memory.
 // Elsewhere (Windows, macOS) a plain `src` works and is used.
 //
+// Seeking far (starting in the middle, resuming) uses the file's seek index when it has one
+// (webmIndex.ts) to jump straight to the right place; without one, it reads forward to it.
+//
 // MSE takes WebM as it is (MP4 would need to be "fragmented"), so only WebM is streamed; other
 // videos fall back to a plain `src`, which on Linux won't play: they're the ones offered for
 // conversion anyway.
@@ -14,6 +17,7 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { ui } from "./store.svelte";
 import type { Video } from "./types";
+import { offsetFor, readWebmIndex, type WebmIndex } from "./webmIndex";
 
 /** Read size per request. The asset protocol answers at most about 1 MB per range request
  *  (1,024,000 bytes), whatever is asked, so asking for more only costs memory. */
@@ -104,15 +108,18 @@ class Stream implements Playback {
   private offset = 0;
   private feeding = false;
   private dead = false;
-  /** Set by a seek before the buffered data: start reading the file again from the beginning.
-   *  Done by the reading loop between chunks, so it never races a chunk being appended. */
-  private restart = false;
+  /** Set by a seek outside the buffered data: drop what's buffered and continue reading from
+   *  this byte (a cluster from the seek index, or 0 without one). Done by the reading loop
+   *  between chunks, so it never races a chunk being appended. */
+  private reposition: number | null = null;
+  /** The file's seek index, if it has one: lets seeks jump straight to the right place. */
+  private index: WebmIndex | null = null;
 
   constructor(
     private el: HTMLVideoElement,
     private url: string,
     private type: string,
-    fromSec: number,
+    private fromSec: number,
     private preview: boolean,
   ) {
     this.objectUrl = URL.createObjectURL(this.ms);
@@ -125,12 +132,37 @@ class Stream implements Playback {
 
   private async open() {
     if (this.dead) return;
-    this.sb = this.ms.addSourceBuffer(this.type);
+    const sb = (this.sb = this.ms.addSourceBuffer(this.type));
     // The file's size, from the answer to a one-byte range request.
     const head = await fetch(this.url, { headers: { Range: "bytes=0-0" } });
-    this.size = Number(head.headers.get("content-range")?.split("/")[1] ?? 0);
+    const size = Number(head.headers.get("content-range")?.split("/")[1] ?? 0);
+    this.index = await readWebmIndex(this.readRange, size).catch(() => null);
+    if (this.dead) return;
+    // Starting in the middle: the header first (MediaSource needs it before any video), then
+    // straight to the cluster holding the start, instead of reading everything before it.
+    if (this.index && this.fromSec > 0) {
+      sb.appendBuffer(await this.readRange(0, this.index.initEnd - 1));
+      await idle(sb);
+      this.offset = offsetFor(this.index, this.fromSec);
+    }
+    this.size = size;
     this.pump();
   }
+
+  /** Bytes [start, end] of the file, in as many requests as the asset protocol needs (it
+   *  answers at most about 1 MB per request). */
+  private readRange = async (start: number, end: number): Promise<Uint8Array<ArrayBuffer>> => {
+    const out = new Uint8Array(end - start + 1);
+    let at = start;
+    while (at <= end) {
+      const response = await fetch(this.url, { headers: { Range: `bytes=${at}-${end}` } });
+      const part = new Uint8Array(await response.arrayBuffer());
+      if (part.length === 0) break;
+      out.set(part, at - start);
+      at += part.length;
+    }
+    return out;
+  };
 
   /** The seconds buffered ahead of the playhead (0 if the playhead isn't in buffered data). */
   private ahead(): number {
@@ -152,13 +184,19 @@ class Stream implements Playback {
     if (this.feeding || this.dead || !sb || !this.size) return;
     this.feeding = true;
     try {
-      while (!this.dead && (this.restart || (this.offset < this.size && this.needsMore()))) {
-        if (this.restart) {
-          this.restart = false;
+      while (!this.dead && (this.reposition !== null || (this.offset < this.size && this.needsMore()))) {
+        if (this.reposition !== null) {
+          const to = this.reposition;
+          this.reposition = null;
           await idle(sb);
+          // The parser may be halfway through a cluster from the last chunk (chunks are cut
+          // anywhere): `abort` resets it, or the bytes from the new place would be read as the
+          // rest of that cluster and fail to decode. Once the whole file was read (`ended`)
+          // there's nothing half-read, and `abort` would throw: `remove` reopens the source.
+          if (this.ms.readyState === "open") sb.abort();
           if (this.el.buffered.length) sb.remove(0, Infinity);
           await idle(sb);
-          this.offset = 0;
+          this.offset = to;
           continue;
         }
         await this.dropBehind(sb);
@@ -205,11 +243,18 @@ class Stream implements Playback {
     }
   }
 
-  /** A seek before the buffered data (back to the start when looping, or an earlier point):
-   *  read the file again from the beginning. A seek ahead just keeps reading forward. */
+  /** A seek outside the buffered data. With a seek index, jump straight to the cluster holding
+   *  that point. Without one, a seek back (looping, resuming earlier) reads again from the
+   *  start, and a seek ahead keeps reading forward until it gets there. */
   private onSeeking = () => {
     const b = this.el.buffered;
-    if (b.length && this.el.currentTime < b.start(0)) this.restart = true;
+    const t = this.el.currentTime;
+    let buffered = false;
+    for (let i = 0; i < b.length; i++) if (b.start(i) <= t + 0.1 && t <= b.end(i)) buffered = true;
+    if (!buffered) {
+      if (this.index) this.reposition = offsetFor(this.index, t);
+      else if (b.length && t < b.start(0)) this.reposition = 0;
+    }
     this.pump();
   };
 

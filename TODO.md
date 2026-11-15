@@ -30,10 +30,10 @@
       it opens (its own screen picker moves it straight away).
     - The Library's "Missing files" list shows sounds only; missing videos are marked in the
       Video shelf.
-    - On Linux, resuming far into a long video reads the file from the start up to that point
-      (decision 0037); parsing the WebM's Cues would let it jump straight there.
 
 ## Bugs
+
+- the video player in the editor scales porly and does not respect aspect ratio.
 
 ## Platforms
 
