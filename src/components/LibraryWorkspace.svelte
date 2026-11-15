@@ -61,9 +61,10 @@
     if (lib.category === "video" && !videoEnabled()) lib.category = null;
   });
 
-  // Drop selections of sounds that no longer exist (removed, or filtered away by a move).
+  // Drop selections of sounds (or videos) that no longer exist (removed, or filtered away by a
+  // move). Videos count too: the Video shelf shares the selection (decision 0035).
   $effect(() => {
-    const ids = new Set(project.sounds.map((s) => s.id));
+    const ids = new Set([...project.sounds.map((s) => s.id), ...(project.videos ?? []).map((v) => v.id)]);
     if (lib.selected.some((id) => !ids.has(id))) lib.selected = lib.selected.filter((id) => ids.has(id));
   });
 
