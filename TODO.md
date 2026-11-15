@@ -6,34 +6,30 @@
 - Create a first time experience.
 - add ability to scale the UI. Font and whole UI.
 - Add ability to have plugins.
-- Add a plug in that associates a video with a scene and the top scene's video plays on a seperate window. some ideas to complement:
-  - Status: built as a feature that can be turned off (not a plugin), on the `video` branch,
-    waiting for manual testing (see "Other checks"). Design: pencil/video-player.pen;
-    docs/video.md.
-  - the video audio is never played.
-  - we can have a list similar to the songs where we might want to shuffle.
-  - when playing this list, we might want to move between videos before they reach its end. play 5 minutes of one, then switch every 5 minutes going back to the previous point it was at. All this should be editable in settings.
-  - a button to show the video playback should be added to the main UI.
-  - new section should be added below the effects section (or tab) where we could play a video effect. This video would replace the currently playing video and when it is finished we go back to the playlist.
-  - Video downloader akin to the audio downloader.
-  - Later, not in the first version (from the design review):
-    - Trimming videos (like cropping sounds).
-    - Remembering where each video left off across restarts (the first version remembers it
-      only while the app is open).
-    - Video plugins, once plugins exist: the video feature has its own folders and data keys so
-      it could be moved into one.
-    - Fingerprinting videos (sha256) like audio, so "Find in a folder" can tell same-named
-      videos apart; videos are relinked by name and size only for now.
-    - Conversions don't resume after a restart (downloads do); the video stays "may not play"
-      with its Convert button.
-    - Moving the video window to another screen from Preferences only applies the next time
-      it opens (its own screen picker moves it straight away).
-    - The Library's "Missing files" list shows sounds only; missing videos are marked in the
-      Video shelf.
+- Separate ambience videos from video effects, like sounds are separated into categories, so
+  each behaves consistently: a scene's video playlist takes ambience videos, its video effects
+  take video effects. The Library would then have five columns (Music, Ambience, Effects,
+  Ambience videos, Video effects), which is too many: redesign it, perhaps with a Sounds tab
+  and a Videos tab. Needs a design (Pencil) before code.
+- Video, later improvements (the feature itself is done, docs/video.md):
+  - Trimming videos (like cropping sounds).
+  - Remembering where each video left off across restarts (it's remembered only while the app
+    is open).
+  - Fingerprinting videos (sha256) like audio, so "Find in a folder" can tell same-named
+    videos apart; videos are relinked by name and size only for now.
+  - Conversions don't resume after a restart (downloads do); the video stays "may not play"
+    with its Convert button.
+  - Moving the video window to another screen from Preferences only applies the next time it
+    opens (its own screen picker moves it straight away).
+  - The Library's "Missing files" list shows sounds only; missing videos are marked in the
+    Video shelf.
+  - Video plugins, once plugins exist: the video feature has its own folders and data keys, so
+    it could be moved into one.
 
 ## Bugs
 
 - the video player in the editor scales porly and does not respect aspect ratio.
+- add option to keep video playing even if the audio is not playing. on by default.
 
 ## Platforms
 
@@ -62,12 +58,8 @@
 
 ### Other checks
 
-- Video (decision 0035, `video` branch), tested in the running app with WebDriver on Linux: a
-  converted WebM plays in the video window (playlist, looping, Space, Esc, resuming after Esc), a
-  video effect plays, the Library's preview seeks and plays, thumbnails load. Not tried yet: a
-  scene with two videos and "switch every 1 min" (switching and crossfades); shuffle; the video
-  window on a second screen and fullscreen; dragging the window by its top bar; downloading a
-  part of a YouTube video as video; exporting with videos.
+- Video (decision 0035): not tried yet in the running app: the video window on a second screen
+  and in fullscreen, and exporting a project with its videos.
 - Moving the projects folder across disks (the slow, copying case) was only tested by unit
   tests; on the virtual display both folders were on one disk, so the move was an instant rename.
   Worth trying once with a big project and a USB drive to see the progress dialog.

@@ -1,7 +1,8 @@
 # Video
 
-> Status: built on the `video` branch, waiting for manual testing before merging. Decision [0035](decisions/0035-video.md); design in
-> `pencil/video-player.pen`.
+> Status: implemented (on the `video` branch until merged). Decisions
+> [0035](decisions/0035-video.md) and [0037](decisions/0037-streaming-videos-on-linux.md); design
+> in `pencil/video-player.pen`.
 
 Scenes can have videos. The top-most enabled scene with videos plays them in a window of its
 own, meant for a TV or projector the players see. A video's own sound is never played. The
@@ -80,21 +81,7 @@ only WebM can be streamed that way. Seeks and starts in the middle use the WebM'
 (`src/lib/webmIndex.ts`), which conversions put at the front of the file. On Windows and macOS a
 plain `src` is used.
 
-## Build plan
+## Known limits
 
-Each step is committed and can be tried on its own.
-
-1. [x] Data model and save format: `videos`, a scene's `video`, `hidesVideo` and
-   `videoEffects`, `defaults.video`, `backups.includeVideo`, and the `video` preferences.
-2. [x] Video files in the project: the `video/` folder, adding files, finding new or missing
-   files, the Library's Video category and a video's page.
-3. [x] Measuring videos with ffprobe, the conversion queue, and the Convert dialog (on import,
-   on drop and for files found in the folder).
-4. [x] The scene editor's Video section and video effects, and the drawer's Video column.
-5. [x] The video window: a second window that plays the top scene's videos, follows Space and
-   Esc, has the header button and the bottom bar's now-playing.
-6. [x] Playlists: shuffle, switching every N minutes, resuming, crossfades.
-7. [x] Video effects on the right column, sharing the space with the sound effects.
-8. [x] The video downloader.
-9. [x] Preferences › Video, Project settings, export and backups with videos, and the on/off
-   switch hiding everything.
+Listed in TODO.md: trimming videos, remembering positions across restarts, fingerprinting
+videos, resuming conversions after a restart, and the untested Windows and macOS side.
