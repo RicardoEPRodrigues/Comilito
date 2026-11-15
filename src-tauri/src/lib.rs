@@ -125,6 +125,7 @@ pub fn run() {
                 conversions: Vec::new(),
                 conversion_wakeup: Some(conversion_wakeup),
                 conversion_process: None,
+                waiting_conversions: video_convert::load_saved(&data_dir),
                 video_offers: Default::default(),
                 video_window_open: false,
                 video_effect: None,

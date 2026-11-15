@@ -63,6 +63,9 @@ pub struct AppState {
     pub conversions: Vec<crate::video_convert::ConversionJob>,
     pub conversion_wakeup: Option<mpsc::Sender<()>>,
     pub conversion_process: Option<Arc<Mutex<Child>>>,
+    /// Unfinished conversions waiting for their project to open (from the last run, or parked
+    /// when their project closed).
+    pub waiting_conversions: Vec<crate::video_convert::SavedConversion>,
     /// New videos to look at, and those to offer for conversion.
     pub video_offers: crate::video_convert::Offers,
     /// The video window (video_window.rs): whether it's open, the video effect it's playing,
@@ -269,7 +272,7 @@ impl AppState {
             .count();
         if converting > 0 {
             work.push(format!(
-                "Converting {}. Stopped now, they stay as they were (marked \"may not play\").",
+                "Converting {}. They start again the next time you open the project.",
                 plural(converting, "video", "videos")
             ));
         }
@@ -333,6 +336,7 @@ impl AppState {
         if let Some(open) = &self.open {
             let dir = open.dir.clone();
             crate::downloads::resume_for(self, &dir);
+            crate::video_convert::resume_for(self, &dir);
             // Where its videos left off last time (resumed by the video window).
             self.video_positions = crate::video_window::load_positions(&self.data_dir, &dir);
             self.prefs.note_opened(&dir);
@@ -357,6 +361,8 @@ impl AppState {
         }
         if let Some(open) = &self.open {
             crate::video_window::store_positions(&self.data_dir, &open.dir, &open.project, &self.video_positions);
+            let dir = open.dir.clone();
+            crate::video_convert::park_for(self, &dir);
         }
         self.engine.stop_all(Duration::from_millis(200));
         self.engine.clear_cache();

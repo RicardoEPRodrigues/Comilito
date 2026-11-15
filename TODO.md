@@ -8,8 +8,6 @@
 - Add ability to have plugins.
 - Video, later improvements (the feature itself is done, docs/video.md):
   - Trimming videos (like cropping sounds).
-  - Conversions don't resume after a restart (downloads do); the video stays "may not play"
-    with its Convert button.
   - Video plugins, once plugins exist: the video feature has its own folders and data keys, so
     it could be moved into one.
 - Support projects outside of the projects folder.

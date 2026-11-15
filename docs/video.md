@@ -43,7 +43,9 @@ whole feature can be turned off in Preferences › Video.
   The working file is hidden (`.name.converting.webm`) so the folder scan ignores it, and is
   deleted if the conversion is cut off. The converted file replaces the original in every scene;
   the original goes to the trash, or stays as a video of its own ("(original)").
-- Conversions aren't resumed after a restart; the video stays marked "may not play".
+- Unfinished conversions are kept in `conversions.json` in the app data folder: when the app
+  quits or the project closes they stop, and they start again (from the beginning; ffmpeg can't
+  continue a half-written file) the next time the project opens.
 
 ## Downloading videos
 

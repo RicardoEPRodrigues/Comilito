@@ -10,8 +10,9 @@
 //!   out not to play everywhere are collected; once nothing is left to probe, the batch is
 //!   offered (`convert-offer` event), converted straight away, or left, per Preferences.
 //! - **Conversions** wait in a queue and run one at a time on a background thread, like
-//!   downloads (`conversions-changed` event). They aren't kept across restarts: an unconverted
-//!   video stays in the Library, marked "may not play", with a Convert button.
+//!   downloads (`conversions-changed` event). Unfinished ones are kept in `conversions.json`
+//!   in the app data folder and start again (from the beginning: ffmpeg can't continue a
+//!   half-written file) the next time their project opens.
 
 use std::{
     collections::HashMap,
@@ -162,11 +163,99 @@ pub struct ConversionJob {
     pub message: Option<String>,
     #[serde(skip)]
     keep_original: bool,
+    #[serde(skip)]
+    project_dir: PathBuf,
+}
+
+/// An unfinished conversion as written to `conversions.json`.
+#[derive(Debug, Clone, Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SavedConversion {
+    pub project_dir: PathBuf,
+    pub video_id: String,
+    pub keep_original: bool,
+}
+
+const SAVED_FILE: &str = "conversions.json";
+
+/// Reads the conversions left unfinished last time, dropping those whose project is gone.
+pub fn load_saved(data_dir: &Path) -> Vec<SavedConversion> {
+    let saved: Vec<SavedConversion> = fs::read_to_string(data_dir.join(SAVED_FILE))
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_default();
+    saved
+        .into_iter()
+        .filter(|c| c.project_dir.join(storage::PROJECT_FILE).is_file())
+        .collect()
+}
+
+/// Writes the unfinished conversions (queued or running, and those waiting for their project
+/// to open) to `conversions.json`, or removes it when there are none.
+pub fn save_unfinished(state: &AppState) {
+    let mut list: Vec<SavedConversion> = state
+        .conversions
+        .iter()
+        .filter(|j| matches!(j.status, JobStatus::Queued | JobStatus::Running))
+        .map(|j| SavedConversion {
+            project_dir: j.project_dir.clone(),
+            video_id: j.id.clone(),
+            keep_original: j.keep_original,
+        })
+        .collect();
+    list.extend(state.waiting_conversions.iter().cloned());
+    let file = state.data_dir.join(SAVED_FILE);
+    let result = if list.is_empty() {
+        match fs::remove_file(&file) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.to_string()),
+            _ => Ok(()),
+        }
+    } else {
+        serde_json::to_vec_pretty(&list)
+            .map_err(|e| e.to_string())
+            .and_then(|json| storage::write_atomically(&file, &json))
+    };
+    if let Err(e) = result {
+        crate::logging::warn(&format!("could not remember the unfinished conversions: {e}"));
+    }
+}
+
+/// The project in `dir` is closing: its unfinished conversions stop (a running ffmpeg is
+/// stopped) and wait for the project to open again.
+pub fn park_for(state: &mut AppState, dir: &Path) {
+    for job in &mut state.conversions {
+        if job.project_dir == dir && matches!(job.status, JobStatus::Queued | JobStatus::Running) {
+            job.status = JobStatus::Cancelled;
+            job.message = Some("continues when the project opens again".into());
+            state.waiting_conversions.push(SavedConversion {
+                project_dir: job.project_dir.clone(),
+                video_id: job.id.clone(),
+                keep_original: job.keep_original,
+            });
+        }
+    }
+    save_unfinished(state);
+}
+
+/// The project in `dir` opened: its waiting conversions go back in the queue.
+pub fn resume_for(state: &mut AppState, dir: &Path) {
+    let (resume, keep): (Vec<_>, Vec<_>) =
+        std::mem::take(&mut state.waiting_conversions).into_iter().partition(|c| c.project_dir == dir);
+    state.waiting_conversions = keep;
+    if resume.is_empty() {
+        return;
+    }
+    crate::logging::info(&format!("Resuming {} unfinished conversion(s)", resume.len()));
+    for keep_original in [false, true] {
+        let ids: Vec<String> = resume.iter().filter(|c| c.keep_original == keep_original).map(|c| c.video_id.clone()).collect();
+        enqueue(state, &ids, keep_original);
+    }
 }
 
 /// Adds videos to the conversion queue (skipping ones already waiting) and wakes the worker.
 pub fn enqueue(state: &mut AppState, ids: &[String], keep_original: bool) {
     let Some(open) = &state.open else { return };
+    let project_dir = open.dir.clone();
     for id in ids {
         let Some(video) = open.project.video(id) else { continue };
         let waiting = state
@@ -184,11 +273,13 @@ pub fn enqueue(state: &mut AppState, ids: &[String], keep_original: bool) {
             progress: 0.0,
             message: None,
             keep_original,
+            project_dir: project_dir.clone(),
         });
     }
     if let Some(tx) = &state.conversion_wakeup {
         let _ = tx.send(());
     }
+    save_unfinished(state);
 }
 
 pub fn emit_conversions(app: &AppHandle, state: &AppState) {
@@ -401,6 +492,7 @@ fn finish(app: &AppHandle, work: &Work, result: Result<PathBuf, String>) {
         Err(e) if e != "CANCELLED" => crate::logging::error(&format!("Converting \"{name}\" failed: {e}")),
         Err(_) => {}
     }
+    save_unfinished(&s);
     emit_conversions(app, &s);
     emit_state(app, &s, problems);
 }
@@ -481,6 +573,7 @@ pub fn cancel_conversion(id: String, app: AppHandle, state: AppStateRef) -> Resu
     {
         job.status = JobStatus::Cancelled;
     }
+    save_unfinished(&s);
     emit_conversions(&app, &s);
     Ok(())
 }
@@ -527,6 +620,22 @@ mod tests {
 
         let no_video: serde_json::Value = serde_json::from_str(r#"{"streams":[],"format":{}}"#).unwrap();
         assert!(parse_probe(&no_video, Path::new("a.webm")).is_err());
+    }
+
+    #[test]
+    fn saved_conversions_of_deleted_projects_are_dropped() {
+        let data = crate::storage::test_support::TempDir::new();
+        let project = data.0.join("Strahd");
+        fs::create_dir_all(&project).unwrap();
+        fs::write(project.join(storage::PROJECT_FILE), "{}").unwrap();
+        let saved = vec![
+            SavedConversion { project_dir: project.clone(), video_id: "vid-1".into(), keep_original: true },
+            SavedConversion { project_dir: data.0.join("Deleted"), video_id: "vid-2".into(), keep_original: false },
+        ];
+        fs::write(data.0.join(SAVED_FILE), serde_json::to_string(&saved).unwrap()).unwrap();
+        let loaded = load_saved(&data.0);
+        assert_eq!(loaded.len(), 1);
+        assert_eq!((loaded[0].video_id.as_str(), loaded[0].keep_original), ("vid-1", true));
     }
 
     #[test]
