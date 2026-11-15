@@ -42,7 +42,8 @@ export type Editing =
 export interface UrlPrefill {
   url: string;
   name: string;
-  category: Category;
+  /** "video" for a video's "Download again". */
+  category: Shelf;
   folder: string;
   range: { startMs: number; endMs: number } | null;
   /** The sound whose file the new download replaces. */

@@ -160,19 +160,14 @@ pub fn project_file_modified(dir: &Path) -> Option<std::time::SystemTime> {
     fs::metadata(dir.join(PROJECT_FILE)).and_then(|m| m.modified()).ok()
 }
 
-/// `dir/audio/<category>/<folder>`. `folder` is a Library folder like "Barovia/Castle"
-/// (empty for the category folder itself). Parts that could escape the folder ("..") are
-/// dropped, so a bad name can never point outside the project.
-pub fn category_folder_path(dir: &Path, category: Category, folder: &str) -> PathBuf {
-    shelf_folder_path(dir, category.into(), folder)
-}
-
 /// The folder of a shelf inside the project: `dir/audio/<category>` or `dir/video`.
 pub fn shelf_root(dir: &Path, shelf: Shelf) -> PathBuf {
     shelf.root().split('/').fold(dir.to_path_buf(), |p, part| p.join(part))
 }
 
-/// `shelf_root/<folder>`, with the same protection as `category_folder_path`.
+/// `dir/audio/<category>/<folder>` or `dir/video/<folder>`. `folder` is a Library folder like
+/// "Barovia/Castle" (empty for the shelf's own folder). Parts that could escape the folder
+/// ("..") are dropped, so a bad name can never point outside the project.
 pub fn shelf_folder_path(dir: &Path, shelf: Shelf, folder: &str) -> PathBuf {
     folder
         .split('/')
@@ -718,7 +713,7 @@ mod tests {
     fn folder_names_cannot_escape_the_project() {
         let dir = Path::new("/p");
         assert_eq!(
-            category_folder_path(dir, Category::Music, "../../etc"),
+            shelf_folder_path(dir, Shelf::Music, "../../etc"),
             Path::new("/p/audio/music/etc")
         );
     }

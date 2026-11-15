@@ -144,6 +144,15 @@
         <div class="line">
           <span class="grow"><strong>“{source.title ?? video.name}”</strong> <span class="muted">· {source.site ?? ""} · downloaded {new Date(source.downloadedAt).toLocaleDateString()}</span></span>
           <button onclick={() => openUrl(source.url)}><ExternalLink size={13} />Open page</button>
+          <button
+            onclick={() =>
+              (ui.editing = {
+                kind: "addUrl",
+                prefill: { url: source.url, name: video.name, category: "video", folder: folderOfVideo(video), range: source.range ?? null, replace: id },
+              })}
+          >
+            <RefreshCw size={13} />Download again
+          </button>
         </div>
       </section>
     {/if}

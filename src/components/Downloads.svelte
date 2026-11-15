@@ -4,10 +4,18 @@
   import { Check, Download, RotateCcw, TriangleAlert, X } from "@lucide/svelte";
   import { api } from "../lib/api";
   import { openSoundInLibrary, run, ui } from "../lib/store.svelte";
+  import { videoById } from "../lib/video";
 
   const jobs = $derived(ui.downloads);
   const active = $derived(jobs.filter((j) => j.status === "running" || j.status === "queued").length);
   const finished = $derived(jobs.length - active);
+
+  /** A finished download is a sound, or a video (decision 0035) shown in the Video shelf. */
+  function openInLibrary(id: string) {
+    if (!videoById(id)) return openSoundInLibrary(id);
+    ui.library = { ...ui.library, smart: "all", category: "video", folder: null, search: "", selected: [id], cropping: false };
+    ui.view = "library";
+  }
 </script>
 
 {#if jobs.length > 0}
@@ -24,7 +32,7 @@
         <div class="row">
           {#if job.status === "done"}<Check size={12} />{:else if job.status === "failed"}<TriangleAlert size={12} />{/if}
           {#if job.status === "done" && job.soundId}
-            <button class="name link" onclick={() => openSoundInLibrary(job.soundId!)}>{job.name}</button>
+            <button class="name link" onclick={() => openInLibrary(job.soundId!)}>{job.name}</button>
           {:else}
             <span class="name">{job.name}</span>
           {/if}

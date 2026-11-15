@@ -1,8 +1,10 @@
 <script lang="ts">
-  // "Add audio from a URL" (decision 0019): paste a video page or a direct link to an audio
-  // file, check what it is, choose the part, name, category and folder, then download. The
+  // "Add from a URL" (decision 0019): paste a video page or a direct link to an audio file,
+  // check what it is, choose the part, name, category and folder, then download. The
   // download runs in the background (see Downloads in the Library). Nothing is streamed.
-  import { Globe, LoaderCircle, Link, Scale, Download as DownloadIcon } from "@lucide/svelte";
+  // A page can also be downloaded as a video, the picture only (decision 0035, design 4).
+  import { AudioLines, CircleCheck, Film, Globe, Info, LoaderCircle, Link, Scale, Download as DownloadIcon } from "@lucide/svelte";
+  import { videoEnabled } from "../lib/video";
   import { onMount } from "svelte";
   import { api } from "../lib/api";
   import { askText, formatBytes, formatDuration, refreshTools, run, ui, type UrlPrefill } from "../lib/store.svelte";
@@ -34,10 +36,13 @@
   // svelte-ignore state_referenced_locally
   const startShelf = prefill?.category ?? target?.category ?? ui.library.category ?? "ambience";
   let category = $state<Category>(startShelf === "video" ? "ambience" : startShelf);
+  /** Download as a video (the picture only) instead of audio. */
+  let asVideo = $state(startShelf === "video" && videoEnabled());
+  let height = $state(ui.prefs?.video.downloadHeight ?? 1080);
+  const videoOption = $derived(probe?.videoOptions.find((o) => o.maxHeight === height) ?? probe?.videoOptions.at(-1));
+  const canVideo = $derived(videoEnabled() && !!probe && (probe.isVideo || probe.videoOptions.length > 0));
   // svelte-ignore state_referenced_locally
-  let folder = $state(
-    startShelf === "video" ? "" : (prefill?.folder ?? target?.folder ?? (ui.library.category && ui.library.folder ? ui.library.folder : "")),
-  );
+  let folder = $state(prefill?.folder ?? target?.folder ?? (ui.library.category && ui.library.folder ? ui.library.folder : ""));
   let updateAvailable = $state<boolean | null>(null);
 
   onMount(() => {
@@ -55,6 +60,9 @@
     needTools = false;
     try {
       probe = await api.probeUrl(url.trim());
+      // A link to a video file can only be a video; a page without video formats only audio.
+      if (probe.isVideo) asVideo = true;
+      else if (!probe.videoOptions.length) asVideo = false;
       if (prefill) {
         name = prefill.name;
       } else {
@@ -83,14 +91,16 @@
   async function newFolder() {
     const created = await askText("New folder", "Name");
     if (!created) return;
-    if (await run(api.createFolder(category, created).then(() => true))) folder = created;
+    if (await run(api.createFolder(asVideo ? "video" : category, created).then(() => true))) folder = created;
   }
+  /** The whole download's size: the audio, or the chosen video format. */
+  const fullSize = $derived(asVideo && probe && !probe.isVideo ? (videoOption?.size ?? null) : (probe?.size ?? null));
   const estimate = $derived.by(() => {
-    if (!probe?.size) return null;
-    if (!range || !probe.durationMs) return probe.size;
-    return Math.round((probe.size * (range.endMs - range.startMs)) / probe.durationMs);
+    if (!fullSize) return null;
+    if (!range || !probe?.durationMs) return fullSize;
+    return Math.round((fullSize * (range.endMs - range.startMs)) / probe.durationMs);
   });
-  const folders = $derived(ui.snapshot?.folders[category] ?? []);
+  const folders = $derived(asVideo ? (ui.snapshot?.videoFolders ?? []) : (ui.snapshot?.folders[category] ?? []));
   const canDownload = $derived(!!probe && name.trim() !== "" && (!partial || range !== null) && (probe.kind === "direct" || !!ui.tools?.ffmpeg));
 
   async function download() {
@@ -105,15 +115,17 @@
         category,
         folder,
         name: name.trim(),
-        range,
+        // Cutting a part only works for pages (yt-dlp); a video file link is taken whole.
+        range: asVideo && probe.isVideo ? null : range,
         replace: prefill?.replace ?? null,
+        videoHeight: asVideo ? (probe.isVideo ? 0 : height) : null,
       }),
     );
     if (id) onclose();
   }
 </script>
 
-<Modal title="Add audio from a URL" {onclose}>
+<Modal title={videoEnabled() ? "Add from a URL" : "Add audio from a URL"} {onclose}>
   <div class="url" class:ok={!!probe}>
     <Globe size={16} />
     <!-- svelte-ignore a11y_autofocus -->
@@ -142,9 +154,43 @@
       </div>
     </div>
 
-    <div class="field">
+    {#if canVideo}
+      <div class="field">
+        <span class="caps">Download as</span>
+        <div class="segmented" role="radiogroup">
+          <button class:on={!asVideo} disabled={probe.isVideo} onclick={() => ((asVideo = false), (folder = ""))} role="radio" aria-checked={!asVideo}><AudioLines size={14} />Audio</button>
+          <button class:on={asVideo} onclick={() => ((asVideo = true), (folder = ""))} role="radio" aria-checked={asVideo}><Film size={14} />Video</button>
+        </div>
+        {#if asVideo}
+          <span class="muted small">The picture only, without its sound: Comilito never plays a video's sound. Smaller files too.</span>
+        {/if}
+      </div>
+      {#if asVideo && !probe.isVideo && videoOption}
+        <div class="quality">
+          <label class="field">
+            <span class="caps">Resolution</span>
+            <select bind:value={height}>
+              <option value={720}>Up to 720p</option>
+              <option value={1080}>Up to 1080p</option>
+              <option value={1440}>Up to 1440p</option>
+              <option value={0}>Best available</option>
+            </select>
+          </label>
+          <div class="field grow">
+            <span class="caps">Format</span>
+            {#if videoOption.playsEverywhere}
+              <span class="badge ok"><CircleCheck size={14} />{videoOption.ext.toUpperCase()} ({videoOption.codec.toUpperCase()}) · {videoOption.height}p: plays here</span>
+            {:else}
+              <span class="badge warn"><Info size={14} />Only {videoOption.ext.toUpperCase()} ({videoOption.codec.toUpperCase()}): converted to WebM after downloading, which takes a while</span>
+            {/if}
+          </div>
+        </div>
+      {/if}
+    {/if}
+
+    <div class="field" class:hidden={asVideo && probe.isVideo}>
       <span class="caps">What to download</span>
-      <label class="radio"><input type="radio" bind:group={partial} value={false} />Everything {#if probe.size}<span class="muted small">≈ {formatBytes(probe.size)}</span>{/if}</label>
+      <label class="radio"><input type="radio" bind:group={partial} value={false} />Everything {#if fullSize}<span class="muted small">≈ {formatBytes(fullSize)}</span>{/if}</label>
       <div class="radio">
         <label class="radio"><input type="radio" bind:group={partial} value={true} />Only from</label>
         <TimeInput label="From" value={fromMs} onchange={(ms) => ((fromMs = ms), (partial = true))} />
@@ -157,12 +203,14 @@
 
     <div class="save-to">
       <label class="field grow"><span class="caps">Name</span><input bind:value={name} /></label>
-      <label class="field">
-        <span class="caps">Category</span>
-        <select bind:value={category} onchange={() => (folder = "")}>
-          {#each CATEGORIES as c (c.id)}<option value={c.id}>{c.label}</option>{/each}
-        </select>
-      </label>
+      {#if !asVideo}
+        <label class="field">
+          <span class="caps">Category</span>
+          <select bind:value={category} onchange={() => (folder = "")}>
+            {#each CATEGORIES as c (c.id)}<option value={c.id}>{c.label}</option>{/each}
+          </select>
+        </label>
+      {/if}
       <label class="field">
         <span class="caps">Folder</span>
         <select
@@ -174,7 +222,7 @@
             } else folder = e.currentTarget.value;
           }}
         >
-          <option value="">(category folder)</option>
+          <option value="">{asVideo ? "(Video folder)" : "(category folder)"}</option>
           {#each folders as f (f)}<option value={f}>{f}</option>{/each}
           <option value="__new__">+ New folder…</option>
         </select>
@@ -188,7 +236,7 @@
     <div class="rights">
       <Scale size={15} />
       <span>
-        Only download audio you have the right to use. Many sites' terms don't allow downloading;
+        Only download what you have the right to use. Many sites' terms don't allow downloading;
         respecting them and the creators' rights is up to you.
       </span>
     </div>
@@ -204,6 +252,48 @@
 </Modal>
 
 <style>
+  .segmented {
+    display: inline-flex;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    overflow: hidden;
+    align-self: flex-start;
+  }
+  .segmented button {
+    border: none;
+    border-radius: 0;
+    background: var(--surface);
+    padding: 0.4rem 0.9rem;
+    gap: 0.4rem;
+  }
+  .segmented button.on {
+    background: var(--accent);
+    color: var(--accent-text);
+  }
+  .quality {
+    display: flex;
+    gap: 0.8rem;
+    align-items: flex-end;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+  }
+  .badge.ok {
+    color: var(--ok);
+    background: color-mix(in srgb, var(--ok) 10%, transparent);
+  }
+  .badge.warn {
+    color: var(--warn);
+    background: color-mix(in srgb, var(--warn) 10%, transparent);
+  }
+  .hidden {
+    display: none;
+  }
   .url {
     display: flex;
     align-items: center;

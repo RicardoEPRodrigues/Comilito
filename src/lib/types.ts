@@ -400,6 +400,20 @@ export interface Probe {
   size: number | null;
   quality: string | null;
   ext: string;
+  /** A direct link to a video file (decision 0035). */
+  isVideo: boolean;
+  /** For pages: the picture alone at each resolution limit. */
+  videoOptions: VideoOption[];
+}
+
+export interface VideoOption {
+  /** 720, 1080, 1440, or 0 for the best. */
+  maxHeight: number;
+  height: number;
+  codec: string;
+  ext: string;
+  size: number | null;
+  playsEverywhere: boolean;
 }
 
 export interface DownloadRequest {
@@ -412,8 +426,10 @@ export interface DownloadRequest {
   folder: string;
   name: string;
   range: TimeRange | null;
-  /** "Download again" into this existing sound. */
+  /** "Download again" into this existing sound (or video). */
   replace?: string | null;
+  /** Download the picture only, as a video, up to this height (0: the best); null: audio. */
+  videoHeight?: number | null;
 }
 
 export interface DownloadJob {

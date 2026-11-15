@@ -29,7 +29,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
     crop::{self, CutOptions},
-    project::{Category, Sound, Source, TimeRange},
+    project::{Category, Shelf, Sound, Source, TimeRange},
     state::{AppState, emit_state},
     storage, tools,
 };
@@ -51,6 +51,82 @@ pub struct Probe {
     pub quality: Option<String>,
     /// File extension the audio will have.
     pub ext: String,
+    /// A direct link to a video file (decision 0035): only "download as video" makes sense.
+    pub is_video: bool,
+    /// For pages: the picture alone at each resolution limit, for "download as video".
+    pub video_options: Vec<VideoOption>,
+}
+
+/// What "download as video" would fetch with a given resolution limit (decision 0035).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VideoOption {
+    /// The limit chosen in the dialog: 720, 1080, 1440, or 0 for the best there is.
+    pub max_height: u32,
+    /// The height of the format that would be picked.
+    pub height: u32,
+    /// "vp9", "av1", "h264"...
+    pub codec: String,
+    pub ext: String,
+    pub size: Option<u64>,
+    /// WebM with an open codec: plays here without converting.
+    pub plays_everywhere: bool,
+}
+
+/// yt-dlp's codec strings ("vp09.00.40.08", "avc1.640028", "av01.0.08M.08") as short names.
+fn short_codec(vcodec: &str) -> String {
+    let v = vcodec.to_lowercase();
+    let name = if v.starts_with("vp09") || v.starts_with("vp9") {
+        "vp9"
+    } else if v.starts_with("vp08") || v.starts_with("vp8") {
+        "vp8"
+    } else if v.starts_with("av01") || v.starts_with("av1") {
+        "av1"
+    } else if v.starts_with("avc") || v.starts_with("h264") {
+        "h264"
+    } else if v.starts_with("hev") || v.starts_with("hvc") || v.starts_with("h265") {
+        "h265"
+    } else {
+        v.split('.').next().unwrap_or(&v)
+    };
+    name.to_string()
+}
+
+/// The best picture-only format at each resolution limit, preferring ones that play
+/// everywhere (WebM with VP9 or AV1), then the highest resolution, then the highest bitrate.
+fn video_options(formats: &[serde_json::Value], duration_ms: Option<u64>) -> Vec<VideoOption> {
+    let candidates: Vec<VideoOption> = formats
+        .iter()
+        .filter(|f| f["acodec"].as_str() == Some("none") && f["vcodec"].as_str().is_some_and(|v| v != "none"))
+        .filter_map(|f| {
+            let height = f["height"].as_u64()? as u32;
+            let codec = short_codec(f["vcodec"].as_str()?);
+            let ext = f["ext"].as_str().unwrap_or("").to_string();
+            let tbr = f["tbr"].as_f64();
+            let size = f["filesize"]
+                .as_u64()
+                .or(f["filesize_approx"].as_u64())
+                .or_else(|| Some((tbr? * 1000.0 / 8.0 * duration_ms? as f64 / 1000.0) as u64));
+            Some(VideoOption {
+                max_height: 0,
+                height,
+                plays_everywhere: crate::video_convert::plays_everywhere(&ext, &codec),
+                codec,
+                ext,
+                size,
+            })
+        })
+        .collect();
+    [720, 1080, 1440, 0]
+        .into_iter()
+        .filter_map(|limit| {
+            let best = candidates
+                .iter()
+                .filter(|o| limit == 0 || o.height <= limit)
+                .max_by_key(|o| (o.plays_everywhere, o.height, o.size.unwrap_or(0)))?;
+            Some(VideoOption { max_height: limit, ..best.clone() })
+        })
+        .collect()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,6 +144,10 @@ pub struct DownloadRequest {
     /// "Download again": put the new file into this existing sound instead of adding one.
     #[serde(default)]
     pub replace: Option<String>,
+    /// Download the picture only, as a video (decision 0035), up to this height (0: the best).
+    /// The video goes to `video/<folder>/` and `category` is ignored.
+    #[serde(default)]
+    pub video_height: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -209,6 +289,13 @@ fn direct_extension(url: &str) -> Option<String> {
     DIRECT_EXTENSIONS.contains(&ext.as_str()).then_some(ext)
 }
 
+fn direct_video_extension(url: &str) -> Option<String> {
+    let path = url.split(['?', '#']).next()?;
+    let last = path.rsplit('/').next()?;
+    let ext = last.rsplit_once('.')?.1.to_lowercase();
+    crate::video::VIDEO_EXTENSIONS.contains(&ext.as_str()).then_some(ext)
+}
+
 fn host_of(url: &str) -> String {
     url.split("://")
         .nth(1)
@@ -222,6 +309,30 @@ pub fn probe(tools_dir: &Path, url: &str) -> Result<Probe, String> {
     let url = url.trim();
     if !(url.starts_with("http://") || url.starts_with("https://")) {
         return Err("that doesn't look like a web address".into());
+    }
+
+    // A direct link to a video file: downloaded as a video (decision 0035).
+    if let Some(ext) = direct_video_extension(url) {
+        let response = ureq::head(url).call().map_err(|e| format!("couldn't reach that link: {e}"))?;
+        let size = response
+            .headers()
+            .get("content-length")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse().ok());
+        let file = url.split(['?', '#']).next().unwrap_or(url).rsplit('/').next().unwrap_or("video");
+        return Ok(Probe {
+            kind: "direct".into(),
+            url: url.into(),
+            title: percent_decode(file.rsplit_once('.').map_or(file, |(stem, _)| stem)),
+            site: host_of(url),
+            duration_ms: None,
+            thumbnail: None,
+            size,
+            quality: Some(ext.to_uppercase()),
+            ext,
+            is_video: true,
+            video_options: Vec::new(),
+        });
     }
 
     if let Some(ext) = direct_extension(url) {
@@ -243,6 +354,8 @@ pub fn probe(tools_dir: &Path, url: &str) -> Result<Probe, String> {
             size,
             quality: Some(ext.to_uppercase()),
             ext,
+            is_video: false,
+            video_options: Vec::new(),
         });
     }
 
@@ -305,6 +418,8 @@ pub fn probe(tools_dir: &Path, url: &str) -> Result<Probe, String> {
         size,
         quality,
         ext: "m4a".into(),
+        is_video: false,
+        video_options: video_options(&formats, duration_ms),
     })
 }
 
@@ -419,6 +534,12 @@ fn run(app: &AppHandle, id: &str, request: &DownloadRequest, _dir: &Path) -> Res
     clean_leftovers(&tmp, request.range.is_none());
     let tools_dir = app.state::<Mutex<AppState>>().lock().map_err(|_| "busy")?.tools_dir.clone();
 
+    if request.kind == "direct" && request.video_height.is_some() {
+        // A video file: nothing to check or cut (cutting is for audio).
+        let file = tmp.join(format!("video.{}", request.ext));
+        fetch_direct(app, id, &request.url, &file)?;
+        return Ok(file);
+    }
     if request.kind == "direct" {
         let file = tmp.join(format!("audio.{}", request.ext));
         fetch_direct(app, id, &request.url, &file)?;
@@ -446,14 +567,25 @@ fn run(app: &AppHandle, id: &str, request: &DownloadRequest, _dir: &Path) -> Res
     }
     let mut cmd = tools::hidden_command(&yt_dlp);
     cmd.arg(&request.url)
-        .args(["--no-playlist", "--newline", "--no-warnings", "--no-mtime", "--color", "never"])
-        .args(["-f", "bestaudio[ext=m4a]/bestaudio/best"])
-        .args(["-x", "--audio-format", "m4a", "--audio-quality", "192K"])
-        .arg("--ffmpeg-location")
+        .args(["--no-playlist", "--newline", "--no-warnings", "--no-mtime", "--color", "never"]);
+    match request.video_height {
+        // The picture only (decision 0035), preferring WebM so it plays without converting.
+        Some(height) => {
+            let limit = if height > 0 { format!("[height<={height}]") } else { String::new() };
+            cmd.args(["-f", &format!("bv{limit}[ext=webm]/bv{limit}/b{limit}")])
+                .arg("-o")
+                .arg(tmp.join("video.%(ext)s"));
+        }
+        None => {
+            cmd.args(["-f", "bestaudio[ext=m4a]/bestaudio/best"])
+                .args(["-x", "--audio-format", "m4a", "--audio-quality", "192K"])
+                .arg("-o")
+                .arg(tmp.join("audio.%(ext)s"));
+        }
+    }
+    cmd.arg("--ffmpeg-location")
         .arg(tools::ffmpeg_dir(&tools_dir))
-        .args(["--progress-template", "download:COMILITO %(progress._percent_str)s"])
-        .arg("-o")
-        .arg(tmp.join("audio.%(ext)s"));
+        .args(["--progress-template", "download:COMILITO %(progress._percent_str)s"]);
     if let Some(r) = request.range {
         // A part of a video is fetched by ffmpeg, which reports no percentage: say so instead
         // of showing a progress bar stuck at 0%.
@@ -478,7 +610,8 @@ fn run(app: &AppHandle, id: &str, request: &DownloadRequest, _dir: &Path) -> Res
         s.download_process = Some(child.clone());
     }
     let section_ms = request.range.map(|r| r.end_ms.saturating_sub(r.start_ms));
-    let result = watch_yt_dlp(app, id, &tmp, &child, section_ms, stdout, stderr);
+    let wanted: &[&str] = if request.video_height.is_some() { &crate::video::VIDEO_EXTENSIONS } else { &storage::AUDIO_EXTENSIONS };
+    let result = watch_yt_dlp(app, id, &tmp, &child, section_ms, wanted, stdout, stderr);
     if let Ok(mut s) = app.state::<Mutex<AppState>>().lock() {
         s.download_process = None;
     }
@@ -494,6 +627,7 @@ fn watch_yt_dlp(
     tmp: &Path,
     child: &Mutex<Child>,
     section_ms: Option<u64>,
+    wanted: &[&str],
     stdout: impl Read + Send + 'static,
     stderr: impl Read + Send + 'static,
 ) -> Result<PathBuf, String> {
@@ -564,16 +698,13 @@ fn watch_yt_dlp(
         let line = if line.is_empty() { "the download failed".to_string() } else { line };
         return Err(line.trim_start_matches("ERROR:").trim().to_string());
     }
-    // yt-dlp chose the final name's extension; find the audio it left.
+    // yt-dlp chose the final name's extension; find the file it left.
     fs::read_dir(tmp)
         .map_err(|e| e.to_string())?
         .flatten()
         .map(|e| e.path())
-        .find(|p| {
-            p.extension()
-                .is_some_and(|e| storage::AUDIO_EXTENSIONS.contains(&e.to_string_lossy().to_lowercase().as_str()))
-        })
-        .ok_or_else(|| "yt-dlp finished but left no audio file".to_string())
+        .find(|p| p.extension().is_some_and(|e| wanted.contains(&e.to_string_lossy().to_lowercase().as_str())))
+        .ok_or_else(|| "yt-dlp finished but left no file".to_string())
 }
 
 /// Splits a program's output into lines at `\n` *and* `\r`. ffmpeg redraws its status line
@@ -683,7 +814,9 @@ fn finish(app: &AppHandle, id: &str, request: &DownloadRequest, dir: &Path, resu
     }
     let placed = result.and_then(|file| {
         let ext = file.extension().map(|e| e.to_string_lossy().to_string()).unwrap_or_else(|| request.ext.clone());
-        let folder = storage::category_folder_path(dir, request.category, &request.folder);
+        // A video goes to `video/<folder>/` (decision 0035), audio to its category's folder.
+        let shelf = if request.video_height.is_some() { Shelf::Video } else { request.category.into() };
+        let folder = storage::shelf_folder_path(dir, shelf, &request.folder);
         fs::create_dir_all(&folder).map_err(|e| e.to_string())?;
         let name = storage::safe_file_name(&request.name);
         let target = storage::unique_path(&folder, Path::new(&format!("{}.{ext}", if name.is_empty() { "download" } else { &name })));
@@ -713,6 +846,25 @@ fn finish(app: &AppHandle, id: &str, request: &DownloadRequest, dir: &Path, resu
             range: request.range,
         };
         open.folders = storage::list_folders(dir);
+        open.video_folders = crate::video::list_folders(dir);
+        if request.video_height.is_some() {
+            // "Download again" refills an existing video; otherwise a new one is added.
+            if let Some(id) = &request.replace
+                && let Some(existing) = open.project.video_mut(id)
+            {
+                existing.file = info;
+                existing.info = None;
+                existing.source = Some(source);
+                open.missing.retain(|m| m != id);
+                open.analysis_failed.retain(|m| m != id);
+                return Ok(Some(id.clone()));
+            }
+            let mut video = crate::video::new_video(request.name.trim().to_string(), info);
+            video.source = Some(source);
+            let video_id = video.id.clone();
+            open.project.videos.push(video);
+            return Ok(Some(video_id));
+        }
         // "Download again" refills an existing sound (typically one whose file went missing).
         if let Some(id) = &request.replace
             && let Some(existing) = open.project.sound_mut(id)
@@ -753,6 +905,12 @@ fn finish(app: &AppHandle, id: &str, request: &DownloadRequest, dir: &Path, resu
                 });
             }
         }
+    }
+    if let Ok(Some(new_id)) = &outcome
+        && request.video_height.is_some()
+    {
+        // Looked at next; offered for conversion if it may not play (an MP4-only site).
+        crate::video_convert::note_new(&mut s, std::slice::from_ref(new_id), crate::video_convert::Origin::Added);
     }
     if let Ok(Some(_)) = &outcome {
         problems.push(format!("Downloaded \"{}\".", request.name.trim()));
@@ -841,6 +999,7 @@ mod tests {
             name: name.into(),
             range: None,
             replace: None,
+            video_height: None,
         };
         let saved = vec![
             SavedDownload { id: "dl-kept".into(), project_dir: project.clone(), request: request("kept") },
@@ -854,6 +1013,32 @@ mod tests {
         assert!(cache.join("downloads/dl-kept").is_dir());
         assert!(!cache.join("downloads/dl-gone").exists());
         assert!(!cache.join("downloads/dl-stray").exists());
+    }
+
+    #[test]
+    fn picks_the_best_video_format_for_each_resolution_limit() {
+        // Like a YouTube page: H.264 MP4s and VP9 WebMs, picture only, plus an audio format.
+        let formats: Vec<serde_json::Value> = serde_json::from_str(
+            r#"[
+              {"vcodec":"avc1.640028","acodec":"none","height":1080,"ext":"mp4","filesize":900},
+              {"vcodec":"vp09.00.40.08","acodec":"none","height":1080,"ext":"webm","filesize":700},
+              {"vcodec":"vp09.00.31.08","acodec":"none","height":720,"ext":"webm","filesize":400},
+              {"vcodec":"avc1.64002a","acodec":"none","height":2160,"ext":"mp4","tbr":8000},
+              {"vcodec":"none","acodec":"mp4a.40.2","ext":"m4a"}
+            ]"#,
+        )
+        .unwrap();
+        let options = video_options(&formats, Some(10_000));
+        let at = |limit: u32| options.iter().find(|o| o.max_height == limit).unwrap();
+        assert_eq!((at(720).height, at(720).codec.as_str()), (720, "vp9"));
+        // WebM VP9 is preferred over an MP4 of the same height.
+        assert_eq!((at(1080).ext.as_str(), at(1080).size), ("webm", Some(700)));
+        assert!(at(1080).plays_everywhere);
+        // "Best": a playable 1080p WebM beats a 4K MP4 that would need converting.
+        assert_eq!(at(0).height, 1080);
+        assert_eq!(short_codec("av01.0.08M.08"), "av1");
+        assert_eq!(direct_video_extension("https://x.org/a/gate.WEBM?dl=1").as_deref(), Some("webm"));
+        assert_eq!(direct_video_extension("https://x.org/rain.mp3"), None);
     }
 
     #[test]

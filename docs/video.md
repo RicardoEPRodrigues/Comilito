@@ -39,6 +39,19 @@ whole feature can be turned off in Preferences › Video.
   the original goes to the trash, or stays as a video of its own ("(original)").
 - Conversions aren't resumed after a restart; the video stays marked "may not play".
 
+## Downloading videos
+
+- After looking a page up, the URL dialog offers *Download as: Audio / Video*. Video downloads
+  the picture only (yt-dlp `bv[height<=H][ext=webm]/bv[height<=H]/b[height<=H]`), up to the
+  chosen resolution (Preferences › Video sets the default, 1080p).
+- For each limit, the dialog shows the format that would be picked: WebM with VP9 or AV1 is
+  preferred (green badge, plays here); when a site only has MP4, the video is converted after
+  downloading (the usual Convert dialog, or automatically, per Preferences). "Best available"
+  is the best format that plays here, or the best overall if none does.
+- A direct link to a video file (`.webm`, `.mp4`...) is downloaded whole, as a video.
+- "Only part of it", the queue, progress, cancelling, resuming after a restart and "Download
+  again" (on the video's page) work as for audio.
+
 ## The video window
 
 - A second Tauri window, labelled `video`, without a title bar; `main.ts` mounts
@@ -73,6 +86,6 @@ Each step is committed and can be tried on its own.
    Esc, has the header button and the bottom bar's now-playing.
 6. [x] Playlists: shuffle, switching every N minutes, resuming, crossfades.
 7. [x] Video effects on the right column, sharing the space with the sound effects.
-8. [ ] The video downloader.
+8. [x] The video downloader.
 9. [ ] Preferences › Video, Project settings, export and backups with videos, and the on/off
    switch hiding everything.
