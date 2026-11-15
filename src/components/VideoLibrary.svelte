@@ -1,31 +1,53 @@
 <script lang="ts">
-  // The Library workspace while the Video shelf is selected (decision 0035): the videos of the
-  // selected folder on the left, the selected video's page on the right. Videos drag onto
-  // folders (to move them) and onto scenes (to add them).
+  // The Library workspace's Videos tab (decisions 0035 and 0039): the videos of the selected
+  // shelf and folder (or smart list) on the left, the selected video's page on the right.
+  // Videos drag onto folders (to move them) and onto scenes (to add them).
   import { FilePlus, FolderOpen, Star, TriangleAlert } from "@lucide/svelte";
   import { api } from "../lib/api";
   import { formatBytes, formatDuration, run, ui } from "../lib/store.svelte";
-  import { addVideoFiles, findVideos, folderOfVideo } from "../lib/video";
+  import { addVideoFiles, findVideos, folderOfVideo, isVideoShelf, kindOf, scenesUsingVideo, VIDEO_SHELVES } from "../lib/video";
   import { videoSource } from "../lib/videoStream";
   import VideoPage from "./VideoPage.svelte";
 
   const lib = ui.library;
   const snapshot = $derived(ui.snapshot!);
-  /** Only the videos that may not play (the "May not play" chip). */
-  let mayNotPlay = $state(false);
-  const all = $derived(findVideos(lib.folder, lib.search));
-  const unplayable = $derived(all.filter((v) => v.info && !v.info.playsEverywhere));
-  const list = $derived(mayNotPlay ? unplayable : all);
-  // The chip goes away once nothing is left to convert.
-  $effect(() => {
-    if (unplayable.length === 0) mayNotPlay = false;
-  });
   const missing = $derived(new Set(snapshot.missing));
+  /** The selected shelf, if a video shelf is selected (otherwise a smart list is). */
+  const shelf = $derived(isVideoShelf(lib.category) ? VIDEO_SHELVES.find((s) => s.id === lib.category)! : null);
+  const cutoff = Date.now() - 30 * 24 * 3600 * 1000;
+  const list = $derived.by(() => {
+    if (shelf) return findVideos(shelf.kind, lib.folder, lib.search);
+    const all = findVideos(null, null, lib.search);
+    switch (lib.smart) {
+      case "favourites":
+        return all.filter((v) => v.favourite);
+      case "recent":
+        return all.filter((v) => v.lastUsed && Date.parse(v.lastUsed) >= cutoff).sort((a, b) => (b.lastUsed ?? "").localeCompare(a.lastUsed ?? ""));
+      case "unused":
+        return all.filter((v) => scenesUsingVideo(v.id).length === 0);
+      case "mayNotPlay":
+        return all.filter((v) => v.info && !v.info.playsEverywhere);
+      case "missing":
+        return all.filter((v) => missing.has(v.id));
+      default:
+        return all;
+    }
+  });
   const selectedId = $derived(lib.selected.length === 1 && list.some((v) => v.id === lib.selected[0]) ? lib.selected[0] : null);
-  const title = $derived(lib.folder ? lib.folder.split("/").pop()! : "Video");
+  const SMART_TITLES: Record<string, string> = {
+    all: "All videos",
+    favourites: "Favourites",
+    recent: "Recent",
+    unused: "Unused",
+    mayNotPlay: "May not play",
+    missing: "Missing files",
+  };
+  const title = $derived(shelf ? (lib.folder ? lib.folder.split("/").pop()! : shelf.label) : SMART_TITLES[lib.smart]);
+  const subtitle = $derived(`${shelf ? `${shelf.label} · ` : ""}${list.length} video${list.length === 1 ? "" : "s"}${lib.search ? ` matching “${lib.search}”` : ""}`);
 
+  /** Adds files to the selected shelf and folder (ambience videos when a smart list is shown). */
   async function addFiles() {
-    const ids = await addVideoFiles(lib.folder);
+    const ids = await addVideoFiles(shelf?.kind ?? "ambience", shelf ? lib.folder : null);
     if (ids.length) lib.selected = [ids[0]];
   }
 
@@ -41,15 +63,10 @@
   <div class="head">
     <div class="titles">
       <h2 class="display">{title}</h2>
-      <span class="caps muted">Video · {list.length} video{list.length === 1 ? "" : "s"}{lib.search ? ` matching “${lib.search}”` : ""}</span>
+      <span class="caps muted">{subtitle}</span>
     </div>
-    {#if unplayable.length}
-      <button class="chip warn" class:on={mayNotPlay} onclick={() => (mayNotPlay = !mayNotPlay)} title="Videos that may not play on this computer">
-        <TriangleAlert size={12} />May not play · {unplayable.length}
-      </button>
-    {/if}
     <button class="icon framed" title="Add video files" onclick={addFiles}><FilePlus size={15} /></button>
-    <button class="icon framed" title="Show this folder in the file manager" onclick={() => run(api.openAudioFolder("video", lib.folder))}>
+    <button class="icon framed" title="Show this folder in the file manager" onclick={() => run(api.openAudioFolder(shelf?.id ?? "ambienceVideo", shelf ? lib.folder : null))}>
       <FolderOpen size={15} />
     </button>
   </div>
@@ -78,7 +95,7 @@
         <div class="text">
           <span class="name">{v.name}</span>
           <span class="meta" class:warn={v.info && !v.info.playsEverywhere}>
-            {v.info ? formatDuration(v.info.durationMs) : formatBytes(v.file.size)}{v.info && !v.info.playsEverywhere ? " · may not play" : ""}{!lib.folder && folderOfVideo(v) ? ` · ${folderOfVideo(v)}` : ""}
+            {v.info ? formatDuration(v.info.durationMs) : formatBytes(v.file.size)}{v.info && !v.info.playsEverywhere ? " · may not play" : ""}{!shelf ? ` · ${kindOf(v) === "effect" ? "Video effect" : "Ambience video"}` : ""}{!lib.folder && folderOfVideo(v) ? ` › ${folderOfVideo(v)}` : ""}
           </span>
         </div>
         {#if v.favourite}<Star size={13} class="fav" fill="currentColor" />{/if}
@@ -139,16 +156,6 @@
   }
   .framed {
     border: 1px solid var(--rule) !important;
-  }
-  .chip.warn {
-    color: var(--warn);
-    font-size: 0.7rem;
-    white-space: nowrap;
-  }
-  .chip.warn.on {
-    background: var(--warn);
-    border-color: var(--warn);
-    color: var(--accent-text);
   }
   .rows {
     flex: 1;

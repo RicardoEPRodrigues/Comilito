@@ -57,9 +57,11 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
   music; a scene can hide the video below. Video effects (a lightning strike, a reveal) play
   over the playlist until they end, from a pad under the sound effects. The video window has no
   title bar (drag its top bar), goes fullscreen on the screen you choose, and the header's Video
-  button opens it. Videos live in the project's `video/` folder and the Library's Video shelf;
+  button opens it. Videos live in the project's `video/` folder and the Library's Videos tab;
   videos that may not play (MP4 and others on Linux) are offered for conversion to WebM.
-  Videos can be downloaded from URLs too (the picture only, up to a chosen resolution), and
+  Like sounds, videos come in two kinds, *ambience videos* and *video effects*, each going in
+  its own place in scenes; the Library has Sounds and Videos tabs (in the workspace and in the
+  drawer). Videos can be downloaded from URLs too (the picture only, up to a chosen resolution), and
   exported or backed up with the project if you want. Space pauses only the sound (the video
   keeps playing; Esc blanks it). Everything video can be turned off in Preferences › Video.
 - **Loudness normalization can be turned on or off for one sound**, in its Loudness section in

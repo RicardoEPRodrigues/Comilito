@@ -16,7 +16,7 @@
   import LibraryTree from "./LibraryTree.svelte";
   import SoundEditor from "./SoundEditor.svelte";
   import VideoLibrary from "./VideoLibrary.svelte";
-  import { videoEnabled } from "../lib/video";
+  import { isVideoShelf, videoEnabled } from "../lib/video";
 
   const snapshot = $derived(ui.snapshot!);
   const project = $derived(snapshot.project!);
@@ -29,8 +29,8 @@
   const list = $derived.by(() => {
     const found = findSounds(project, snapshot.missing, {
       filter: (lib.category ? "all" : lib.smart) as Filter,
-      // The Video shelf has its own list (VideoLibrary); sounds are never filtered by it.
-      category: lib.category === "video" ? null : lib.category,
+      // The video shelves have their own list (VideoLibrary); sounds are never filtered by them.
+      category: lib.category === "music" || lib.category === "ambience" || lib.category === "effects" ? lib.category : null,
       folder: lib.category ? lib.folder : null,
       deep: true,
       search: lib.search,
@@ -44,21 +44,23 @@
   const title = $derived.by(() => {
     if (lib.category) {
       if (lib.folder) return lib.folder.split("/").pop()!;
-      return CATEGORIES.find((c) => c.id === lib.category)!.label;
+      return CATEGORIES.find((c) => c.id === lib.category)?.label ?? "";
     }
-    return { all: "All sounds", favourites: "Favourites", recent: "Recent", unused: "Unused", missing: "Missing files" }[lib.smart];
+    return { all: "All sounds", favourites: "Favourites", recent: "Recent", unused: "Unused", missing: "Missing files", mayNotPlay: "May not play" }[lib.smart];
   });
   const subtitle = $derived(
-    `${lib.category ? `${CATEGORIES.find((c) => c.id === lib.category)!.label} · ` : ""}${list.length} sound${list.length === 1 ? "" : "s"}${lib.search ? ` matching “${lib.search}”` : ""}`,
+    `${lib.category ? `${CATEGORIES.find((c) => c.id === lib.category)?.label} · ` : ""}${list.length} sound${list.length === 1 ? "" : "s"}${lib.search ? ` matching “${lib.search}”` : ""}`,
   );
   const live = $derived(tapestrySoundIds(project));
   const missing = $derived(new Set(snapshot.missing));
   const selected = $derived(new Set(lib.selected));
   const selectedSounds = $derived(lib.selected.map((id) => project.sounds.find((s) => s.id === id)).filter(Boolean) as Sound[]);
 
-  // Video turned off (Preferences) while its shelf was showing: back to all sounds.
+  /** The Videos tab (decision 0039), only while video is on. */
+  const videosTab = $derived(videoEnabled() && ui.libraryTab === "videos");
+  // Video turned off (Preferences) while a video shelf was showing: back to all sounds.
   $effect(() => {
-    if (lib.category === "video" && !videoEnabled()) lib.category = null;
+    if (!videosTab && isVideoShelf(lib.category)) lib.category = null;
   });
 
   // Drop selections of sounds (or videos) that no longer exist (removed, or filtered away by a
@@ -112,7 +114,7 @@
 
 <LibraryTree />
 
-{#if lib.category === "video"}
+{#if videosTab}
   <VideoLibrary />
 {:else}
 <section class="list">

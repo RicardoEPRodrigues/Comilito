@@ -2,8 +2,9 @@
   // Left column of the Library workspace (decision 0018): smart lists, then each category with
   // its folders (real subfolders of audio/<category>/). Drop sounds on a folder to move them
   // there, or drag a folder onto another (or onto its category) to move it inside. The
-  // downloads queue sits at the bottom. Videos (decision 0035) are a fourth shelf with folders
-  // of their own, after the three audio categories.
+  // downloads queue sits at the bottom. With video on, two tabs at the top (decision 0039):
+  // Sounds (the three audio categories) and Videos (ambience videos and video effects), each
+  // with its own smart lists.
   import { fitText } from "../lib/fit";
   import {
     AudioLines,
@@ -12,6 +13,8 @@
     CircleDashed,
     FilePlus,
     Film,
+    Mountain,
+    Sparkles,
     Folder,
     FolderOpen,
     FolderInput,
@@ -30,7 +33,7 @@
   import type { Component } from "svelte";
   import { api } from "../lib/api";
   import { addSoundFiles, foldersOf, moveFolder, moveSounds, moveTargets, newFolder } from "../lib/actions";
-  import { addVideoFiles, folderOfVideo, videoEnabled } from "../lib/video";
+  import { addVideoFiles, folderOfVideo, isVideoShelf, kindOf, kindOfShelf, moveVideos, scenesUsingVideo, VIDEO_SHELVES, videoEnabled } from "../lib/video";
   import { fold } from "../lib/motion";
   import { askText, folderOf, remember, run, ui, type SmartList } from "../lib/store.svelte";
   import { CATEGORIES, type Shelf } from "../lib/types";
@@ -41,20 +44,32 @@
   const project = $derived(snapshot.project!);
   const lib = ui.library;
 
-  const ICONS: Record<Shelf, Component> = { music: Music, ambience: AudioLines, effects: Zap, video: Film };
-  /** The shelves shown: the audio categories, and Video unless it's turned off. */
-  const SHELVES = $derived<{ id: Shelf; label: string }[]>([
-    ...CATEGORIES,
-    ...(videoEnabled() ? [{ id: "video" as const, label: "Video" }] : []),
-  ]);
-  const shelfLabel = (shelf: Shelf) => SHELVES.find((s) => s.id === shelf)?.label ?? shelf;
-  const SMART: { id: SmartList; label: string; icon: Component }[] = [
-    { id: "all", label: "All sounds", icon: Library },
+  const ICONS: Record<Shelf, Component> = { music: Music, ambience: AudioLines, effects: Zap, ambienceVideo: Mountain, videoEffect: Sparkles };
+  /** The Videos tab is open (only while video is on). */
+  const videosTab = $derived(videoEnabled() && ui.libraryTab === "videos");
+  /** The shelves of the open tab. */
+  const SHELVES = $derived<{ id: Shelf; label: string }[]>(videosTab ? VIDEO_SHELVES : CATEGORIES);
+  const shelfLabel = (shelf: Shelf) => [...CATEGORIES, ...VIDEO_SHELVES].find((s) => s.id === shelf)?.label ?? shelf;
+  const SMART = $derived<{ id: SmartList; label: string; icon: Component }[]>([
+    { id: "all", label: videosTab ? "All videos" : "All sounds", icon: videosTab ? Film : Library },
     { id: "favourites", label: "Favourites", icon: Star },
     { id: "recent", label: "Recent", icon: History },
     { id: "unused", label: "Unused", icon: CircleDashed },
+    ...(videosTab ? [{ id: "mayNotPlay" as const, label: "May not play", icon: TriangleAlert }] : []),
     { id: "missing", label: "Missing files", icon: TriangleAlert },
-  ];
+  ]);
+
+  /** Switching tabs starts from the tab's "All". */
+  function setTab(tab: "sounds" | "videos") {
+    if (ui.libraryTab === tab) return;
+    ui.libraryTab = tab;
+    remember("libraryTab", tab);
+    lib.smart = "all";
+    lib.category = null;
+    lib.folder = null;
+    lib.selected = [];
+    lib.cropping = false;
+  }
 
   const used = $derived.by(() => {
     const ids = new Set<string>();
@@ -67,6 +82,7 @@
   });
   const cutoff = Date.now() - 30 * 24 * 3600 * 1000;
   function smartCount(id: SmartList): number {
+    if (videosTab) return videoSmartCount(id);
     const s = project.sounds;
     switch (id) {
       case "all":
@@ -78,15 +94,35 @@
       case "unused":
         return s.filter((x) => !used.has(x.id)).length;
       case "missing":
-        // Sounds only: missing videos are marked in the Video shelf.
         return project.sounds.filter((x) => snapshot.missing.includes(x.id)).length;
+      default:
+        return 0;
+    }
+  }
+
+  function videoSmartCount(id: SmartList): number {
+    const v = project.videos ?? [];
+    switch (id) {
+      case "all":
+        return v.length;
+      case "favourites":
+        return v.filter((x) => x.favourite).length;
+      case "recent":
+        return v.filter((x) => x.lastUsed && Date.parse(x.lastUsed) >= cutoff).length;
+      case "unused":
+        return v.filter((x) => scenesUsingVideo(x.id).length === 0).length;
+      case "mayNotPlay":
+        return v.filter((x) => x.info && !x.info.playsEverywhere).length;
+      case "missing":
+        return v.filter((x) => snapshot.missing.includes(x.id)).length;
     }
   }
 
   function countIn(category: Shelf, folder: string | null) {
-    if (category === "video") {
+    if (isVideoShelf(category)) {
+      const kind = kindOfShelf(category);
       const inFolder = (f: string) => folder === null || f === folder || f.startsWith(`${folder}/`);
-      return (project.videos ?? []).filter((v) => inFolder(folderOfVideo(v))).length;
+      return (project.videos ?? []).filter((v) => kindOf(v) === kind && inFolder(folderOfVideo(v))).length;
     }
     return project.sounds.filter(
       (s) => s.category === category && (folder === null || folderOf(s) === folder || folderOf(s).startsWith(`${folder}/`)),
@@ -136,7 +172,8 @@
 
   /** "Add files…" picks audio or video files, depending on the shelf. */
   function addFilesTo(category: Shelf, folder: string | null) {
-    return category === "video" ? addVideoFiles(folder) : addSoundFiles(category, folder);
+    if (isVideoShelf(category)) return addVideoFiles(kindOfShelf(category), folder);
+    if (category === "music" || category === "ambience" || category === "effects") return addSoundFiles(category, folder);
   }
 
   function folderMenu(category: Shelf, folder: string): MenuItem[] {
@@ -176,9 +213,10 @@
   let dropTarget = $state<string | null>(null);
   function accepts(category: Shelf, folder: string): boolean {
     const d = ui.drag;
-    // Sounds go to audio folders, videos to video folders.
-    if (d?.kind === "sound") return category !== "video";
-    if (d?.kind === "video") return category === "video";
+    // Sounds go to audio folders, videos to video folders (of either kind: dropping one on the
+    // other kind changes its type).
+    if (d?.kind === "sound") return !isVideoShelf(category);
+    if (d?.kind === "video") return isVideoShelf(category);
     return d?.kind === "folder" && d.category === category && moveTargets(category, d.folder).includes(folder);
   }
   function dragOver(e: DragEvent, category: Shelf, folder: string) {
@@ -207,22 +245,36 @@
     const dragged = d.id;
     // Dragging one of several selected items moves the whole selection.
     const ids = lib.selected.includes(dragged) ? [...lib.selected] : [dragged];
-    if (d.kind === "video") await run(api.moveVideos(ids, folder));
-    else if (category !== "video") await moveSounds(ids, category, folder);
+    if (d.kind === "video") await moveVideos(ids, kindOfShelf(category), folder);
+    else if (category === "music" || category === "ambience" || category === "effects") await moveSounds(ids, category, folder);
   }
 
+  /** Where "Add files" and "New folder" go when no shelf is selected: Ambience, or Ambience
+   *  videos on the Videos tab. */
+  const defaultShelf = $derived<Shelf>(videosTab ? "ambienceVideo" : "ambience");
+
   function addFiles() {
-    addFilesTo(lib.category ?? "ambience", lib.category ? lib.folder : null);
+    addFilesTo(lib.category ?? defaultShelf, lib.category ? lib.folder : null);
   }
 </script>
 
 <aside>
   <div class="head">
     <h2 class="display" use:fitText>Library</h2>
-    <span class="count">{project.sounds.length}</span>
+    <span class="count">{videosTab ? (project.videos?.length ?? 0) : project.sounds.length}</span>
   </div>
+  {#if videoEnabled()}
+    <div class="tabs" role="tablist">
+      <button role="tab" class:on={!videosTab} aria-selected={!videosTab} onclick={() => setTab("sounds")}>
+        <AudioLines size={13} />Sounds<span class="n">{project.sounds.length}</span>
+      </button>
+      <button role="tab" class:on={videosTab} aria-selected={videosTab} onclick={() => setTab("videos")}>
+        <Film size={13} />Videos<span class="n">{project.videos?.length ?? 0}</span>
+      </button>
+    </div>
+  {/if}
   <div class="actions">
-    <button onclick={addFiles} title="Copy audio files into the project"><FilePlus size={13} />Add files</button>
+    <button onclick={addFiles} title={videosTab ? "Copy video files into the project" : "Copy audio files into the project"}><FilePlus size={13} />Add files</button>
     <button onclick={() => (ui.editing = { kind: "addUrl" })}><Link size={13} />From URL</button>
     <button class="icon framed" title="Open the audio folder in the file manager" onclick={() => run(api.openAudioFolder(lib.category, lib.category ? lib.folder : null))}>
       <FolderOpen size={15} />
@@ -237,7 +289,7 @@
     <div class="group">
       {#each SMART as s (s.id)}
         {@const selected = lib.category === null && lib.smart === s.id}
-        <button class="node" class:selected class:warn={s.id === "missing" && snapshot.missing.length > 0} onclick={() => selectSmart(s.id)}>
+        <button class="node" class:selected class:warn={(s.id === "missing" || s.id === "mayNotPlay") && smartCount(s.id) > 0} onclick={() => selectSmart(s.id)}>
           <s.icon size={14} /><span class="label">{s.label}</span><span class="n">{smartCount(s.id)}</span>
         </button>
       {/each}
@@ -292,8 +344,8 @@
           </div>
         {/if}
       {/each}
-      <button class="node new" onclick={() => newFolder(lib.category ?? "ambience", lib.category ? lib.folder : null)}>
-        <FolderPlus size={13} /><span class="label">New folder{lib.category ? "" : " (in Ambience)"}</span>
+      <button class="node new" onclick={() => newFolder(lib.category ?? defaultShelf, lib.category ? lib.folder : null)}>
+        <FolderPlus size={13} /><span class="label">New folder{lib.category ? "" : ` (in ${shelfLabel(defaultShelf)})`}</span>
       </button>
     </div>
   </div>
@@ -325,6 +377,30 @@
   .count {
     font-size: 0.75rem;
     color: var(--side-muted);
+  }
+  .tabs {
+    display: flex;
+    border: 1px solid var(--side-muted);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .tabs button {
+    flex: 1;
+    justify-content: center;
+    gap: 0.35rem;
+    border: none;
+    border-radius: 0;
+    padding: 0.4rem 0.3rem;
+    font-size: 0.62rem;
+    color: var(--side-text);
+  }
+  .tabs button.on {
+    background: var(--accent);
+    color: var(--accent-text);
+  }
+  .tabs .n {
+    font-size: 0.65rem;
+    opacity: 0.75;
   }
   .actions {
     display: flex;

@@ -30,7 +30,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::{
     commands::{AppStateRef, lock},
     downloads::JobStatus,
-    project::{Shelf, VideoInfo},
+    project::VideoInfo,
     state::{AppState, emit_state},
     storage, tools,
 };
@@ -430,7 +430,7 @@ fn place(s: &mut AppState, work: &Work, working: &Path, tools_dir: &Path, proble
     if work.keep_original {
         // The original stays in the folder as a video of its own (otherwise the folder scan
         // would add it back and offer to convert it again).
-        let mut kept = crate::video::new_video(format!("{} (original)", old.name), old.file.clone());
+        let mut kept = crate::video::new_video(format!("{} (original)", old.name), old.file.clone(), old.kind);
         kept.info = old.info.clone();
         kept.tags = old.tags.clone();
         open.project.videos.push(kept);
@@ -443,7 +443,7 @@ fn place(s: &mut AppState, work: &Work, working: &Path, tools_dir: &Path, proble
 
 /// Deletes working files left by conversions cut off by quitting.
 pub fn clean_leftovers(dir: &Path) {
-    let mut to_visit = vec![storage::shelf_root(dir, Shelf::Video)];
+    let mut to_visit = vec![dir.join("video")];
     while let Some(folder) = to_visit.pop() {
         let Ok(entries) = fs::read_dir(&folder) else { continue };
         for entry in entries.flatten() {

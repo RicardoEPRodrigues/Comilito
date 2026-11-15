@@ -97,6 +97,8 @@ export interface VideoPrefs {
 export interface Video {
   id: string;
   name: string;
+  /** Missing in files from before kinds existed: ambience. */
+  kind?: VideoKind;
   /** `path` is under `video/`. */
   file: FileInfo;
   /** Measured in the background with ffprobe; missing until then. */
@@ -284,8 +286,12 @@ export interface OutputDevice {
   name: string;
 }
 
-/** A part of the Library with its own folder: an audio category, or the videos. */
-export type Shelf = Category | "video";
+/** A part of the Library with its own folder: an audio category, or a kind of video. */
+export type Shelf = Category | "ambienceVideo" | "videoEffect";
+
+/** What a video is for (decision 0039): ambience videos play in scenes' playlists, video
+ *  effects on the video effects pad. */
+export type VideoKind = "ambience" | "effect";
 
 export interface Snapshot {
   /** How long the category volumes take to reach `mix.volumes`, for the mixer's sliders. */
@@ -299,8 +305,8 @@ export interface Snapshot {
   hashingRemaining: number;
   analyzingRemaining: number;
   folders: PerCategory<string[]>;
-  /** Subfolders of `video/`. */
-  videoFolders: string[];
+  /** Subfolders of `video/ambience/` and `video/effects/`. */
+  videoFolders: { ambience: string[]; effect: string[] };
   videoWindowOpen: boolean;
   /** The video effect playing in the video window. */
   videoEffect: string | null;
@@ -432,6 +438,8 @@ export interface DownloadRequest {
   replace?: string | null;
   /** Download the picture only, as a video, up to this height (0: the best); null: audio. */
   videoHeight?: number | null;
+  /** For a video: ambience video or video effect. */
+  videoKind?: VideoKind;
 }
 
 export interface DownloadJob {

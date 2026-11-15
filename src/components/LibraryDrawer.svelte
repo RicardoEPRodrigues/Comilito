@@ -10,10 +10,10 @@
     ChevronRight,
     ChevronUp,
     ChevronsDownUp,
-    ChevronsLeft,
-    ChevronsRight,
     ChevronsUpDown,
     Film,
+    Mountain,
+    Sparkles,
     FilePlus,
     Folder,
     FolderOpen,
@@ -30,12 +30,12 @@
   import type { Component } from "svelte";
   import { api } from "../lib/api";
   import { addSoundFiles, foldersOf } from "../lib/actions";
-  import { addVideoFiles, findVideos, folderOfVideo, videoEnabled } from "../lib/video";
+  import { addVideoFiles, findVideos, folderOfVideo, kindOf, shelfOfKind, VIDEO_SHELVES, videoById, videoEnabled } from "../lib/video";
   import { videoSource } from "../lib/videoStream";
   import { findSounds, topTags, type Filter } from "../lib/library";
   import { fold, pop } from "../lib/motion";
   import { folderOf, remember, run, showView, ui } from "../lib/store.svelte";
-  import { CATEGORIES, type Category, type Shelf, type Sound, type Video } from "../lib/types";
+  import { CATEGORIES, type Category, type Shelf, type Sound, type Video, type VideoKind } from "../lib/types";
   import SoundRow from "./SoundRow.svelte";
 
   const snapshot = $derived(ui.snapshot!);
@@ -44,7 +44,7 @@
   let filter = $state<Filter>("all");
   let searchFocused = $state(false);
 
-  const ICONS: Record<Category, Component> = { music: Music, ambience: AudioLines, effects: Zap };
+  const ICONS: Record<Shelf, Component> = { music: Music, ambience: AudioLines, effects: Zap, ambienceVideo: Mountain, videoEffect: Sparkles };
   const FILTERS: { id: Filter; label: string; icon?: Component }[] = [
     { id: "all", label: "All" },
     { id: "favourites", label: "Favourites", icon: Star },
@@ -58,12 +58,12 @@
 
   // ---- The Video column (decision 0035, design screen 8) ----
   const showVideos = $derived(videoEnabled());
-  /** Folded into a narrow strip, so the three audio columns get its space. Remembered. */
-  const videoFolded = $derived(ui.collapsed.includes("lib-col:video"));
-  function toggleVideoColumn() {
-    const key = "lib-col:video";
-    ui.collapsed = videoFolded ? ui.collapsed.filter((k) => k !== key) : [...ui.collapsed, key];
-    remember("collapsed", ui.collapsed);
+  /** The Videos tab (decision 0039): ambience videos and video effects instead of the three
+   *  sound columns. Remembered apart from the Library workspace's tab. */
+  const videosTab = $derived(showVideos && ui.drawerTab === "videos");
+  function setTab(tab: "sounds" | "videos") {
+    ui.drawerTab = tab;
+    remember("drawerTab", tab);
   }
   const videoMatches = $derived.by(() => {
     const scenesOn = new Set(project.stack.filter((e) => e.enabled).map((e) => e.scene));
@@ -76,7 +76,7 @@
       }
     }
     const cutoff = Date.now() - 30 * 24 * 3600 * 1000;
-    return findVideos(null, search).filter((v) => {
+    return findVideos(null, null, search).filter((v) => {
       switch (filter) {
         case "favourites":
           return !!v.favourite;
@@ -91,11 +91,12 @@
       }
     });
   });
-  /** The matching videos grouped by folder, like `columns` does for sounds. */
-  const videoGroups = $derived.by(() => {
+  /** One kind's matching videos grouped by folder, like `columns` does for sounds. */
+  function videoColumn(kind: VideoKind): { folder: string; videos: Video[] }[] {
     const byFolder = new Map<string, Video[]>();
-    for (const folder of ["", ...snapshot.videoFolders]) byFolder.set(folder, []);
+    for (const folder of ["", ...snapshot.videoFolders[kind]]) byFolder.set(folder, []);
     for (const v of videoMatches) {
+      if (kindOf(v) !== kind) continue;
       const f = folderOfVideo(v);
       byFolder.set(f, [...(byFolder.get(f) ?? []), v]);
     }
@@ -103,17 +104,22 @@
     return [...byFolder.entries()]
       .map(([folder, videos]) => ({ folder, videos }))
       .filter((g) => (g.folder === "" ? g.videos.length > 0 : !filtering || g.videos.length > 0));
-  });
+  }
   function videoDragStart(e: DragEvent, id: string) {
     ui.drag = { kind: "video", id };
     e.dataTransfer?.setData("text/plain", id);
     if (e.dataTransfer) e.dataTransfer.effectAllowed = "copyMove";
   }
   function openVideo(id: string) {
-    ui.library = { ...ui.library, smart: "all", category: "video", folder: null, search: "", selected: [id], cropping: false };
+    const video = videoById(id);
+    ui.libraryTab = "videos";
+    remember("libraryTab", "videos");
+    ui.library = { ...ui.library, smart: "all", category: shelfOfKind(video?.kind), folder: null, search: "", selected: [id], cropping: false };
     showView("library");
   }
   const quickResults = $derived(search.trim() ? findSounds(project, snapshot.missing, { filter: "all", search }).slice(0, 8) : []);
+  /** The closed drawer's quick search finds videos too. */
+  const quickVideos = $derived(showVideos && search.trim() ? findVideos(null, null, search).slice(0, 4) : []);
 
   function setOpen(open: boolean) {
     ui.drawerOpen = open;
@@ -185,9 +191,9 @@
     remember("collapsed", ui.collapsed);
   }
 
-  /** Folds (or unfolds) every folder of one category, or of all three when none is given. */
+  /** Folds (or unfolds) every folder of one shelf, or of every shelf of the open tab. */
   function foldAll(fold: boolean, category?: Shelf) {
-    const cats: Shelf[] = category ? [category] : [...CATEGORIES.map((c) => c.id), "video"];
+    const cats: Shelf[] = category ? [category] : videosTab ? VIDEO_SHELVES.map((s) => s.id) : CATEGORIES.map((c) => c.id);
     const prefixes = cats.map((c) => `lib:${c}:`);
     const keys = cats.flatMap((c) => foldersOf(c).map((f) => `lib:${c}:${f}`));
     const others = ui.collapsed.filter((k) => !prefixes.some((p) => k.startsWith(p)));
@@ -251,7 +257,18 @@
       {#if ui.drawerOpen}<ChevronDown size={16} />{:else}<ChevronUp size={16} />{/if}
     </button>
     <h2 class="display">Library</h2>
-    <span class="count">{project.sounds.length} sounds{showVideos && project.videos?.length ? ` · ${project.videos.length} videos` : ""}</span>
+    {#if showVideos}
+      <div class="tabs" role="tablist">
+        <button role="tab" class:on={!videosTab} aria-selected={!videosTab} onclick={() => setTab("sounds")}>
+          <AudioLines size={13} />Sounds<span class="n">{project.sounds.length}</span>
+        </button>
+        <button role="tab" class:on={videosTab} aria-selected={videosTab} onclick={() => setTab("videos")}>
+          <Film size={13} />Videos<span class="n">{project.videos?.length ?? 0}</span>
+        </button>
+      </div>
+    {:else}
+      <span class="count">{project.sounds.length} sounds</span>
+    {/if}
     {@render searchBox(!ui.drawerOpen)}
     {#if ui.drawerOpen}
       <div class="filters">
@@ -271,18 +288,88 @@
     <span class="spacer"></span>
     {@render tools()}
 
-    {#if !ui.drawerOpen && searchFocused && quickResults.length > 0}
+    {#if !ui.drawerOpen && searchFocused && quickResults.length + quickVideos.length > 0}
+      {@const n = quickResults.length + quickVideos.length}
       <div class="quick" role="list" transition:pop>
-        <span class="caps muted">{quickResults.length} result{quickResults.length === 1 ? "" : "s"} · drag onto a scene or the tapestry</span>
+        <span class="caps muted">{n} result{n === 1 ? "" : "s"} · drag onto a scene or the tapestry</span>
         {#each quickResults as s (s.id)}
           <SoundRow sound={s} detail={`${CATEGORIES.find((c) => c.id === s.category)?.label}${folderOf(s) ? ` › ${folderOf(s)}` : ""}`} />
+        {/each}
+        {#each quickVideos as v (v.id)}
+          <div class="video-row quick-video" role="listitem" draggable="true" ondragstart={(e) => videoDragStart(e, v.id)} ondragend={() => (ui.drag = null)}>
+            <Film size={14} /><span class="vname">{v.name}</span>
+            <span class="muted small">{kindOf(v) === "effect" ? "Video effect" : "Ambience video"}</span>
+          </div>
         {/each}
       </div>
     {/if}
   </div>
 
   {#if ui.drawerOpen}
-    <div class="columns" class:with-video={showVideos && !videoFolded} class:video-folded={showVideos && videoFolded}>
+    <div class="columns" class:two={videosTab}>
+      {#if videosTab}
+        <!-- Videos tab: ambience videos and video effects (decision 0039). -->
+        {#snippet videoRow(v: Video)}
+          <div
+            class="video-row"
+            role="listitem"
+            draggable="true"
+            title="Drag onto a scene · double-click to open it in the Library"
+            ondragstart={(e) => videoDragStart(e, v.id)}
+            ondragend={() => (ui.drag = null)}
+            ondblclick={() => openVideo(v.id)}
+          >
+            <span class="vthumb">{#if !snapshot.missing.includes(v.id)}<video use:videoSource={{ video: v, at: 3, preview: true }} muted tabindex="-1"></video>{/if}</span>
+            <span class="vname">{v.name}</span>
+          </div>
+        {/snippet}
+        {#each VIDEO_SHELVES as c (c.id)}
+          {@const Icon = ICONS[c.id]}
+          {@const groups = videoColumn(c.kind)}
+          <div class="column" class:drop={ui.fileDropTarget === `${c.id}:`} role="list" data-drop-category={c.id} data-drop-folder="">
+            <div class="col-head">
+              <Icon size={14} />
+              <span class="caps">{c.label}</span>
+              <span class="spacer"></span>
+              <span class="count">{videoMatches.filter((v) => kindOf(v) === c.kind).length}</span>
+              {#if snapshot.videoFolders[c.kind].length > 0}
+                <button class="icon" title={`Unfold all ${c.label.toLowerCase()} folders`} onclick={() => foldAll(false, c.id)}><ChevronsUpDown size={14} /></button>
+                <button class="icon" title={`Fold all ${c.label.toLowerCase()} folders`} onclick={() => foldAll(true, c.id)}><ChevronsDownUp size={14} /></button>
+              {/if}
+              <button class="icon" title={`Add ${c.label.toLowerCase()}…`} onclick={() => addVideoFiles(c.kind)}><FilePlus size={14} /></button>
+            </div>
+            <div class="col-body">
+              {#each groups as g (g.folder)}
+                {#if g.folder === ""}
+                  {#each g.videos as v (v.id)}{@render videoRow(v)}{/each}
+                {:else if !insideFolded(c.id, g.folder)}
+                  {@const label = folderLabel(g.folder)}
+                  {@const isFolded = folded(c.id, g.folder)}
+                  <div class="group" class:drop={ui.fileDropTarget === `${c.id}:${g.folder}`} data-drop-category={c.id} data-drop-folder={g.folder}>
+                    <button class="folder" style:padding-left="{label.depth * 0.9}rem" onclick={() => toggleFolder(c.id, g.folder)}>
+                      {#if isFolded}<ChevronRight size={13} />{:else}<ChevronDown size={13} />{/if}
+                      {#if isFolded}<Folder size={13} />{:else}<FolderOpen size={13} />{/if}
+                      <span class="fname">{label.name}</span>
+                      <span class="count">{g.videos.length}</span>
+                    </button>
+                    {#if !isFolded}
+                      <div class="nested" transition:fold style:padding-left="{label.depth * 0.9 + 1.2}rem">
+                        {#each g.videos as v (v.id)}{@render videoRow(v)}{/each}
+                      </div>
+                    {/if}
+                  </div>
+                {/if}
+              {/each}
+              {#if groups.length === 0}
+                <p class="empty">
+                  {#if search || filter !== "all"}Nothing matches.{:else}No {c.label.toLowerCase()} yet.
+                    <button class="link" onclick={() => addVideoFiles(c.kind)}><Plus size={12} />Add files</button>{/if}
+                </p>
+              {/if}
+            </div>
+          </div>
+        {/each}
+      {:else}
       {#each CATEGORIES as c (c.id)}
         {@const Icon = ICONS[c.id]}
         {@const groups = columns(c.id)}
@@ -330,68 +417,6 @@
           </div>
         </div>
       {/each}
-      {#if showVideos && videoFolded}
-        <button class="video-strip" title="Show the Video column" onclick={toggleVideoColumn} data-drop-category="video" data-drop-folder="">
-          <ChevronsLeft size={14} /><Film size={14} /><span class="count">{videoMatches.length}</span><span class="vertical caps">Video</span>
-        </button>
-      {:else if showVideos}
-        <div class="column" class:drop={ui.fileDropTarget === "video:"} role="list" data-drop-category="video" data-drop-folder="">
-          <div class="col-head">
-            <Film size={14} />
-            <span class="caps">Video</span>
-            <span class="spacer"></span>
-            <span class="count">{videoMatches.length}</span>
-            {#if snapshot.videoFolders.length > 0}
-              <button class="icon" title="Unfold all video folders" onclick={() => foldAll(false, "video")}><ChevronsUpDown size={14} /></button>
-              <button class="icon" title="Fold all video folders" onclick={() => foldAll(true, "video")}><ChevronsDownUp size={14} /></button>
-            {/if}
-            <button class="icon" title="Add video files…" onclick={() => addVideoFiles()}><FilePlus size={14} /></button>
-            <button class="icon" title="Fold the Video column away" onclick={toggleVideoColumn}><ChevronsRight size={14} /></button>
-          </div>
-          <div class="col-body">
-            {#snippet videoRow(v: Video)}
-              <div
-                class="video-row"
-                role="listitem"
-                draggable="true"
-                title="Drag onto a scene · double-click to open it in the Library"
-                ondragstart={(e) => videoDragStart(e, v.id)}
-                ondragend={() => (ui.drag = null)}
-                ondblclick={() => openVideo(v.id)}
-              >
-                <span class="vthumb">{#if !snapshot.missing.includes(v.id)}<video use:videoSource={{ video: v, at: 3, preview: true }} muted tabindex="-1"></video>{/if}</span>
-                <span class="vname">{v.name}</span>
-              </div>
-            {/snippet}
-            {#each videoGroups as g (g.folder)}
-              {#if g.folder === ""}
-                {#each g.videos as v (v.id)}{@render videoRow(v)}{/each}
-              {:else if !insideFolded("video", g.folder)}
-                {@const label = folderLabel(g.folder)}
-                {@const isFolded = folded("video", g.folder)}
-                <div class="group" class:drop={ui.fileDropTarget === `video:${g.folder}`} data-drop-category="video" data-drop-folder={g.folder}>
-                  <button class="folder" style:padding-left="{label.depth * 0.9}rem" onclick={() => toggleFolder("video", g.folder)}>
-                    {#if isFolded}<ChevronRight size={13} />{:else}<ChevronDown size={13} />{/if}
-                    {#if isFolded}<Folder size={13} />{:else}<FolderOpen size={13} />{/if}
-                    <span class="fname">{label.name}</span>
-                    <span class="count">{g.videos.length}</span>
-                  </button>
-                  {#if !isFolded}
-                    <div class="nested" transition:fold style:padding-left="{label.depth * 0.9 + 1.2}rem">
-                      {#each g.videos as v (v.id)}{@render videoRow(v)}{/each}
-                    </div>
-                  {/if}
-                </div>
-              {/if}
-            {/each}
-            {#if videoGroups.length === 0}
-              <p class="empty">
-                {#if search || filter !== "all"}Nothing matches.{:else}No videos yet.
-                  <button class="link" onclick={() => addVideoFiles()}><Plus size={12} />Add files</button>{/if}
-              </p>
-            {/if}
-          </div>
-        </div>
       {/if}
     </div>
   {/if}
@@ -524,28 +549,35 @@
     gap: 1.8rem;
     padding: 0 1.2rem 0.6rem;
   }
-  .columns.with-video {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1.4rem;
+  /* The Videos tab: two wider columns. */
+  .columns.two {
+    grid-template-columns: repeat(2, 1fr);
   }
-  .columns.video-folded {
-    grid-template-columns: repeat(3, 1fr) auto;
-  }
-  /* The folded Video column: a narrow strip with "VIDEO" written sideways. */
-  .video-strip {
-    width: 2.1rem;
-    flex-direction: column;
-    justify-content: flex-start;
-    gap: 0.5rem;
-    padding: 0.4rem 0;
+  .tabs {
+    display: flex;
     border: 1px solid var(--rule);
     border-radius: var(--radius);
-    color: var(--muted);
+    overflow: hidden;
   }
-  .video-strip .vertical {
-    writing-mode: vertical-rl;
-    font-size: 0.66rem;
-    color: var(--text);
+  .tabs button {
+    border: none;
+    border-radius: 0;
+    gap: 0.35rem;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.62rem;
+  }
+  .tabs button.on {
+    background: var(--accent);
+    color: var(--accent-text);
+  }
+  .tabs .n {
+    opacity: 0.75;
+  }
+  .quick-video {
+    padding: 0.35rem 0.5rem;
+  }
+  .small {
+    font-size: 0.72rem;
   }
   .video-row {
     display: flex;

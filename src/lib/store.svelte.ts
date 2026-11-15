@@ -42,7 +42,7 @@ export type Editing =
 export interface UrlPrefill {
   url: string;
   name: string;
-  /** "video" for a video's "Download again". */
+  /** A video shelf for a video's "Download again". */
   category: Shelf;
   folder: string;
   range: { startMs: number; endMs: number } | null;
@@ -71,7 +71,7 @@ export type Drag =
   | { kind: "presetEntry"; index: number }
   | null;
 
-export type SmartList = "all" | "favourites" | "recent" | "unused" | "missing";
+export type SmartList = "all" | "favourites" | "recent" | "unused" | "missing" | "mayNotPlay";
 
 /** A question with buttons (and optionally a text field); see Dialog.svelte. */
 export interface Question {
@@ -113,6 +113,10 @@ export const ui = $state({
   view: "tapestry" as "tapestry" | "library",
   leftTab: remembered<"scenes" | "presets">("leftTab", "scenes"),
   drawerOpen: remembered<boolean>("drawerOpen", true),
+  /** The Sounds or Videos tab (decision 0039): in the Library workspace, and in the drawer
+   *  (remembered separately: one is for organising, the other for dragging into scenes). */
+  libraryTab: remembered<"sounds" | "videos">("libraryTab", "sounds"),
+  drawerTab: remembered<"sounds" | "videos">("drawerTab", "sounds"),
   /** Height of the open Library drawer in px, once resized; null = the default size. */
   drawerHeight: remembered<number | null>("drawerHeight", null),
   /** Scene / preset group headings the user folded away. */
@@ -250,6 +254,8 @@ export async function openSoundInLibrary(soundId: string) {
   if (!(await leaveFocus())) return;
   const sound = soundById(soundId);
   ui.view = "library";
+  ui.libraryTab = "sounds";
+  remember("libraryTab", "sounds");
   if (sound) {
     ui.library.smart = "all";
     ui.library.category = sound.category;

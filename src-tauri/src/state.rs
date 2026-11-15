@@ -94,8 +94,8 @@ pub struct OpenProject {
     pub analysis_failed: Vec<String>,
     /// The Library folders on disk (subfolders of `audio/<category>/`).
     pub folders: PerCategory<Vec<String>>,
-    /// The Library's video folders (subfolders of `video/`, decision 0035).
-    pub video_folders: Vec<String>,
+    /// The Library's video folders, per kind (decisions 0035 and 0039).
+    pub video_folders: crate::video::VideoFolders,
     /// New audio files seen in the folder but not added yet, with their size. A file is only
     /// added once its size is the same on two scans in a row, so we never pick up a file
     /// that's still being copied or synced.
@@ -152,7 +152,7 @@ impl OpenProject {
 
         // The same for videos in `video/` (decision 0035).
         let known: HashSet<String> = self.project.videos.iter().map(|v| v.file.path.clone()).collect();
-        for (path, size) in crate::video::scan_files(&self.dir).into_iter().filter(|(p, _)| !known.contains(p)) {
+        for (path, size, kind) in crate::video::scan_files(&self.dir).into_iter().filter(|(p, _, _)| !known.contains(p)) {
             if self.pending_files.get(&path) != Some(&size) {
                 still_pending.insert(path, size);
                 continue;
@@ -164,7 +164,7 @@ impl OpenProject {
                 .file_stem()
                 .map(|n| n.to_string_lossy().into_owned())
                 .unwrap_or_else(|| "Video".into());
-            let video = crate::video::new_video(name, info);
+            let video = crate::video::new_video(name, info, kind);
             result.new_videos.push(video.id.clone());
             self.project.videos.push(video);
         }
@@ -214,7 +214,7 @@ pub struct Snapshot {
     /// How many sounds still wait for their loudness to be measured.
     pub analyzing_remaining: usize,
     pub folders: PerCategory<Vec<String>>,
-    pub video_folders: Vec<String>,
+    pub video_folders: crate::video::VideoFolders,
     /// The video window (decision 0035): open or not, and the video effect it's playing.
     pub video_window_open: bool,
     pub video_effect: Option<String>,
@@ -299,9 +299,13 @@ impl AppState {
 
     pub fn open_project(&mut self, dir: PathBuf) -> Result<(), String> {
         self.not_moving()?;
-        let project = storage::load_project(&dir)?;
+        let mut project = storage::load_project(&dir)?;
         self.close_project()?;
         crate::video_convert::clean_leftovers(&dir);
+        // Videos from before the two kinds move into video/ambience/ (decision 0039), once.
+        let moved_videos = crate::video::move_into_kind_folders(&dir, &mut project)
+            .inspect_err(|e| crate::logging::warn(&format!("could not sort the videos into their folders: {e}")))
+            .unwrap_or(false);
 
         let missing = all_missing(&dir, &project);
         let mix = target_mix(&project);
@@ -315,7 +319,8 @@ impl AppState {
             project,
             mix,
             missing,
-            dirty_since: None,
+            // Save soon if the videos were moved, so the paths on disk and in the file agree.
+            dirty_since: moved_videos.then(Instant::now),
             changed_on_disk: false,
             changed_since_backup: false,
             last_backup: Instant::now(),
@@ -458,7 +463,7 @@ impl AppState {
                 hashing_remaining: 0,
                 analyzing_remaining: 0,
                 folders: PerCategory::default(),
-                video_folders: Vec::new(),
+                video_folders: Default::default(),
                 video_window_open: self.video_window_open,
                 video_effect: None,
                 stack_status: StackStatus::Empty,
@@ -516,7 +521,7 @@ mod tests {
             analysis_failed: Vec::new(),
             pending_files: HashMap::new(),
             folders: PerCategory::default(),
-            video_folders: Vec::new(),
+            video_folders: Default::default(),
             levels_fade_ms: 0,
         }
     }
@@ -545,8 +550,8 @@ mod tests {
         let root = TempDir::new();
         let dir = storage::create_project(&root.0, "P", ProjectDefaults::default()).unwrap();
         let mut open = open_project(dir.clone());
-        std::fs::create_dir_all(dir.join("video/Castle")).unwrap();
-        let file = dir.join("video/Castle/gate.webm");
+        std::fs::create_dir_all(dir.join("video/ambience/Castle")).unwrap();
+        let file = dir.join("video/ambience/Castle/gate.webm");
         std::fs::write(&file, b"video").unwrap();
 
         assert!(open.refresh_from_disk().new_videos.is_empty(), "first sighting waits");
@@ -554,7 +559,8 @@ mod tests {
         assert_eq!(found.new_videos.len(), 1);
         assert_eq!(found.added, 0, "videos aren't counted as sounds");
         assert_eq!(open.project.videos[0].name, "gate");
-        assert_eq!(open.video_folders, ["Castle"]);
+        assert_eq!(open.video_folders.ambience, ["Castle"]);
+        assert_eq!(open.project.videos[0].kind, crate::project::VideoKind::Ambience);
 
         std::fs::remove_file(&file).unwrap();
         open.refresh_from_disk();

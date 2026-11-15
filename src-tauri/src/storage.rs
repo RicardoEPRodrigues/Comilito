@@ -211,7 +211,7 @@ pub fn copy_into_shelf(dir: &Path, shelf: Shelf, folder: &str, source: &Path) ->
 pub fn save_dropped_file(dir: &Path, shelf: Shelf, folder: &str, name: &str, bytes: &[u8]) -> Result<FileInfo, String> {
     let name = safe_file_name(Path::new(name).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default().as_str());
     let ext = Path::new(&name).extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
-    let (accepted, kind): (&[&str], &str) = if shelf == Shelf::Video {
+    let (accepted, kind): (&[&str], &str) = if shelf.video_kind().is_some() {
         (&crate::video::VIDEO_EXTENSIONS, "a video")
     } else {
         (&AUDIO_EXTENSIONS, "an audio file")
@@ -570,8 +570,9 @@ mod tests {
         project.videos.push(crate::project::Video {
             id: "vid-1".into(),
             name: "Castle gate".into(),
+            kind: crate::project::VideoKind::Ambience,
             file: FileInfo {
-                path: "video/castle.webm".into(),
+                path: "video/ambience/castle.webm".into(),
                 size: 10,
                 modified: "2026-11-15T10:00:00Z".into(),
                 sha256: None,
@@ -704,8 +705,8 @@ mod tests {
         assert!(save_dropped_file(&dir, Shelf::Effects, "", "notes.txt", b"x").is_err());
         assert!(save_dropped_file(&dir, Shelf::Effects, "", "../../evil.mp3", b"x").unwrap().path.starts_with("audio/effects/"));
         // Videos go to video/, and only videos are accepted there.
-        assert_eq!(save_dropped_file(&dir, Shelf::Video, "Castle", "gate.webm", b"v").unwrap().path, "video/Castle/gate.webm");
-        assert!(save_dropped_file(&dir, Shelf::Video, "", "rain.ogg", b"x").is_err());
+        assert_eq!(save_dropped_file(&dir, Shelf::VideoEffect, "Castle", "gate.webm", b"v").unwrap().path, "video/effects/Castle/gate.webm");
+        assert!(save_dropped_file(&dir, Shelf::AmbienceVideo, "", "rain.ogg", b"x").is_err());
         assert!(save_dropped_file(&dir, Shelf::Music, "", "gate.webm", b"x").is_err());
     }
 

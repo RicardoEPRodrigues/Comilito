@@ -54,27 +54,63 @@ impl Category {
     }
 }
 
-/// A part of the Library with its own folder on disk: the three audio categories, and videos
-/// (decision 0035). Library folders, adding files and opening the folder work the same way
-/// for each. In JSON it's the category name, or "video", so the frontend can pass a category
-/// wherever a shelf is expected.
+/// A part of the Library with its own folder on disk: the three audio categories, and the two
+/// kinds of video (decisions 0035 and 0039). Library folders, adding files and opening the
+/// folder work the same way for each. In JSON it's the category name, or "ambienceVideo" /
+/// "videoEffect", so the frontend can pass a category wherever a shelf is expected.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
 pub enum Shelf {
+    #[serde(rename = "music")]
     Music,
+    #[serde(rename = "ambience")]
     Ambience,
+    #[serde(rename = "effects")]
     Effects,
-    Video,
+    #[serde(rename = "ambienceVideo")]
+    AmbienceVideo,
+    #[serde(rename = "videoEffect")]
+    VideoEffect,
 }
 
 impl Shelf {
-    /// The shelf's folder inside the project, with `/`: "audio/music" or "video".
+    /// The shelf's folder inside the project, with `/`: "audio/music" or "video/ambience".
     pub fn root(self) -> &'static str {
         match self {
             Shelf::Music => "audio/music",
             Shelf::Ambience => "audio/ambience",
             Shelf::Effects => "audio/effects",
-            Shelf::Video => "video",
+            Shelf::AmbienceVideo => "video/ambience",
+            Shelf::VideoEffect => "video/effects",
+        }
+    }
+
+    /// The kind of video kept on this shelf, or `None` for an audio shelf.
+    pub fn video_kind(self) -> Option<VideoKind> {
+        match self {
+            Shelf::AmbienceVideo => Some(VideoKind::Ambience),
+            Shelf::VideoEffect => Some(VideoKind::Effect),
+            Shelf::Music | Shelf::Ambience | Shelf::Effects => None,
+        }
+    }
+}
+
+/// What a video is for (decision 0039), like a sound's category: an ambience video goes in a
+/// scene's playlist, a video effect on the video effects pad. Each has its own folder,
+/// `video/ambience/` and `video/effects/`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum VideoKind {
+    /// Files made before kinds existed have no `kind`: they're ambience videos.
+    #[default]
+    Ambience,
+    Effect,
+}
+
+impl VideoKind {
+    pub fn shelf(self) -> Shelf {
+        match self {
+            VideoKind::Ambience => Shelf::AmbienceVideo,
+            VideoKind::Effect => Shelf::VideoEffect,
         }
     }
 }
@@ -200,7 +236,10 @@ pub struct Sound {
 pub struct Video {
     pub id: String,
     pub name: String,
-    /// `path` is under `video/`. `loudness` is never set for videos.
+    /// Ambience video or video effect (decision 0039). Missing in older files: ambience.
+    #[serde(default)]
+    pub kind: VideoKind,
+    /// `path` is under `video/ambience/` or `video/effects/`. `loudness` is never set for videos.
     pub file: FileInfo,
     /// Measured in the background with ffprobe. `None` until then.
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -29,7 +29,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
     crop::{self, CutOptions},
-    project::{Category, Shelf, Sound, Source, TimeRange},
+    project::{Category, Sound, Source, TimeRange, VideoKind},
     state::{AppState, emit_state},
     storage, tools,
 };
@@ -145,9 +145,12 @@ pub struct DownloadRequest {
     #[serde(default)]
     pub replace: Option<String>,
     /// Download the picture only, as a video (decision 0035), up to this height (0: the best).
-    /// The video goes to `video/<folder>/` and `category` is ignored.
+    /// The video goes to `video/<kind>/<folder>/` and `category` is ignored.
     #[serde(default)]
     pub video_height: Option<u32>,
+    /// For a video: ambience video or video effect (decision 0039).
+    #[serde(default)]
+    pub video_kind: VideoKind,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -814,8 +817,9 @@ fn finish(app: &AppHandle, id: &str, request: &DownloadRequest, dir: &Path, resu
     }
     let placed = result.and_then(|file| {
         let ext = file.extension().map(|e| e.to_string_lossy().to_string()).unwrap_or_else(|| request.ext.clone());
-        // A video goes to `video/<folder>/` (decision 0035), audio to its category's folder.
-        let shelf = if request.video_height.is_some() { Shelf::Video } else { request.category.into() };
+        // A video goes to `video/<kind>/<folder>/` (decisions 0035, 0039), audio to its
+        // category's folder.
+        let shelf = if request.video_height.is_some() { request.video_kind.shelf() } else { request.category.into() };
         let folder = storage::shelf_folder_path(dir, shelf, &request.folder);
         fs::create_dir_all(&folder).map_err(|e| e.to_string())?;
         let name = storage::safe_file_name(&request.name);
@@ -859,7 +863,7 @@ fn finish(app: &AppHandle, id: &str, request: &DownloadRequest, dir: &Path, resu
                 open.analysis_failed.retain(|m| m != id);
                 return Ok(Some(id.clone()));
             }
-            let mut video = crate::video::new_video(request.name.trim().to_string(), info);
+            let mut video = crate::video::new_video(request.name.trim().to_string(), info, request.video_kind);
             video.source = Some(source);
             let video_id = video.id.clone();
             open.project.videos.push(video);
@@ -1000,6 +1004,7 @@ mod tests {
             range: None,
             replace: None,
             video_height: None,
+            video_kind: VideoKind::Ambience,
         };
         let saved = vec![
             SavedDownload { id: "dl-kept".into(), project_dir: project.clone(), request: request("kept") },

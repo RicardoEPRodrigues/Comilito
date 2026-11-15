@@ -1,8 +1,9 @@
 # Video
 
 > Status: implemented (on the `video` branch until merged). Decisions
-> [0035](decisions/0035-video.md) and [0037](decisions/0037-streaming-videos-on-linux.md); design
-> in `pencil/video-player.pen`.
+> [0035](decisions/0035-video.md), [0037](decisions/0037-streaming-videos-on-linux.md),
+> [0038](decisions/0038-video-keeps-playing-on-pause.md) and
+> [0039](decisions/0039-ambience-videos-and-video-effects.md); design in `pencil/video-player.pen`.
 
 Scenes can have videos. The top-most enabled scene with videos plays them in a window of its
 own, meant for a TV or projector the players see. A video's own sound is never played. The
@@ -21,8 +22,11 @@ whole feature can be turned off in Preferences › Video.
 - **Video effects:** each scene can list videos for the video effects pad, under the sound
   effects. Playing one replaces the video until it ends; then the playlist comes back where it
   was.
-- **Files:** videos are copied into the project's `video/` folder (with subfolders, like
-  `audio/`), and appear in the Library's Video category.
+- **Two kinds**, like sound categories: *ambience videos* go in scenes' playlists, *video
+  effects* on the video effects pad. A scene's sections each take only their kind.
+- **Files:** videos are copied into the project's `video/ambience/` or `video/effects/` folder
+  (with subfolders, like `audio/`), and appear in the Library's Videos tab (the Library has
+  Sounds / Videos tabs, in the workspace and in the drawer). Changing a video's type moves it.
 - **Formats:** WebM (VP8, VP9, AV1) plays everywhere. Other videos (MP4/H.264, MOV, AVI...) may
   not play on Linux without extra GStreamer packages, so Comilito offers to convert them to WebM
   with its ffmpeg: when they're added, dropped, downloaded, or found in the `video/` folder.

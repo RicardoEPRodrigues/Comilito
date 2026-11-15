@@ -30,6 +30,7 @@ import type {
   Video,
   ConversionJob,
   Screen,
+  VideoKind,
 } from "./types";
 
 export const api = {
@@ -138,10 +139,10 @@ export const api = {
     invoke<void>("open_audio_folder", { category, folder }),
 
   // Videos (decision 0035)
-  addVideos: (paths: string[], folder: string | null = null) => invoke<string[]>("add_videos", { folder, paths }),
+  addVideos: (kind: VideoKind, paths: string[], folder: string | null = null) => invoke<string[]>("add_videos", { kind, folder, paths }),
   updateVideos: (videos: Video[]) => invoke<void>("update_videos", { videos }),
   removeVideo: (id: string, permanently: boolean) => invoke<void>("remove_video", { id, permanently }),
-  moveVideos: (ids: string[], folder: string) => invoke<void>("move_videos", { ids, folder }),
+  moveVideos: (ids: string[], kind: VideoKind, folder: string) => invoke<void>("move_videos", { ids, kind, folder }),
   revealVideo: (id: string) => invoke<void>("reveal_video", { id }),
   relinkVideo: (id: string, path: string) => invoke<void>("relink_video", { id, path }),
   addVideoToScene: (sceneId: string, videoId: string) => invoke<void>("add_video_to_scene", { sceneId, videoId }),

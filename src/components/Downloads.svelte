@@ -3,8 +3,8 @@
   // at a time in the background; finished ones become sounds and can be opened from here.
   import { Check, Download, RotateCcw, TriangleAlert, X } from "@lucide/svelte";
   import { api } from "../lib/api";
-  import { openSoundInLibrary, run, ui } from "../lib/store.svelte";
-  import { videoById } from "../lib/video";
+  import { openSoundInLibrary, remember, run, ui } from "../lib/store.svelte";
+  import { shelfOfKind, videoById } from "../lib/video";
 
   const jobs = $derived(ui.downloads);
   const active = $derived(jobs.filter((j) => j.status === "running" || j.status === "queued").length);
@@ -12,8 +12,11 @@
 
   /** A finished download is a sound, or a video (decision 0035) shown in the Video shelf. */
   function openInLibrary(id: string) {
-    if (!videoById(id)) return openSoundInLibrary(id);
-    ui.library = { ...ui.library, smart: "all", category: "video", folder: null, search: "", selected: [id], cropping: false };
+    const video = videoById(id);
+    if (!video) return openSoundInLibrary(id);
+    ui.libraryTab = "videos";
+    remember("libraryTab", "videos");
+    ui.library = { ...ui.library, smart: "all", category: shelfOfKind(video.kind), folder: null, search: "", selected: [id], cropping: false };
     ui.view = "library";
   }
 </script>

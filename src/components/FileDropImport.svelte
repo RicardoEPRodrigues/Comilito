@@ -14,9 +14,10 @@
   import { getCurrentWebview } from "@tauri-apps/api/webview";
   import { onMount } from "svelte";
   import { api } from "../lib/api";
-  import { askText, formatBytes, notify, project, run, ui } from "../lib/store.svelte";
+  import { askText, formatBytes, notify, project, remember, run, ui } from "../lib/store.svelte";
   import { CATEGORIES, type Shelf } from "../lib/types";
-  import { isVideoName, VIDEO_EXTENSIONS, videoEnabled } from "../lib/video";
+  import { isVideoName, isVideoShelf, kindOfShelf, shelfOfKind, VIDEO_EXTENSIONS, VIDEO_SHELVES, videoEnabled } from "../lib/video";
+  import { foldersOf } from "../lib/actions";
   import Modal from "./Modal.svelte";
 
   // Keep in step with AUDIO_EXTENSIONS in storage.rs.
@@ -51,7 +52,7 @@
    *  Dividing by the scale put the point too high on scaled displays. */
   const css = (p: { x: number; y: number }) => [p.x, p.y] as const;
 
-  const SHELVES = $derived<{ id: Shelf; label: string }[]>([...CATEGORIES, ...(videoEnabled() ? [{ id: "video" as const, label: "Video" }] : [])]);
+  const SHELVES = $derived<{ id: Shelf; label: string }[]>([...CATEGORIES, ...(videoEnabled() ? VIDEO_SHELVES : [])]);
   /** True while files from outside are dragged over the window (shows the overlay). */
   let hovering = $state(false);
   /** Where the files would go if dropped now (null: the folder the Library is showing). */
@@ -72,9 +73,9 @@
   let category = $state<Shelf>("music");
   let folder = $state("");
   let importing = $state<number | null>(null);
-  const folders = $derived(category === "video" ? (ui.snapshot?.videoFolders ?? []) : (ui.snapshot?.folders[category] ?? []));
-  // Audio and videos dropped together: the audio goes where chosen, the videos to the Video
-  // shelf (its top level, unless Video is the shelf chosen).
+  const folders = $derived(ui.snapshot ? foldersOf(category) : []);
+  // Audio and videos dropped together: the audio goes where chosen, the videos to Ambience
+  // videos (its top level, unless a video shelf is the one chosen).
   const videos = $derived(files.filter((f) => isVideo(f.name)));
   const audio = $derived(files.filter((f) => !isVideo(f.name)));
   const mixed = $derived(videos.length > 0 && audio.length > 0);
@@ -153,10 +154,11 @@
         category = ui.library.category ?? "music";
         folder = ui.library.category && ui.library.folder ? ui.library.folder : "";
       }
-      // Only videos: they can only go to the Video shelf. Only audio: never to it.
+      // Only videos: they can only go to a video shelf (Ambience videos unless dropped on a
+      // Video effects folder). Some audio: the chosen shelf is an audio one.
       const onlyVideos = files.every((f) => isVideo(f.name));
-      if (onlyVideos && category !== "video") [category, folder] = ["video", ""];
-      if (!onlyVideos && category === "video") [category, folder] = ["music", ""];
+      if (onlyVideos && !isVideoShelf(category)) [category, folder] = ["ambienceVideo", ""];
+      if (!onlyVideos && isVideoShelf(category)) [category, folder] = ["music", ""];
     }
     window.addEventListener("dragover", over);
     window.addEventListener("dragleave", leave);
@@ -183,20 +185,24 @@
 
   async function confirm() {
     const added: string[] = [];
-    const videoFolder = category === "video" ? folder : "";
+    const videoShelf: Shelf = isVideoShelf(category) ? category : "ambienceVideo";
+    const videoKind = kindOfShelf(videoShelf);
+    const videoFolder = isVideoShelf(category) ? folder : "";
     // Files with a path are copied by Rust in one go per kind (problems arrive as notices).
     const audioPaths = audio.flatMap((f) => (f.path ? [f.path] : []));
     const videoPaths = videos.flatMap((f) => (f.path ? [f.path] : []));
     importing = 0;
-    if (audioPaths.length && category !== "video") added.push(...((await run(api.addSounds(category, audioPaths, folder))) ?? []));
-    if (videoPaths.length) added.push(...((await run(api.addVideos(videoPaths, videoFolder))) ?? []));
+    if (audioPaths.length && (category === "music" || category === "ambience" || category === "effects")) {
+      added.push(...((await run(api.addSounds(category, audioPaths, folder))) ?? []));
+    }
+    if (videoPaths.length) added.push(...((await run(api.addVideos(videoKind, videoPaths, videoFolder))) ?? []));
     // The others are sent one by one, as their contents.
     const contents = files.filter((f) => f.file);
     const done = audioPaths.length + videoPaths.length;
     for (let i = 0; i < contents.length; i++) {
       importing = done + i;
       const file = contents[i].file!;
-      const [shelf, into] = isVideo(file.name) ? (["video", videoFolder] as const) : ([category, folder] as const);
+      const [shelf, into] = isVideo(file.name) ? ([videoShelf, videoFolder] as const) : ([category, folder] as const);
       const id = await run(file.arrayBuffer().then((bytes) => api.importDroppedFile(shelf, into, file.name, bytes)));
       if (id) added.push(id);
     }
@@ -205,10 +211,12 @@
       notify(added.length === 1 ? `Imported “${files[0].name}”.` : `Imported ${added.length} files.`);
       // Show them in the library (the videos, if only videos were dropped).
       const showVideos = videos.length > 0 && audio.length === 0;
+      ui.libraryTab = showVideos ? "videos" : "sounds";
+      remember("libraryTab", ui.libraryTab);
       ui.library = {
         ...ui.library,
         smart: "all",
-        category: showVideos ? "video" : category,
+        category: showVideos ? videoShelf : category,
         folder: showVideos ? videoFolder : folder,
         search: "",
         selected: added,
@@ -259,7 +267,7 @@
           <span class="caps">Category</span>
           <select bind:value={category} onchange={() => (folder = "")} disabled={importing !== null}>
             <!-- Only videos can go to Video; sounds only to the audio categories. -->
-            {#each SHELVES.filter((c) => (audio.length ? c.id !== "video" : c.id === "video")) as c (c.id)}<option value={c.id}>{c.label}</option>{/each}
+            {#each SHELVES.filter((c) => (audio.length ? !isVideoShelf(c.id) : isVideoShelf(c.id))) as c (c.id)}<option value={c.id}>{c.label}</option>{/each}
           </select>
         </label>
         <label class="field grow">

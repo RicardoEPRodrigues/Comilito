@@ -301,7 +301,9 @@ export function moveTargets(category: Shelf, folder: string): string[] {
 /** The Library folders of a shelf (an audio category, or the videos). */
 export function foldersOf(shelf: Shelf): string[] {
   if (!ui.snapshot) return [];
-  return shelf === "video" ? ui.snapshot.videoFolders : ui.snapshot.folders[shelf];
+  if (shelf === "ambienceVideo") return ui.snapshot.videoFolders.ambience;
+  if (shelf === "videoEffect") return ui.snapshot.videoFolders.effect;
+  return ui.snapshot.folders[shelf];
 }
 
 export async function newFolder(category: Shelf, parent: string | null = null) {

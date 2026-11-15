@@ -4,11 +4,11 @@
   // download runs in the background (see Downloads in the Library). Nothing is streamed.
   // A page can also be downloaded as a video, the picture only (decision 0035, design 4).
   import { AudioLines, CircleCheck, Film, Globe, Info, LoaderCircle, Link, Scale, Download as DownloadIcon } from "@lucide/svelte";
-  import { videoEnabled } from "../lib/video";
+  import { isVideoShelf, kindOfShelf, shelfOfKind, videoEnabled } from "../lib/video";
   import { onMount } from "svelte";
   import { api } from "../lib/api";
   import { askText, formatBytes, formatDuration, refreshTools, run, ui, type UrlPrefill } from "../lib/store.svelte";
-  import { CATEGORIES, type Category, type Probe, type Shelf } from "../lib/types";
+  import { CATEGORIES, type Category, type Probe, type Shelf, type VideoKind } from "../lib/types";
   import Modal from "./Modal.svelte";
   import TimeInput from "./TimeInput.svelte";
   import ToolsInstall from "./ToolsInstall.svelte";
@@ -35,9 +35,10 @@
   let name = $state("");
   // svelte-ignore state_referenced_locally
   const startShelf = prefill?.category ?? target?.category ?? ui.library.category ?? "ambience";
-  let category = $state<Category>(startShelf === "video" ? "ambience" : startShelf);
-  /** Download as a video (the picture only) instead of audio. */
-  let asVideo = $state(startShelf === "video" && videoEnabled());
+  let category = $state<Category>(isVideoShelf(startShelf) ? "ambience" : (startShelf as Category));
+  /** Download as a video (the picture only) instead of audio, and which kind (decision 0039). */
+  let asVideo = $state(isVideoShelf(startShelf) && videoEnabled());
+  let videoKind = $state<VideoKind>(isVideoShelf(startShelf) ? kindOfShelf(startShelf) : "ambience");
   let height = $state(ui.prefs?.video.downloadHeight ?? 1080);
   const videoOption = $derived(probe?.videoOptions.find((o) => o.maxHeight === height) ?? probe?.videoOptions.at(-1));
   const canVideo = $derived(videoEnabled() && !!probe && (probe.isVideo || probe.videoOptions.length > 0));
@@ -91,7 +92,7 @@
   async function newFolder() {
     const created = await askText("New folder", "Name");
     if (!created) return;
-    if (await run(api.createFolder(asVideo ? "video" : category, created).then(() => true))) folder = created;
+    if (await run(api.createFolder(asVideo ? shelfOfKind(videoKind) : category, created).then(() => true))) folder = created;
   }
   /** The whole download's size: the audio, or the chosen video format. */
   const fullSize = $derived(asVideo && probe && !probe.isVideo ? (videoOption?.size ?? null) : (probe?.size ?? null));
@@ -100,7 +101,7 @@
     if (!range || !probe?.durationMs) return fullSize;
     return Math.round((fullSize * (range.endMs - range.startMs)) / probe.durationMs);
   });
-  const folders = $derived(asVideo ? (ui.snapshot?.videoFolders ?? []) : (ui.snapshot?.folders[category] ?? []));
+  const folders = $derived(asVideo ? (ui.snapshot?.videoFolders[videoKind] ?? []) : (ui.snapshot?.folders[category] ?? []));
   const canDownload = $derived(!!probe && name.trim() !== "" && (!partial || range !== null) && (probe.kind === "direct" || !!ui.tools?.ffmpeg));
 
   async function download() {
@@ -119,6 +120,7 @@
         range: asVideo && probe.isVideo ? null : range,
         replace: prefill?.replace ?? null,
         videoHeight: asVideo ? (probe.isVideo ? 0 : height) : null,
+        videoKind,
       }),
     );
     if (id) onclose();
@@ -203,7 +205,15 @@
 
     <div class="save-to">
       <label class="field grow"><span class="caps">Name</span><input bind:value={name} /></label>
-      {#if !asVideo}
+      {#if asVideo}
+        <label class="field">
+          <span class="caps">Type</span>
+          <select bind:value={videoKind} onchange={() => (folder = "")}>
+            <option value="ambience">Ambience video</option>
+            <option value="effect">Video effect</option>
+          </select>
+        </label>
+      {:else}
         <label class="field">
           <span class="caps">Category</span>
           <select bind:value={category} onchange={() => (folder = "")}>
@@ -222,7 +232,7 @@
             } else folder = e.currentTarget.value;
           }}
         >
-          <option value="">{asVideo ? "(Video folder)" : "(category folder)"}</option>
+          <option value="">{asVideo ? (videoKind === "effect" ? "(Video effects folder)" : "(Ambience videos folder)") : "(category folder)"}</option>
           {#each folders as f (f)}<option value={f}>{f}</option>{/each}
           <option value="__new__">+ New folder…</option>
         </select>

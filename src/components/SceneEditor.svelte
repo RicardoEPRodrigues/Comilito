@@ -7,12 +7,12 @@
   import { onDestroy } from "svelte";
   import { addSceneOnTop, stopPreviewOnLeave } from "../lib/actions";
   import { project, run, sceneById, soundById, ui } from "../lib/store.svelte";
-  import { ROLES, roleLabel, type Category, type Role, type Scene } from "../lib/types";
+  import { ROLES, roleLabel, type Category, type Role, type Scene, type VideoKind } from "../lib/types";
   import { confirmLeave, fingerprint } from "../lib/unsaved";
   import Capital from "./Capital.svelte";
   import OverrideField from "./OverrideField.svelte";
   import Watermark from "./Watermark.svelte";
-  import { videoById, videoEnabled } from "../lib/video";
+  import { kindOf, videoById, videoEnabled } from "../lib/video";
   import { formatDuration } from "../lib/store.svelte";
 
   let { id }: { id: string } = $props();
@@ -91,7 +91,22 @@
 
   // ---- Videos (decision 0035) ----
   const videoDefaults = $derived(p.defaults.video ?? { shuffle: false, switchMinutes: 5, resume: true });
-  const allVideos = $derived([...(p.videos ?? [])].sort((a, b) => a.name.localeCompare(b.name)));
+  // Each slot takes its own kind (decision 0039).
+  const sortedVideos = $derived([...(p.videos ?? [])].sort((a, b) => a.name.localeCompare(b.name)));
+  const ambienceVideos = $derived(sortedVideos.filter((v) => kindOf(v) === "ambience"));
+  const videoEffects = $derived(sortedVideos.filter((v) => kindOf(v) === "effect"));
+  /** A video in the slot of the other kind (an older project's videos all became ambience
+   *  videos): kept, but marked, until its type is changed in the Library. */
+  function wrongKind(videoId: string, slot: VideoKind) {
+    const v = videoById(videoId);
+    return !!v && kindOf(v) !== slot;
+  }
+  /** A dragged video goes where its kind goes. */
+  function addDraggedVideo(videoId: string) {
+    const v = videoById(videoId);
+    if (v && kindOf(v) === "effect") addVideoEffect(videoId);
+    else addVideo(videoId);
+  }
   function videoName(videoId: string) {
     return videoById(videoId)?.name ?? "?";
   }
@@ -187,7 +202,7 @@
     const drag = ui.drag;
     if (drag?.kind !== "sound" && drag?.kind !== "video") return;
     e.preventDefault();
-    if (drag.kind === "video") addVideo(drag.id);
+    if (drag.kind === "video") addDraggedVideo(drag.id);
     else addSound(drag.id);
     ui.drag = null;
     dropOver = false;
@@ -268,11 +283,12 @@
 
   {#if videoEnabled()}
     <section>
-      <div class="section-head"><span class="caps">Video</span><span class="hint">Plays in the video window while this is the top-most scene with videos</span></div>
+      <div class="section-head"><span class="caps">Ambience videos</span><span class="hint">Play in the video window while this is the top-most scene with videos</span></div>
       {#each draft.video?.videos ?? [] as videoId, i (i)}
         <div class="row">
           <Film size={15} />
           <span class="grow">{videoName(videoId)}</span>
+          {#if wrongKind(videoId, "ambience")}<span class="wrong-kind" title="Change its type to Ambience video in the Library, or remove it here">not an ambience video</span>{/if}
           <span class="muted small">{videoLength(videoId)}</span>
           <button class="icon" onclick={() => moveVideo(i, -1)} disabled={i === 0} title="Move up"><ArrowUp size={14} /></button>
           <button class="icon" onclick={() => moveVideo(i, 1)} disabled={i === (draft.video?.videos.length ?? 0) - 1} title="Move down"><ArrowDown size={14} /></button>
@@ -287,10 +303,10 @@
             e.currentTarget.value = "";
           }}
         >
-          <option value="">+ Add video</option>
-          {#each allVideos as v (v.id)}<option value={v.id}>{v.name}</option>{/each}
+          <option value="">+ Add ambience video</option>
+          {#each ambienceVideos as v (v.id)}<option value={v.id}>{v.name}</option>{/each}
         </select>
-        <span class="muted small">{allVideos.length ? "or drag videos here from the Library" : "Add videos in the Library's Video shelf first"}</span>
+        <span class="muted small">{ambienceVideos.length ? "or drag them here from the Library" : "Add ambience videos in the Library's Videos tab first"}</span>
       </div>
       {#if draft.video}
         <div class="video-settings">
@@ -340,7 +356,10 @@
       <div class="section-head"><span class="caps">Video effects</span><span class="hint">Shown under the effects pad; playing one replaces the video until it ends</span></div>
       <div class="chips">
         {#each draft.videoEffects ?? [] as videoId, i (videoId)}
-          <span class="chip"><Film size={12} />{videoName(videoId)}<button class="icon x" onclick={() => draft.videoEffects!.splice(i, 1)} title="Remove"><X size={12} /></button></span>
+          <span class="chip" class:wrong={wrongKind(videoId, "effect")} title={wrongKind(videoId, "effect") ? "Not a video effect: change its type in the Library (it still plays meanwhile)" : ""}>
+            <Film size={12} />{videoName(videoId)}{#if wrongKind(videoId, "effect")} · change its type{/if}
+            <button class="icon x" onclick={() => draft.videoEffects!.splice(i, 1)} title="Remove"><X size={12} /></button>
+          </span>
         {/each}
         <select
           class="picker"
@@ -350,7 +369,7 @@
           }}
         >
           <option value="">+ Add video effect</option>
-          {#each allVideos as v (v.id)}<option value={v.id}>{v.name}</option>{/each}
+          {#each videoEffects as v (v.id)}<option value={v.id}>{v.name}</option>{/each}
         </select>
       </div>
     </section>
@@ -501,6 +520,17 @@
   }
   .x {
     padding: 0.05rem;
+  }
+  /* A video in the slot of the other kind (see wrongKind). */
+  .wrong-kind,
+  .chip.wrong {
+    color: var(--warn);
+  }
+  .wrong-kind {
+    font-size: 0.75rem;
+  }
+  .chip.wrong {
+    border-color: var(--warn);
   }
   .video-settings {
     display: grid;

@@ -6,11 +6,6 @@
 - Create a first time experience.
 - add ability to scale the UI. Font and whole UI.
 - Add ability to have plugins.
-- Separate ambience videos from video effects, like sounds are separated into categories, so
-  each behaves consistently: a scene's video playlist takes ambience videos, its video effects
-  take video effects. The Library would then have five columns (Music, Ambience, Effects,
-  Ambience videos, Video effects), which is too many: redesign it, perhaps with a Sounds tab
-  and a Videos tab. Needs a design (Pencil) before code.
 - Video, later improvements (the feature itself is done, docs/video.md):
   - Trimming videos (like cropping sounds).
   - Remembering where each video left off across restarts (it's remembered only while the app
@@ -21,8 +16,6 @@
     with its Convert button.
   - Moving the video window to another screen from Preferences only applies the next time it
     opens (its own screen picker moves it straight away).
-  - The Library's "Missing files" list shows sounds only; missing videos are marked in the
-    Video shelf.
   - Video plugins, once plugins exist: the video feature has its own folders and data keys, so
     it could be moved into one.
 - Support projects outside of the projects folder.

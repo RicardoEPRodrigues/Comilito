@@ -262,10 +262,10 @@ mod tests {
     fn videos_are_exported_only_when_asked() {
         let root = TempDir::new();
         let (dir, mut project) = project_with_sound(&root.0);
-        std::fs::create_dir_all(dir.join("video/Castle")).unwrap();
-        std::fs::write(dir.join("video/Castle/gate.webm"), b"video").unwrap();
-        let file = storage::file_info(&dir, Path::new("video/Castle/gate.webm")).unwrap();
-        project.videos.push(crate::video::new_video("Gate".into(), file));
+        std::fs::create_dir_all(dir.join("video/ambience/Castle")).unwrap();
+        std::fs::write(dir.join("video/ambience/Castle/gate.webm"), b"video").unwrap();
+        let file = storage::file_info(&dir, Path::new("video/ambience/Castle/gate.webm")).unwrap();
+        project.videos.push(crate::video::new_video("Gate".into(), file, crate::project::VideoKind::Ambience));
         storage::save_project(&dir, &project).unwrap();
 
         let with = root.0.join("with.comilito");
@@ -274,13 +274,13 @@ mod tests {
         // dropped, and its folder deleted, at the end of the statement).
         let target = TempDir::new();
         let imported = import_zip(&with, &target.0).unwrap();
-        assert!(imported.join("video/Castle/gate.webm").is_file());
+        assert!(imported.join("video/ambience/Castle/gate.webm").is_file());
 
         let audio_only = root.0.join("audio-only.comilito");
         export_zip(&dir, &project, &audio_only, true, false).unwrap();
         let other = TempDir::new();
         let imported = import_zip(&audio_only, &other.0).unwrap();
-        assert!(!imported.join("video/Castle/gate.webm").exists());
+        assert!(!imported.join("video/ambience/Castle/gate.webm").exists());
         let loaded = storage::load_project(&imported).unwrap();
         assert_eq!(crate::video::missing(&imported, &loaded).len(), 1, "the video is listed, its file missing");
     }

@@ -6,15 +6,15 @@
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { api } from "../lib/api";
   import { askText, formatBytes, formatDuration, run, ui } from "../lib/store.svelte";
-  import type { Video } from "../lib/types";
-  import { describeVideo, folderOfVideo, relinkVideo, removeVideo, scenesUsingVideo, videoById } from "../lib/video";
+  import type { Video, VideoKind } from "../lib/types";
+  import { describeVideo, folderOfVideo, kindOf, moveVideos, relinkVideo, removeVideo, scenesUsingVideo, shelfOfKind, videoById } from "../lib/video";
   import { videoSource } from "../lib/videoStream";
 
   let { id }: { id: string } = $props();
 
   const video = $derived(videoById(id));
   const missing = $derived(ui.snapshot!.missing.includes(id));
-  const folders = $derived(ui.snapshot!.videoFolders);
+  const folders = $derived(video && kindOf(video) === "effect" ? ui.snapshot!.videoFolders.effect : ui.snapshot!.videoFolders.ambience);
   const usedIn = $derived(scenesUsingVideo(id));
   const conversion = $derived(ui.conversions.find((c) => c.id === id));
   let newTag = $state("");
@@ -35,13 +35,19 @@
   }
 
   async function changeFolder(value: string) {
+    if (!video) return;
     if (value === "__new__") {
       const name = await askText("New folder", "Name");
       if (!name) return;
-      await run(api.createFolder("video", name));
+      await run(api.createFolder(shelfOfKind(kindOf(video)), name));
       value = name;
     }
-    await run(api.moveVideos([id], value));
+    await moveVideos([id], kindOf(video), value);
+  }
+
+  /** Ambience video ↔ video effect: the file moves to the other kind's folder (top level). */
+  async function changeKind(kind: VideoKind) {
+    if (video && kind !== kindOf(video)) await moveVideos([id], kind, "");
   }
 </script>
 
@@ -78,9 +84,16 @@
     <section>
       <div class="grid">
         <label class="field">
+          <span class="caps">Type</span>
+          <select value={kindOf(video)} onchange={(e) => changeKind(e.currentTarget.value as VideoKind)} disabled={missing}>
+            <option value="ambience">Ambience video</option>
+            <option value="effect">Video effect</option>
+          </select>
+        </label>
+        <label class="field">
           <span class="caps">Folder</span>
           <select value={folderOfVideo(video)} onchange={(e) => changeFolder(e.currentTarget.value)} disabled={missing}>
-            <option value="">(Video folder)</option>
+            <option value="">({kindOf(video) === "effect" ? "Video effects" : "Ambience videos"} folder)</option>
             {#each folders as f (f)}<option value={f}>{f}</option>{/each}
             <option value="__new__">+ New folder…</option>
           </select>
@@ -155,7 +168,7 @@
             onclick={() =>
               (ui.editing = {
                 kind: "addUrl",
-                prefill: { url: source.url, name: video.name, category: "video", folder: folderOfVideo(video), range: source.range ?? null, replace: id },
+                prefill: { url: source.url, name: video.name, category: shelfOfKind(kindOf(video)), folder: folderOfVideo(video), range: source.range ?? null, replace: id },
               })}
           >
             <RefreshCw size={13} />Download again
@@ -237,7 +250,7 @@
   }
   .grid {
     display: grid;
-    grid-template-columns: 1fr 1.4fr;
+    grid-template-columns: 1fr 1fr 1.4fr;
     gap: 0.8rem;
   }
   .tags {

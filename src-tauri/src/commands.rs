@@ -1091,7 +1091,8 @@ pub fn import_dropped_file(
     let shelf = match header("x-category").as_str() {
         "music" => Shelf::Music,
         "effects" => Shelf::Effects,
-        "video" => Shelf::Video,
+        "ambienceVideo" => Shelf::AmbienceVideo,
+        "videoEffect" => Shelf::VideoEffect,
         _ => Shelf::Ambience,
     };
 
@@ -1102,14 +1103,14 @@ pub fn import_dropped_file(
         .file_stem()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| "Sound".into());
-    let id = match shelf {
-        Shelf::Video => {
-            let video = crate::video::new_video(stem, info);
+    let id = match shelf.video_kind() {
+        Some(kind) => {
+            let video = crate::video::new_video(stem, info, kind);
             let id = video.id.clone();
             open.project.videos.push(video);
             id
         }
-        Shelf::Music | Shelf::Ambience | Shelf::Effects => {
+        None => {
             let category = match shelf {
                 Shelf::Music => Category::Music,
                 Shelf::Effects => Category::Effects,
@@ -1124,7 +1125,7 @@ pub fn import_dropped_file(
     open.folders = storage::list_folders(&open.dir);
     open.video_folders = crate::video::list_folders(&open.dir);
     // `open` isn't used after this point, so `s` can be borrowed again.
-    if shelf == Shelf::Video {
+    if shelf.video_kind().is_some() {
         crate::video_convert::note_new(&mut s, std::slice::from_ref(&id), crate::video_convert::Origin::Added);
     }
     crate::logging::info(&format!("Imported dropped file \"{name}\""));
