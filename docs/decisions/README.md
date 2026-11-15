@@ -42,6 +42,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0033](0033-resuming-downloads-and-quit-warning.md) | Resuming downloads after a restart, and warning when quitting while busy | Accepted | 2026-11-14 |
 | [0034](0034-dropping-files-on-a-library-folder.md) | Dropping files on a Library folder imports them there | Accepted | 2026-11-15 |
 | [0035](0035-video.md) | Videos for scenes, in a window of their own | Accepted | 2026-11-15 |
+| [0036](0036-ui-testing-with-webdriver.md) | Test the running app with WebDriver, on the real Wayland desktop | Accepted | 2026-11-15 |
 
 ## Template
 

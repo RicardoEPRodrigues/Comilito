@@ -64,6 +64,76 @@ In this project there is a TODO.md where the developer will write things to corr
 - You can format the document, but only remove sentences if they are fixed.
 - Do not remove headers even if they have no content
 
+## Testing the running app
+
+The UI is driven through **WebDriver**: `tauri-driver` (cargo) talks to `WebKitWebDriver`
+(apt package `webkit2gtk-driver`), which launches the app and controls its webview — find
+elements, click, type, read text, run JS, screenshot the window. WebDriver is plain HTTP/JSON
+on `localhost:4444`, so `curl` is enough; no test framework is added to the project. See
+[docs/decisions/0036-ui-testing-with-webdriver.md](docs/decisions/0036-ui-testing-with-webdriver.md).
+
+**Ask the user first** before anything that opens the app on their desktop and takes control of
+the mouse or keyboard, or takes a screenshot (of the screen or the app window). Say what the test
+will do. This doesn't apply to unit tests, type-checks or a headless (Xvfb) run.
+
+WebDriver only reaches the webview: native dialogs (file pickers, `rfd` message boxes) can't be
+driven. `~/.cargo/bin` may not be on `PATH` in the agent's shell; call `~/.cargo/bin/tauri-driver`.
+
+### Build
+
+`tauri-driver` needs a binary with the frontend bundled in (a plain `cargo build` loads the
+Vite dev server instead):
+
+```bash
+npm run tauri build -- --debug --no-bundle   # → src-tauri/target/debug/comilito
+```
+
+### Wayland (the default on the owner's desktop: Pop!_OS, COSMIC)
+
+The app runs natively on Wayland (GTK picks it whenever `WAYLAND_DISPLAY` is set).
+
+```bash
+~/.cargo/bin/tauri-driver &      # listens on localhost:4444
+APP=$PWD/src-tauri/target/debug/comilito
+SID=$(curl -s -X POST localhost:4444/session -H 'Content-Type: application/json' \
+  -d "{\"capabilities\":{\"alwaysMatch\":{\"tauri:options\":{\"application\":\"$APP\"}}}}" \
+  | python3 -c 'import sys,json;print(json.load(sys.stdin)["value"]["sessionId"])')
+
+curl -s localhost:4444/session/$SID/title                       # {"value":"Comilito"}
+curl -s -X POST localhost:4444/session/$SID/element -H 'Content-Type: application/json' \
+  -d '{"using":"css selector","value":"button.some-class"}'     # → element id
+curl -s -X POST localhost:4444/session/$SID/element/<id>/click -d '{}'
+curl -s -X POST localhost:4444/session/$SID/execute/sync -H 'Content-Type: application/json' \
+  -d '{"script":"return document.body.innerText","args":[]}'
+curl -s localhost:4444/session/$SID/screenshot                  # base64 PNG of the webview (ask first)
+curl -s -X DELETE localhost:4444/session/$SID                    # closes the app
+kill %1                                                          # stop tauri-driver
+```
+
+A full-screen screenshot (to see the video window, native dialogs, decorations):
+`cosmic-screenshot --interactive=false --modal=false --notify=false -s <dir>` (ask first).
+
+The app's stderr goes to `~/.local/share/com.comilito.app/logs/stderr.log` when it isn't a
+terminal, so GTK/WebKit messages (and `WAYLAND_DEBUG=1` output) end up there.
+
+### X11
+
+On the owner's desktop, force X11 through XWayland — same commands, started with:
+
+```bash
+env -u WAYLAND_DISPLAY GDK_BACKEND=x11 ~/.cargo/bin/tauri-driver &
+```
+
+Headless, on a virtual X display (no window on the user's desktop, no permission needed;
+needs `sudo apt install xvfb`, not yet tried here):
+
+```bash
+env -u WAYLAND_DISPLAY GDK_BACKEND=x11 xvfb-run -a -s '-screen 0 1600x1000x24' ~/.cargo/bin/tauri-driver &
+```
+
+Use X11 for anything Wayland doesn't allow apps to do (e.g. setting their own window position)
+and to check that X11 users aren't broken; Wayland is what most Linux users will run.
+
 ## Pencil
 
 - When using pencil to generate changes, before creating any code, confirm if the design is correct.
