@@ -59,7 +59,14 @@
       {#if !missing}
         <!-- Muted: a video's sound is never played (decision 0035). -->
         <!-- svelte-ignore a11y_media_has_caption -->
-        <video use:videoSource={{ video }} controls muted></video>
+        <!-- Sized by its own proportions (known from the file before it loads), within the
+             page's width and 42% of the window's height. -->
+        <video
+          use:videoSource={{ video }}
+          controls
+          muted
+          style:aspect-ratio={video.info ? `${video.info.width} / ${video.info.height}` : "16 / 9"}
+        ></video>
       {:else}
         <div class="no-preview muted">
           <TriangleAlert size={20} />
@@ -193,20 +200,26 @@
   .head :global(.fav.on) {
     color: var(--accent);
   }
+  /* The box follows the video: no fixed proportions of its own, so the picture is never
+     stretched or cropped. */
   .player {
     background: #000;
     border-radius: var(--radius);
     overflow: hidden;
-    aspect-ratio: 16 / 9;
-    max-height: 42vh;
-    display: grid;
-    place-items: center;
+    display: flex;
+    justify-content: center;
+    /* Not "stretch": the video's height comes from its own proportions. */
+    align-items: flex-start;
+    min-height: 6rem;
   }
+  /* Width and height both auto, with only maximums: the browser keeps the video's own
+     proportions (its file's, or `aspect-ratio` until it loads) while fitting both limits. */
   .player video {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
     display: block;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 42vh;
   }
   .no-preview {
     display: flex;
