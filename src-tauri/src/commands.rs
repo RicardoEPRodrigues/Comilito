@@ -71,7 +71,9 @@ pub fn app_version() -> String {
 pub fn confirm_quit(app: AppHandle, state: AppStateRef) -> Result<(), String> {
     lock(&state)?.quitting = true;
     // The lock is released at the end of the line above: closing the window runs the
-    // window-event handler, which takes it again.
+    // window-event handler, which takes it again. The video window must go too, or the app
+    // wouldn't exit.
+    crate::video_window::close(&app);
     match app.get_webview_window("main") {
         Some(window) => window.close().map_err(|e| e.to_string()),
         None => {
@@ -97,8 +99,14 @@ pub fn set_preferences(mut prefs: Preferences, app: AppHandle, state: AppStateRe
     // Rust keeps the recent list (see Preferences::recent_projects).
     prefs.recent_projects = std::mem::take(&mut s.prefs.recent_projects);
     let output_changed = prefs.playback.output_device != s.prefs.playback.output_device;
+    let video_turned_off = s.prefs.video.enabled && !prefs.video.enabled;
     s.prefs = prefs;
     s.save_prefs()?;
+    // The video window (decision 0035) follows its settings live.
+    let _ = app.emit("preferences-changed", &s.prefs);
+    if video_turned_off {
+        crate::video_window::close(&app);
+    }
     if output_changed {
         let device = s.prefs.playback.output_device.clone();
         let problems = s.switch_output(device.as_deref());
@@ -1974,6 +1982,8 @@ pub fn stop_all(app: AppHandle, state: AppStateRef) -> Result<(), String> {
     let mut s = lock(&state)?;
     let fade = millis(s.prefs.playback.stop_fade_ms);
     s.engine.stop_all(fade);
+    // Esc blanks the video window too (decision 0035), video effect included.
+    s.video_effect = None;
     emit_state(&app, &s, Vec::new());
     Ok(())
 }

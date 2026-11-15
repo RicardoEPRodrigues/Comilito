@@ -65,6 +65,11 @@ pub struct AppState {
     pub conversion_process: Option<Arc<Mutex<Child>>>,
     /// New videos to look at, and those to offer for conversion.
     pub video_offers: crate::video_convert::Offers,
+    /// The video window (video_window.rs): whether it's open, the video effect it's playing,
+    /// and where each video stopped (ms), kept while the app runs.
+    pub video_window_open: bool,
+    pub video_effect: Option<String>,
+    pub video_positions: HashMap<String, u64>,
     /// Waveform peaks of recently viewed files, keyed by path and modification time.
     pub waveforms: Vec<(String, Arc<crate::waveform::Peaks>)>,
 }
@@ -210,6 +215,9 @@ pub struct Snapshot {
     pub analyzing_remaining: usize,
     pub folders: PerCategory<Vec<String>>,
     pub video_folders: Vec<String>,
+    /// The video window (decision 0035): open or not, and the video effect it's playing.
+    pub video_window_open: bool,
+    pub video_effect: Option<String>,
     pub stack_status: StackStatus,
     /// Preset groups in display order (including empty ones).
     pub preset_groups: Vec<String>,
@@ -342,6 +350,8 @@ impl AppState {
         self.engine.stop_all(Duration::from_millis(200));
         self.engine.clear_cache();
         self.open = None;
+        self.video_effect = None;
+        self.video_positions.clear();
         Ok(())
     }
 
@@ -432,6 +442,8 @@ impl AppState {
                     .count(),
                 folders: open.folders.clone(),
                 video_folders: open.video_folders.clone(),
+                video_window_open: self.video_window_open,
+                video_effect: self.video_effect.clone(),
                 stack_status: open.project.stack_status(),
                 preset_groups: open.project.all_preset_groups(),
                 levels_fade_ms: open.levels_fade_ms,
@@ -447,6 +459,8 @@ impl AppState {
                 analyzing_remaining: 0,
                 folders: PerCategory::default(),
                 video_folders: Vec::new(),
+                video_window_open: self.video_window_open,
+                video_effect: None,
                 stack_status: StackStatus::Empty,
                 preset_groups: Vec::new(),
                 levels_fade_ms: 0,

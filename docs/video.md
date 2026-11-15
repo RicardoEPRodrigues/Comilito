@@ -39,6 +39,25 @@ whole feature can be turned off in Preferences › Video.
   the original goes to the trash, or stays as a video of its own ("(original)").
 - Conversions aren't resumed after a restart; the video stays marked "may not play".
 
+## The video window
+
+- A second Tauri window, labelled `video`, without a title bar; `main.ts` mounts
+  `VideoWindow.svelte` in it instead of the app. Its top bar (shown while the pointer moves)
+  is the drag handle; double-click or F toggles fullscreen; it has a screen picker and a close
+  button. The screen and fullscreen are remembered in the preferences, and the window-state
+  plugin remembers its size and place.
+- Rust decides what should show: `TargetMix::video` (the playlist with its settings filled in),
+  the transport and the playing video effect, all in the snapshot. The window decides the rest:
+  the play order (shuffled per pass, never the same video twice in a row), switching after N
+  minutes of play (paused time doesn't count), resuming, and the crossfades (two `<video>`
+  layers; a third above them for video effects).
+- Where each video stopped is sent to Rust every few seconds and when it's switched away, so
+  closing and reopening the window resumes too. It's cleared when the project closes.
+- The window reports what it shows about once a second (`video-status` event), for the bottom
+  bar's now-playing.
+- Closing the main window closes the video window (the app only exits when every window is
+  closed).
+
 ## Build plan
 
 Each step is committed and can be tried on its own.
@@ -50,10 +69,10 @@ Each step is committed and can be tried on its own.
 3. [x] Measuring videos with ffprobe, the conversion queue, and the Convert dialog (on import,
    on drop and for files found in the folder).
 4. [x] The scene editor's Video section and video effects, and the drawer's Video column.
-5. [ ] The video window: a second window that plays the top scene's videos, follows Space and
+5. [x] The video window: a second window that plays the top scene's videos, follows Space and
    Esc, has the header button and the bottom bar's now-playing.
-6. [ ] Playlists: shuffle, switching every N minutes, resuming, crossfades.
-7. [ ] Video effects on the right column, sharing the space with the sound effects.
+6. [x] Playlists: shuffle, switching every N minutes, resuming, crossfades.
+7. [x] Video effects on the right column, sharing the space with the sound effects.
 8. [ ] The video downloader.
 9. [ ] Preferences › Video, Project settings, export and backups with videos, and the on/off
    switch hiding everything.

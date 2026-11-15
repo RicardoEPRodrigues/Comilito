@@ -28,6 +28,23 @@ pub struct TargetMix {
     pub volumes_scene: Option<String>,
     /// Music, ambience and effects track volumes.
     pub volumes: PerCategory<f32>,
+    /// What the video window shows (decision 0035): the top-most enabled scene with videos.
+    /// `None` (a black screen) when there's none, or a scene above hides it.
+    pub video: Option<VideoTarget>,
+    /// Video effects pad: video ids of every enabled scene, top scene first, without repeats.
+    pub video_effects: Vec<String>,
+}
+
+/// A scene's video playlist with every inherited setting filled in.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VideoTarget {
+    pub entry_id: String,
+    pub scene_id: String,
+    pub videos: Vec<String>,
+    pub shuffle: bool,
+    pub switch_minutes: u32,
+    pub resume: bool,
 }
 
 /// Computes the target mix from the project's stack.
@@ -100,7 +117,32 @@ pub fn target_mix(project: &Project) -> TargetMix {
                 mix.effects.push(id.clone());
             }
         }
+        for id in &scene.video_effects {
+            if !mix.video_effects.contains(id) {
+                mix.video_effects.push(id.clone());
+            }
+        }
     }
+
+    // Video: the same rule as music. The top-most scene with videos shows them; a scene above
+    // without videos lets them through, unless it hides them.
+    let has_videos = |scene: &Scene| scene.video.as_ref().is_some_and(|v| !v.videos.is_empty());
+    let d = &project.defaults.video;
+    mix.video = enabled
+        .iter()
+        .rev()
+        .find(|(_, scene)| has_videos(scene) || scene.hides_video)
+        .and_then(|(entry_id, scene)| {
+            let playlist = scene.video.as_ref().filter(|v| !v.videos.is_empty())?;
+            Some(VideoTarget {
+                entry_id: entry_id.to_string(),
+                scene_id: scene.id.clone(),
+                videos: playlist.videos.clone(),
+                shuffle: playlist.shuffle.unwrap_or(d.shuffle),
+                switch_minutes: playlist.switch_minutes.unwrap_or(d.switch_minutes),
+                resume: playlist.resume.unwrap_or(d.resume),
+            })
+        });
 
     mix
 }
@@ -190,6 +232,47 @@ mod tests {
 
     fn approx(a: f32, b: f32) -> bool {
         (a - b).abs() < 1e-5
+    }
+
+    #[test]
+    fn the_top_most_scene_with_videos_shows_them() {
+        let mut p = example_project();
+        p.scenes[0].video = Some(crate::project::VideoPlaylist { videos: vec!["dusk".into()], ..Default::default() });
+        p.scenes[2].video = Some(crate::project::VideoPlaylist {
+            videos: vec!["fire".into()],
+            switch_minutes: Some(2),
+            ..Default::default()
+        });
+        p.scenes[1].video_effects = vec!["flash".into()];
+        set_stack(&mut p, &[("music", true), ("forest", true)]);
+
+        // Forest has no videos: Music's show through, with the project's defaults.
+        let mix = target_mix(&p);
+        let video = mix.video.unwrap();
+        assert_eq!((video.scene_id.as_str(), video.videos.as_slice()), ("music", &["dusk".to_string()][..]));
+        assert_eq!((video.switch_minutes, video.resume, video.shuffle), (5, true, false));
+        assert_eq!(mix.video_effects, ["flash"]);
+
+        // Combat on top has its own, with its own switch interval.
+        set_stack(&mut p, &[("music", true), ("forest", true), ("combat", true)]);
+        let video = target_mix(&p).video.unwrap();
+        assert_eq!(video.scene_id, "combat");
+        assert_eq!(video.switch_minutes, 2);
+
+        // A disabled scene doesn't count.
+        set_stack(&mut p, &[("music", true), ("combat", false)]);
+        assert_eq!(target_mix(&p).video.unwrap().scene_id, "music");
+    }
+
+    #[test]
+    fn a_scene_can_hide_the_video_below() {
+        let mut p = example_project();
+        p.scenes[0].video = Some(crate::project::VideoPlaylist { videos: vec!["dusk".into()], ..Default::default() });
+        p.scenes[1].hides_video = true;
+        set_stack(&mut p, &[("music", true), ("forest", true)]);
+        assert_eq!(target_mix(&p).video, None);
+        set_stack(&mut p, &[("forest", true), ("music", true)]);
+        assert!(target_mix(&p).video.is_some(), "only scenes above hide it");
     }
 
     #[test]

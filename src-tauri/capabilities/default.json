@@ -3,10 +3,12 @@
   "identifier": "default",
   "description": "Permissions for the main window",
   "windows": [
-    "main"
+    "main",
+    "video"
   ],
   "permissions": [
     "core:default",
+    "core:window:allow-start-dragging",
     "dialog:default",
     "opener:allow-open-url",
     "opener:allow-default-urls"

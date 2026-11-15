@@ -29,6 +29,7 @@ import type {
   Shelf,
   Video,
   ConversionJob,
+  Screen,
 } from "./types";
 
 export const api = {
@@ -148,6 +149,15 @@ export const api = {
   cancelConversion: (id: string) => invoke<void>("cancel_conversion", { id }),
   clearConversions: () => invoke<void>("clear_conversions"),
   listConversions: () => invoke<ConversionJob[]>("list_conversions"),
+  toggleVideoWindow: () => invoke<void>("toggle_video_window"),
+  showVideoWindow: () => invoke<void>("show_video_window"),
+  listScreens: () => invoke<Screen[]>("list_screens"),
+  setVideoScreen: (name: string) => invoke<void>("set_video_screen", { name }),
+  setVideoFullscreen: (on: boolean) => invoke<void>("set_video_fullscreen", { on }),
+  playVideoEffect: (id: string) => invoke<void>("play_video_effect", { id }),
+  videoEffectEnded: (id: string) => invoke<void>("video_effect_ended", { id }),
+  saveVideoPosition: (id: string, positionMs: number) => invoke<void>("save_video_position", { id, positionMs: Math.round(positionMs) }),
+  videoPositions: () => invoke<Record<string, number>>("video_positions"),
 
   // Scenes
   createScene: (name: string, group: string | null) =>

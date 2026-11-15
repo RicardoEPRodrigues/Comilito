@@ -27,6 +27,7 @@ import type {
   ToolsStatus,
   ConversionJob,
   ConvertOffer,
+  VideoStatus,
 } from "./types";
 
 /** Windows shown over everything (modals). */
@@ -139,6 +140,8 @@ export const ui = $state({
   downloads: [] as DownloadJob[],
   /** Videos being converted to WebM, and a batch offered for conversion (decision 0035). */
   conversions: [] as ConversionJob[],
+  /** What the video window last said it's showing (for the bottom bar). */
+  videoStatus: null as VideoStatus | null,
   convertOffer: null as ConvertOffer | null,
   tools: null as ToolsStatus | null,
   toolsProgress: null as InstallProgress | null,
@@ -274,6 +277,13 @@ export async function init() {
   });
   await listen<ConversionJob[]>("conversions-changed", (e) => {
     ui.conversions = e.payload;
+  });
+  await listen<VideoStatus>("video-status", (e) => {
+    ui.videoStatus = e.payload;
+  });
+  // Settings changed from the video window (its screen or fullscreen).
+  await listen<Preferences>("preferences-changed", (e) => {
+    ui.prefs = e.payload;
   });
   await listen<ConvertOffer>("convert-offer", (e) => {
     // A second batch while the dialog is open joins the first.

@@ -92,14 +92,16 @@ Stack indexes count from the bottom (0 = bottom), like `stack` in `comilito.json
 | Scenes | `create_scene(name, group)`, `update_scene(scene)`, `duplicate_scene(id)`, `delete_scene(id)`, `scene_set_group(scene_id, group)`, `scene_group_rename(from, to)`, `scene_group_ungroup(name)`, `set_layer_volume(scene_id, layer_index, volume)`, `set_layer_role(scene_id, layer_index, role)`, `add_sound_to_scene(scene_id, sound_id)`, `remove_sound_from_scene(scene_id, sound_id)`, `remove_missing_sounds` |
 | Stack | `stack_insert(scene_id, index, mode)`, `stack_move(entry_id, index)`, `stack_remove(entry_id)`, `stack_set_enabled(entry_id, enabled)`, `stack_switch(scene_id)`, `scene_hotkey(scene_id)` |
 | Presets | `preset_save(name)`, `preset_load(preset_id)`, `preset_insert(preset_id, index)`, `preset_rename(preset_id, name)`, `preset_delete(preset_id)` |
-| Videos ([0035](decisions/0035-video.md), in `video.rs`) | `add_videos(folder, paths)` → new ids, `update_videos(videos)` (name, tags, favourite), `remove_video(id, permanently)`, `move_videos(ids, folder)`, `reveal_video(id)`, `relink_video(id, path)`, `add_video_to_scene(scene_id, video_id)`. Library folder commands take a *shelf*: an audio category or `"video"`. Converting (`video_convert.rs`): `convert_videos(ids, keep_originals)`, `cancel_conversion(id)`, `clear_conversions`, `list_conversions` |
+| Videos ([0035](decisions/0035-video.md), in `video.rs`) | `add_videos(folder, paths)` → new ids, `update_videos(videos)` (name, tags, favourite), `remove_video(id, permanently)`, `move_videos(ids, folder)`, `reveal_video(id)`, `relink_video(id, path)`, `add_video_to_scene(scene_id, video_id)`. Library folder commands take a *shelf*: an audio category or `"video"`. Converting (`video_convert.rs`): `convert_videos(ids, keep_originals)`, `cancel_conversion(id)`, `clear_conversions`, `list_conversions`. The video window (`video_window.rs`): `toggle_video_window`, `show_video_window`, `list_screens`, `set_video_screen(name)`, `set_video_fullscreen(on)`, `play_video_effect(id)`, `video_effect_ended(id)`, `save_video_position(id, position_ms)`, `video_positions` |
 | Transport | `toggle_play`, `stop_all` |
 | Appearance | `desktop_appearance`, `list_user_themes`, `save_user_theme(theme)`, `delete_user_theme(id)`, `import_theme(path)` (a `.comilito-theme` package or a plain `.json`), `export_theme(theme, dest)` (writes a package), `read_theme_asset(name)` → raw bytes of a font or watermark a theme brought, `add_theme_file(path, role)` → stored name of a file picked in the theme editor ([themes.md](themes.md)) |
 
 Events from Rust to UI: `state-changed` (a `Snapshot`), `notice` (a message string),
 `projects-move-progress` and `projects-moved` (moving the projects folder, decision 0024),
 `quit-requested` (a list of what's still running; see below), `conversions-changed` and
-`convert-offer` (videos to convert, decision 0035), plus the download and tools events.
+`convert-offer` (videos to convert, decision 0035), `preferences-changed` (so the video window
+follows its settings), plus the download and tools events. The video window itself sends
+`video-status` (what it shows) to the main window.
 
 ### Quitting
 

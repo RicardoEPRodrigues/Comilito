@@ -7,7 +7,8 @@
   //   …or the full-screen Library workspace                        ← "library" view
   //   Library drawer (tapestry view only)
   //   mixer bar
-  import { Download, Info, Library, Settings2, SlidersHorizontal, X } from "@lucide/svelte";
+  import { Download, Info, Library, MonitorPlay, Settings2, SlidersHorizontal, X } from "@lucide/svelte";
+  import { videoEnabled } from "../lib/video";
   import { api } from "../lib/api";
   import { exportProject, relinkFromFolder } from "../lib/actions";
   import { askText, confirmAction, run, showView, ui } from "../lib/store.svelte";
@@ -70,6 +71,12 @@
       </span>
     {/if}
     <nav>
+      {#if videoEnabled()}
+        <!-- Decision 0035: opens or closes the video window (for a TV or projector). -->
+        <button class="video-toggle" class:on={snapshot.videoWindowOpen} title={snapshot.videoWindowOpen ? "Close the video window" : "Open the video window"} onclick={() => run(api.toggleVideoWindow())}>
+          <MonitorPlay size={17} />Video
+        </button>
+      {/if}
       <button class="icon" class:on={ui.view === "library"} title="Library workspace" onclick={() => showView(ui.view === "library" ? "tapestry" : "library")}>
         <Library size={18} />
       </button>
@@ -179,6 +186,18 @@
   nav {
     display: flex;
     gap: 0.15rem;
+    align-items: center;
+  }
+  .video-toggle {
+    color: inherit;
+    border-color: transparent;
+    padding: 0.3rem 0.6rem;
+    margin-right: 0.3rem;
+    font-size: 0.66rem;
+  }
+  .video-toggle.on {
+    border-color: currentColor;
+    background: color-mix(in srgb, currentColor 18%, transparent);
   }
   nav .on {
     background: color-mix(in srgb, currentColor 18%, transparent);

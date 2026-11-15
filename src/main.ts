@@ -9,8 +9,12 @@ import "@fontsource/pirata-one/latin-400.css";
 import "@fontsource/medievalsharp/latin-400.css";
 import "@fontsource-variable/inter/index.css";
 import "./app.css";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import App from "./App.svelte";
+import VideoWindow from "./components/VideoWindow.svelte";
 
-const app = mount(App, { target: document.getElementById("app")! });
+// Both windows load this page. The video window (decision 0035) shows only the player.
+const isVideoWindow = getCurrentWebviewWindow().label === "video";
+const app = mount(isVideoWindow ? VideoWindow : App, { target: document.getElementById("app")! });
 
 export default app;

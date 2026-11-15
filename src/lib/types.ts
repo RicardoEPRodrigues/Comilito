@@ -235,6 +235,38 @@ export interface TargetMix {
   /** The scene whose category volumes play (the top-most enabled one), if any. */
   volumesScene: string | null;
   volumes: PerCategory<number>;
+  /** What the video window shows: the top-most enabled scene with videos (null: black). */
+  video: VideoTarget | null;
+  /** Video effects of the enabled scenes, top scene first. */
+  videoEffects: string[];
+}
+
+/** A scene's playlist with the inherited settings filled in (decision 0035). */
+export interface VideoTarget {
+  entryId: string;
+  sceneId: string;
+  videos: string[];
+  shuffle: boolean;
+  switchMinutes: number;
+  resume: boolean;
+}
+
+/** Sent by the video window about once a second, for the bottom bar. */
+export interface VideoStatus {
+  videoId: string | null;
+  sceneId: string | null;
+  positionMs: number;
+  /** Until the next video, when switching is on and there's more than one. */
+  switchInMs: number | null;
+  /** The video effect playing over the playlist, if any. */
+  effect: string | null;
+}
+
+export interface Screen {
+  name: string;
+  width: number;
+  height: number;
+  primary: boolean;
 }
 
 export interface PlaybackInfo {
@@ -267,6 +299,9 @@ export interface Snapshot {
   folders: PerCategory<string[]>;
   /** Subfolders of `video/`. */
   videoFolders: string[];
+  videoWindowOpen: boolean;
+  /** The video effect playing in the video window. */
+  videoEffect: string | null;
   stackStatus: StackStatus;
   presetGroups: string[];
 }

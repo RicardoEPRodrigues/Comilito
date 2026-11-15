@@ -27,7 +27,9 @@
     X,
     AudioLines,
     Zap,
+    Film,
   } from "@lucide/svelte";
+  import { videoEnabled } from "../lib/video";
   import { api } from "../lib/api";
   import { clearTapestry, insertScene, revertToOrigin, saveTapestryAsPreset, updateOriginPreset } from "../lib/actions";
   import { focusOn, percent, presetById, project as currentProject, run, sceneById, soundById, ui } from "../lib/store.svelte";
@@ -311,6 +313,16 @@
             <span class="status"><Pause size={11} />Covered</span>
           {:else if scene?.blocksMusic && entry.enabled && !scene.music?.tracks.length}
             <span class="status"><VolumeX size={11} />Silence</span>
+          {/if}
+          {#if videoEnabled() && entry.enabled && scene}
+            <!-- The video follows the same rule as music (decision 0035). -->
+            {#if snapshot.mix.video?.entryId === entry.id}
+              <span class="status playing" title="Its video shows in the video window"><Film size={11} />Video</span>
+            {:else if scene.video?.videos.length}
+              <span class="status" title="A scene above shows its own video, or hides it"><Film size={11} />Covered</span>
+            {:else if scene.hidesVideo}
+              <span class="status" title="Hides the video of the scenes below"><Film size={11} />Hides video</span>
+            {/if}
           {/if}
           <button class="icon" title={expanded.has(entry.id) ? "Collapse" : "Show sounds"} onclick={() => toggleExpanded(entry.id)}>
             {#if expanded.has(entry.id)}<ChevronUp size={18} />{:else}<ChevronDown size={18} />{/if}

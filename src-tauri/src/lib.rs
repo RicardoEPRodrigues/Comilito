@@ -18,6 +18,7 @@ mod themes;
 mod tools;
 mod video;
 mod video_convert;
+mod video_window;
 mod waveform;
 
 use std::{
@@ -125,6 +126,9 @@ pub fn run() {
                 conversion_wakeup: Some(conversion_wakeup),
                 conversion_process: None,
                 video_offers: Default::default(),
+                video_window_open: false,
+                video_effect: None,
+                video_positions: Default::default(),
                 waveforms: Vec::new(),
             }));
 
@@ -145,6 +149,17 @@ pub fn run() {
         // Closing the main window quits the app. If that would cut off work (downloads, a
         // backup...), the close is held back and the UI asks first (`confirm_quit`).
         .on_window_event(|window, event| {
+            // The video window closed (its ✕, or the header button): tell the main window.
+            if let WindowEvent::Destroyed = event
+                && window.label() == video_window::LABEL
+            {
+                let state = window.state::<Mutex<AppState>>();
+                if let Ok(mut s) = state.lock() {
+                    s.video_window_open = false;
+                    emit_state(window.app_handle(), &s, Vec::new());
+                }
+                return;
+            }
             if let WindowEvent::CloseRequested { api, .. } = event
                 && window.label() == "main"
             {
@@ -159,6 +174,8 @@ pub fn run() {
                     let _ = window.emit("quit-requested", work);
                 } else {
                     s.quitting = true;
+                    // The app only exits once every window is closed.
+                    video_window::close(window.app_handle());
                 }
             }
         })
@@ -175,6 +192,15 @@ pub fn run() {
             video_convert::cancel_conversion,
             video_convert::clear_conversions,
             video_convert::list_conversions,
+            video_window::toggle_video_window,
+            video_window::show_video_window,
+            video_window::list_screens,
+            video_window::set_video_screen,
+            video_window::set_video_fullscreen,
+            video_window::play_video_effect,
+            video_window::video_effect_ended,
+            video_window::save_video_position,
+            video_window::video_positions,
             commands::app_version,
             commands::get_state,
             commands::get_preferences,

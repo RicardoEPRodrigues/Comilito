@@ -1,8 +1,10 @@
 <script lang="ts">
   // Right panel: buttons for the effects of every enabled scene, top scene first.
-  // Clicking an effect plays it; clicking it again while it plays stops it.
+  // Clicking an effect plays it; clicking it again while it plays stops it. Below them, the
+  // video effects (decision 0035), which share the column.
   import { fitText } from "../lib/fit";
-  import { Zap } from "@lucide/svelte";
+  import { Film, Zap } from "@lucide/svelte";
+  import { videoById, videoEnabled } from "../lib/video";
   import { api } from "../lib/api";
   import { run, sceneById, soundById, ui } from "../lib/store.svelte";
 
@@ -21,40 +23,77 @@
 </script>
 
 <aside>
-  <h2 class="display" use:fitText>Effects</h2>
-  {#if sources.length}<span class="caps source">From {[...new Set(sources)].join(" · ")}</span>{/if}
-  {#if snapshot.mix.effects.length === 0}
-    <p class="muted">The effects of the scenes in the tapestry appear here.</p>
-  {/if}
-  <div class="pad">
-    {#each snapshot.mix.effects as id (id)}
-      {@const sound = soundById(id)}
-      {#if sound}
-        <button
-          class:active={playing.has(id)}
-          disabled={missing.has(id)}
-          onclick={() => run(api.toggleEffect(id))}
-          title={playing.has(id) ? "Click to stop" : "Play"}
-        >
-          <Zap size={13} />
-          <span>{sound.name}</span>
-        </button>
-      {/if}
-    {/each}
+  <!-- Sound effects take the room the video effects leave, and scroll in it. -->
+  <div class="area sounds">
+    <h2 class="display" use:fitText>Effects</h2>
+    {#if sources.length}<span class="caps source">From {[...new Set(sources)].join(" · ")}</span>{/if}
+    {#if snapshot.mix.effects.length === 0}
+      <p class="muted">The effects of the scenes in the tapestry appear here.</p>
+    {/if}
+    <div class="pad">
+      {#each snapshot.mix.effects as id (id)}
+        {@const sound = soundById(id)}
+        {#if sound}
+          <button
+            class:active={playing.has(id)}
+            disabled={missing.has(id)}
+            onclick={() => run(api.toggleEffect(id))}
+            title={playing.has(id) ? "Click to stop" : "Play"}
+          >
+            <Zap size={13} />
+            <span>{sound.name}</span>
+          </button>
+        {/if}
+      {/each}
+    </div>
   </div>
+  {#if videoEnabled() && snapshot.mix.videoEffects.length > 0}
+    <!-- Video effects (decision 0035): as tall as they need, up to half the column. -->
+    <div class="area videos">
+      <h2 class="display" use:fitText>Video effects</h2>
+      <span class="caps source">Replaces the scene's video until it ends</span>
+      <div class="pad">
+        {#each snapshot.mix.videoEffects as id (id)}
+          {@const video = videoById(id)}
+          {#if video}
+            {@const on = snapshot.videoEffect === id}
+            <button class:active={on} disabled={missing.has(id)} onclick={() => run(api.playVideoEffect(id))} title={on ? "Click to stop it" : "Play it in the video window"}>
+              <Film size={13} />
+              <span>{video.name}</span>
+            </button>
+          {/if}
+        {/each}
+      </div>
+    </div>
+  {/if}
 </aside>
 
 <style>
   aside {
     background: var(--fx-bg);
     border-left: 1px solid var(--rule);
-    padding: 1.4rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+  }
+  .area {
     display: flex;
     flex-direction: column;
     gap: 0.7rem;
+    padding: 1.4rem 1.1rem;
     min-height: 0;
-    min-width: 0;
     overflow: auto;
+  }
+  /* Basis 0: the sound effects get only the room left over, never pushing the videos out. */
+  .area.sounds {
+    flex: 1 1 0;
+  }
+  .area.videos {
+    flex: 0 0 auto;
+    max-height: 50%;
+    padding-top: 1rem;
+    border-top: 1px solid var(--rule);
   }
   h2 {
     font-size: 1.9rem;

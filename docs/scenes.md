@@ -87,6 +87,14 @@ project-wide ([0028](decisions/0028-scene-volumes.md)).
 Shows the effects of every enabled scene in the stack, top scene first. Clicking an effect plays
 it; clicking it again while it's still playing stops it (with its fade-out).
 
+### Video
+
+Scenes can have videos ([0035](decisions/0035-video.md), [video.md](video.md)). The same rule
+as music decides what the video window shows: the top-most enabled scene with videos. A scene
+without videos lets the video below show through, unless its *Hide the video of the scenes
+below* switch is on (a black screen). Video effects of every enabled scene are listed under the
+effects pad. Space pauses the video with the sound; Esc blanks it.
+
 ### Same sound in several scenes
 
 A sound plays only once. If several enabled stack entries contain it, the **highest** entry's

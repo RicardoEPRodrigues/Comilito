@@ -2,7 +2,9 @@
   // Bottom bar: play/pause and stop, the project's master volume, and the category volumes
   // of the top-most enabled scene (decision 0028). While a sound is previewed, a chip names it
   // and stops it, wherever it was started from.
-  import { Headphones, Pause, Play, Square } from "@lucide/svelte";
+  import { Film, Headphones, Pause, Play, Square } from "@lucide/svelte";
+  import { videoById, videoEnabled } from "../lib/video";
+  import { formatDuration } from "../lib/store.svelte";
   import { api } from "../lib/api";
   import { run, sceneById, soundById, ui } from "../lib/store.svelte";
   import { CATEGORIES } from "../lib/types";
@@ -13,6 +15,18 @@
   const transport = $derived(ui.snapshot!.playback.transport);
   const topScene = $derived(mix.volumesScene ? sceneById(mix.volumesScene) : undefined);
   const previewing = $derived(ui.snapshot!.playback.preview ? soundById(ui.snapshot!.playback.preview) : undefined);
+
+  // The video window's report (about once a second): the video, or the video effect, showing.
+  const status = $derived(ui.videoStatus);
+  const nowVideo = $derived(status?.effect ? videoById(status.effect) : status?.videoId ? videoById(status.videoId) : undefined);
+  const nowMeta = $derived.by(() => {
+    if (!status) return "";
+    if (status.effect) return "Video effect";
+    const scene = status.sceneId ? ui.snapshot?.project?.scenes.find((s) => s.id === status.sceneId)?.name : null;
+    const parts = ["Video", scene, formatDuration(status.positionMs)];
+    if (status.switchInMs !== null) parts.push(`switches in ${formatDuration(status.switchInMs)}`);
+    return parts.filter(Boolean).join(" · ");
+  });
 </script>
 
 <footer>
@@ -42,6 +56,16 @@
     </div>
   </div>
   <span class="spacer"></span>
+  {#if videoEnabled() && ui.snapshot!.videoWindowOpen && nowVideo}
+    <!-- What the video window shows (decision 0035); clicking brings the window forward. -->
+    <button class="now-video" onclick={() => run(api.showVideoWindow())} title="Bring the video window forward">
+      <Film size={14} />
+      <span class="text">
+        <span class="name">{nowVideo.name}</span>
+        <span class="meta">{nowMeta}</span>
+      </span>
+    </button>
+  {/if}
   {#if previewing}
     <button class="preview" onclick={() => run(api.stopPreview())} title="Stop the preview">
       <Headphones size={14} /><span class="name">{previewing.name}</span><Square size={11} />
@@ -53,6 +77,36 @@
 </footer>
 
 <style>
+  .now-video {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    max-width: 18rem;
+    padding: 0.3rem 0.6rem;
+    color: inherit;
+    border-color: color-mix(in srgb, currentColor 25%, transparent);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .now-video .text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+  }
+  .now-video .name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    max-width: 15rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .now-video .meta {
+    font-size: 0.68rem;
+    opacity: 0.7;
+    white-space: nowrap;
+  }
   footer {
     display: flex;
     align-items: center;
