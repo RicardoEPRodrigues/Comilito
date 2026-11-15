@@ -25,6 +25,8 @@ import type {
   StackPreset,
   Theme,
   ToolsStatus,
+  ConversionJob,
+  ConvertOffer,
 } from "./types";
 
 /** Windows shown over everything (modals). */
@@ -135,6 +137,9 @@ export const ui = $state({
   /** The active theme's own watermark as a blob: URL, or null for the skeletal horse. */
   themeWatermark: null as string | null,
   downloads: [] as DownloadJob[],
+  /** Videos being converted to WebM, and a batch offered for conversion (decision 0035). */
+  conversions: [] as ConversionJob[],
+  convertOffer: null as ConvertOffer | null,
   tools: null as ToolsStatus | null,
   toolsProgress: null as InstallProgress | null,
   /** Registered by an in-place editor with unsaved changes; see `leaveFocus`. */
@@ -267,6 +272,14 @@ export async function init() {
   await listen<DownloadJob[]>("downloads-changed", (e) => {
     ui.downloads = e.payload;
   });
+  await listen<ConversionJob[]>("conversions-changed", (e) => {
+    ui.conversions = e.payload;
+  });
+  await listen<ConvertOffer>("convert-offer", (e) => {
+    // A second batch while the dialog is open joins the first.
+    const open = ui.convertOffer;
+    ui.convertOffer = open ? { ...open, ids: [...new Set([...open.ids, ...e.payload.ids])] } : e.payload;
+  });
   await listen<{ doneBytes: number; totalBytes: number; current: string }>("projects-move-progress", (e) => {
     ui.moving = e.payload;
   });
@@ -285,12 +298,14 @@ export async function init() {
     });
     if (answer?.choice === "quit") await run(api.confirmQuit());
   });
-  const [snapshot, prefs, desktop, downloads] = await Promise.all([
+  const [snapshot, prefs, desktop, downloads, conversions] = await Promise.all([
     api.getState(),
     api.getPreferences(),
     api.desktopAppearance(),
     api.listDownloads(),
+    api.listConversions(),
   ]);
+  ui.conversions = conversions;
   ui.snapshot = snapshot;
   ui.prefs = prefs;
   ui.desktop = desktop;

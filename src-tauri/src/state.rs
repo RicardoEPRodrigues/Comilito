@@ -58,6 +58,13 @@ pub struct AppState {
     pub backing_up: bool,
     /// Set once the app is really quitting (the user confirmed, or nothing was busy).
     pub quitting: bool,
+    /// Videos being converted to WebM (video_convert.rs), how to wake that worker, and its
+    /// running ffmpeg (stopped on quit).
+    pub conversions: Vec<crate::video_convert::ConversionJob>,
+    pub conversion_wakeup: Option<mpsc::Sender<()>>,
+    pub conversion_process: Option<Arc<Mutex<Child>>>,
+    /// New videos to look at, and those to offer for conversion.
+    pub video_offers: crate::video_convert::Offers,
     /// Waveform peaks of recently viewed files, keyed by path and modification time.
     pub waveforms: Vec<(String, Arc<crate::waveform::Peaks>)>,
 }
@@ -245,6 +252,17 @@ impl AppState {
         if self.backing_up {
             work.push("Writing a backup. It would be left incomplete.".to_string());
         }
+        let converting = self
+            .conversions
+            .iter()
+            .filter(|j| matches!(j.status, crate::downloads::JobStatus::Queued | crate::downloads::JobStatus::Running))
+            .count();
+        if converting > 0 {
+            work.push(format!(
+                "Converting {}. Stopped now, they stay as they were (marked \"may not play\").",
+                plural(converting, "video", "videos")
+            ));
+        }
         if let Some(open) = &self.open {
             let hashing = open
                 .project
@@ -275,6 +293,7 @@ impl AppState {
         self.not_moving()?;
         let project = storage::load_project(&dir)?;
         self.close_project()?;
+        crate::video_convert::clean_leftovers(&dir);
 
         let missing = all_missing(&dir, &project);
         let mix = target_mix(&project);

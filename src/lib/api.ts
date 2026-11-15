@@ -28,6 +28,7 @@ import type {
   WaveformView,
   Shelf,
   Video,
+  ConversionJob,
 } from "./types";
 
 export const api = {
@@ -142,6 +143,10 @@ export const api = {
   moveVideos: (ids: string[], folder: string) => invoke<void>("move_videos", { ids, folder }),
   revealVideo: (id: string) => invoke<void>("reveal_video", { id }),
   relinkVideo: (id: string, path: string) => invoke<void>("relink_video", { id, path }),
+  convertVideos: (ids: string[], keepOriginals: boolean) => invoke<void>("convert_videos", { ids, keepOriginals }),
+  cancelConversion: (id: string) => invoke<void>("cancel_conversion", { id }),
+  clearConversions: () => invoke<void>("clear_conversions"),
+  listConversions: () => invoke<ConversionJob[]>("list_conversions"),
 
   // Scenes
   createScene: (name: string, group: string | null) =>

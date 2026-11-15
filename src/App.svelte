@@ -12,6 +12,7 @@
   import SaveTapestryDialog from "./components/SaveTapestryDialog.svelte";
   import FileDropImport from "./components/FileDropImport.svelte";
   import MovingProjects from "./components/MovingProjects.svelte";
+  import ConvertVideos from "./components/ConvertVideos.svelte";
 
   let ready = $state(false);
   /** Bumped when the OS light/dark preference changes, to re-run the theme effect. */
@@ -117,6 +118,10 @@
 <Editors />
 <SaveTapestryDialog />
 <FileDropImport />
+{#if ui.convertOffer && ui.snapshot?.project}
+  <!-- Keyed by the first video, so a new offer starts with fresh ticks. -->
+  {#key ui.convertOffer.ids[0]}<ConvertVideos />{/key}
+{/if}
 <MovingProjects />
 <Dialog />
 <ContextMenu />

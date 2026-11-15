@@ -1114,6 +1114,10 @@ pub fn import_dropped_file(
     };
     open.folders = storage::list_folders(&open.dir);
     open.video_folders = crate::video::list_folders(&open.dir);
+    // `open` isn't used after this point, so `s` can be borrowed again.
+    if shelf == Shelf::Video {
+        crate::video_convert::note_new(&mut s, std::slice::from_ref(&id), crate::video_convert::Origin::Added);
+    }
     crate::logging::info(&format!("Imported dropped file \"{name}\""));
     let problems = s.project_changed(Duration::ZERO);
     emit_state(&app, &s, problems);

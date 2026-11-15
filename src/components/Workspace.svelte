@@ -26,6 +26,8 @@
   const project = $derived(snapshot.project!);
   const missingCount = $derived(snapshot.missing.length);
   const running = $derived(ui.downloads.filter((d) => d.status === "running" || d.status === "queued").length);
+  const convertingIds = $derived(ui.conversions.filter((c) => c.status === "running" || c.status === "queued").map((c) => c.id));
+  const converting = $derived(convertingIds.length);
 
   async function removeMissing() {
     const ok = await confirmAction(
@@ -54,6 +56,11 @@
     <span class="spacer"></span>
     {#if running > 0}
       <span class="status">Downloading {running}…</span>
+    {/if}
+    {#if converting > 0}
+      <button class="status link" onclick={() => (ui.convertOffer = { ids: convertingIds, origin: "library" })}>
+        Converting {converting} video{converting === 1 ? "" : "s"}…
+      </button>
     {/if}
     {#if snapshot.analyzingRemaining > 0}
       <span class="status" title="Measuring loudness for normalization">Measuring loudness · {snapshot.analyzingRemaining} left</span>
@@ -159,6 +166,15 @@
   .status {
     font-size: 0.78rem;
     opacity: 0.8;
+  }
+  button.status {
+    background: none;
+    border: none;
+    color: inherit;
+    padding: 0;
+    text-transform: none;
+    letter-spacing: 0;
+    text-decoration: underline dotted;
   }
   nav {
     display: flex;

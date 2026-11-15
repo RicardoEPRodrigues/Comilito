@@ -392,6 +392,21 @@ export interface DownloadJob {
   soundId: string | null;
 }
 
+/** A video being converted to WebM (decision 0035). `id` is the video's id. */
+export interface ConversionJob {
+  id: string;
+  name: string;
+  status: "queued" | "running" | "done" | "failed" | "cancelled";
+  progress: number;
+  message: string | null;
+}
+
+/** Videos that may not play, offered for conversion. "library": asked from a video's page. */
+export interface ConvertOffer {
+  ids: string[];
+  origin: "added" | "folder" | "library";
+}
+
 export interface WaveformView {
   durationMs: number;
   startMs: number;

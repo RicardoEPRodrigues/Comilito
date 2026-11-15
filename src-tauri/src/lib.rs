@@ -17,6 +17,7 @@ mod storage;
 mod themes;
 mod tools;
 mod video;
+mod video_convert;
 mod waveform;
 
 use std::{
@@ -100,6 +101,7 @@ pub fn run() {
             let tools_dir = tools::tools_dir(&data_dir);
             // A channel: the sending half wakes the download worker, which owns the other half.
             let (download_wakeup, download_queue) = mpsc::channel();
+            let (conversion_wakeup, conversion_queue) = mpsc::channel();
             // Downloads cut off by quitting last time; each resumes when its project opens.
             let waiting_downloads = downloads::load_saved(&data_dir, &app.path().app_cache_dir()?);
             app.manage(Mutex::new(AppState {
@@ -119,6 +121,10 @@ pub fn run() {
                 data_dir: data_dir.clone(),
                 backing_up: false,
                 quitting: false,
+                conversions: Vec::new(),
+                conversion_wakeup: Some(conversion_wakeup),
+                conversion_process: None,
+                video_offers: Default::default(),
                 waveforms: Vec::new(),
             }));
 
@@ -131,6 +137,8 @@ pub fn run() {
             thread::spawn(move || desktop::watch(handle));
             let handle = app.handle().clone();
             thread::spawn(move || downloads::worker(handle, download_queue));
+            let handle = app.handle().clone();
+            thread::spawn(move || video_convert::worker(handle, conversion_queue));
             media_controls::start(app.handle());
             Ok(())
         })
@@ -162,6 +170,10 @@ pub fn run() {
             video::move_videos,
             video::reveal_video,
             video::relink_video,
+            video_convert::convert_videos,
+            video_convert::cancel_conversion,
+            video_convert::clear_conversions,
+            video_convert::list_conversions,
             commands::app_version,
             commands::get_state,
             commands::get_preferences,
@@ -273,10 +285,12 @@ pub fn run() {
                 // A child process outlives its parent; stop a running yt-dlp (and the ffmpeg
                 // it may have started) so they don't keep writing into the folder the download
                 // resumes from next time.
-                if let Some(process) = s.download_process.take()
-                    && let Ok(mut child) = process.lock()
-                {
-                    tools::kill_tree(&mut child);
+                // The same for an ffmpeg converting a video (its working file is cleaned up the
+                // next time the project opens).
+                for process in [s.download_process.take(), s.conversion_process.take()].into_iter().flatten() {
+                    if let Ok(mut child) = process.lock() {
+                        tools::kill_tree(&mut child);
+                    }
                 }
                 if let Err(e) = s.close_project() {
                     eprintln!("could not save on exit: {e}");
@@ -303,6 +317,12 @@ enum SlowJob {
     Analyze {
         sound_id: String,
         path: PathBuf,
+    },
+    /// Look at a video with ffprobe (see video_convert.rs).
+    ProbeVideo {
+        video_id: String,
+        path: PathBuf,
+        ffprobe: PathBuf,
     },
 }
 
@@ -333,6 +353,8 @@ fn ticker(app: AppHandle) {
             let mut changed = false;
             let mut job = None;
             let mut disk_changed = false;
+            let mut new_videos: Vec<String> = Vec::new();
+            let ffprobe = tools::ffprobe_path(&s.tools_dir);
             let backups_dir = s.backups_root();
 
             // Borrow the two fields separately (see `AppState::project_changed`).
@@ -367,6 +389,7 @@ fn ticker(app: AppHandle) {
                     }
                     if !refresh.new_videos.is_empty() {
                         let n = refresh.new_videos.len();
+                        new_videos = refresh.new_videos.clone();
                         problems.push(format!(
                             "Added {n} new video{} found in the project folder.",
                             if n == 1 { "" } else { "s" }
@@ -386,6 +409,17 @@ fn ticker(app: AppHandle) {
                         dir: open.dir.clone(),
                         project: Box::new(open.project.clone()),
                         backups_dir,
+                    });
+                } else if let Some(video) = ffprobe.as_ref().and_then(|_| {
+                    open.project.videos.iter().find(|v| {
+                        v.info.is_none() && !open.missing.contains(&v.id) && !open.analysis_failed.contains(&v.id)
+                    })
+                }) {
+                    // Before loudness: a new video may need converting, which takes a while.
+                    job = Some(SlowJob::ProbeVideo {
+                        video_id: video.id.clone(),
+                        path: storage::absolute_audio_path(&open.dir, &video.file),
+                        ffprobe: ffprobe.clone().unwrap_or_default(),
                     });
                 } else if let Some(sound) = open.next_to_analyze() {
                     // Loudness before hashes: it changes how things sound, hashes don't.
@@ -407,6 +441,13 @@ fn ticker(app: AppHandle) {
                 }
             }
 
+            if !new_videos.is_empty() {
+                video_convert::note_new(&mut s, &new_videos, video_convert::Origin::Folder);
+            }
+            // Nothing left to look at: offer the videos that may not play (decision 0035).
+            if !matches!(job, Some(SlowJob::ProbeVideo { .. })) {
+                video_convert::flush_offer(&app, &mut s);
+            }
             if disk_changed {
                 // Marks the project for saving (new sounds) and re-applies the mix.
                 problems.extend(s.project_changed(Duration::from_millis(500)));
@@ -492,6 +533,31 @@ fn ticker(app: AppHandle) {
                     }
                     // Re-apply the mix so a playing sound glides to its normalized volume.
                     problems.extend(s.project_changed(Duration::from_secs(1)));
+                    emit_state(&app, &s, problems);
+                }
+            }
+            Some(SlowJob::ProbeVideo { video_id, path, ffprobe }) => {
+                let result = video_convert::probe(&ffprobe, &path);
+                if let Ok(mut s) = state.lock() {
+                    let mut problems = Vec::new();
+                    match result {
+                        Ok(info) => {
+                            video_convert::probed(&mut s, &video_id, &info);
+                            if let Some(open) = &mut s.open
+                                && let Some(video) = open.project.video_mut(&video_id)
+                            {
+                                video.info = Some(info);
+                                open.dirty_since.get_or_insert_with(Instant::now);
+                            }
+                        }
+                        Err(e) => {
+                            s.video_offers.fresh.remove(&video_id);
+                            if let Some(open) = &mut s.open {
+                                open.analysis_failed.push(video_id);
+                            }
+                            problems.push(format!("Couldn't read a video: {e}"));
+                        }
+                    }
                     emit_state(&app, &s, problems);
                 }
             }

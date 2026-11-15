@@ -78,6 +78,17 @@ pub fn ffmpeg_path(dir: &Path) -> Option<PathBuf> {
     None
 }
 
+/// ffprobe, next to ffmpeg (it looks at video files, decision 0035).
+pub fn ffprobe_path(dir: &Path) -> Option<PathBuf> {
+    let ffmpeg = ffmpeg_path(dir)?;
+    let ours = ffmpeg.with_file_name(exe("ffprobe"));
+    if ours.is_file() {
+        return Some(ours);
+    }
+    // ffmpeg found on the PATH (macOS): ffprobe usually comes with it.
+    (ffmpeg == Path::new("ffmpeg")).then(|| PathBuf::from("ffprobe"))
+}
+
 pub fn status(dir: &Path) -> ToolsStatus {
     let yt = yt_dlp_path(dir);
     let yt_dlp = yt.is_file().then(|| version_of(&yt)).flatten();

@@ -121,6 +121,8 @@ pub fn add_videos(
         }
     }
     open.video_folders = list_folders(&open.dir);
+    // Looked at in the background; offered for conversion if they may not play.
+    crate::video_convert::note_new(&mut s, &added, crate::video_convert::Origin::Added);
     problems.extend(s.project_changed(Duration::ZERO));
     emit_state(&app, &s, problems);
     Ok(added)

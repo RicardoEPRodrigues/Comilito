@@ -2,7 +2,7 @@
   // One video in the Library workspace (decision 0035, design screen 6): a muted preview, name,
   // folder, tags, format, where it's used, its file and source. Unlike the sound editor there
   // is no draft: each change is saved straight away, since there are no levels to try out.
-  import { ExternalLink, FileVideo, FolderOpen, FolderSearch, Scroll, Star, Trash2, TriangleAlert, X, CircleCheck } from "@lucide/svelte";
+  import { CircleCheck, ExternalLink, FileVideo, FolderOpen, FolderSearch, RefreshCw, Scroll, Star, Trash2, TriangleAlert, X } from "@lucide/svelte";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { api } from "../lib/api";
   import { askText, formatBytes, formatDuration, run, ui } from "../lib/store.svelte";
@@ -16,6 +16,7 @@
   const folders = $derived(ui.snapshot!.videoFolders);
   const usedIn = $derived(scenesUsingVideo(id));
   const src = $derived(video && !missing ? videoSrc(video) : null);
+  const conversion = $derived(ui.conversions.find((c) => c.id === id));
   let newTag = $state("");
 
   function save(change: Partial<Video>) {
@@ -103,6 +104,11 @@
             <span class="ok"><CircleCheck size={15} />{describeVideo(video, formatDuration)} · {formatBytes(video.file.size)} · plays here</span>
           {:else}
             <span class="warn"><TriangleAlert size={15} />{describeVideo(video, formatDuration)} · {formatBytes(video.file.size)} · may not play on every computer</span>
+            {#if conversion && (conversion.status === "running" || conversion.status === "queued")}
+              <span class="muted">converting · {Math.round(conversion.progress * 100)}%</span>
+            {:else}
+              <button onclick={() => (ui.convertOffer = { ids: [id], origin: "library" })}><RefreshCw size={13} />Convert…</button>
+            {/if}
           {/if}
         {:else}
           <span class="muted">{missing ? "Can't be looked at while the file is missing." : `${formatBytes(video.file.size)} · not looked at yet; it happens in the background.`}</span>

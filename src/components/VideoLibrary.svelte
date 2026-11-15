@@ -10,7 +10,15 @@
 
   const lib = ui.library;
   const snapshot = $derived(ui.snapshot!);
-  const list = $derived(findVideos(lib.folder, lib.search));
+  /** Only the videos that may not play (the "May not play" chip). */
+  let mayNotPlay = $state(false);
+  const all = $derived(findVideos(lib.folder, lib.search));
+  const unplayable = $derived(all.filter((v) => v.info && !v.info.playsEverywhere));
+  const list = $derived(mayNotPlay ? unplayable : all);
+  // The chip goes away once nothing is left to convert.
+  $effect(() => {
+    if (unplayable.length === 0) mayNotPlay = false;
+  });
   const missing = $derived(new Set(snapshot.missing));
   const selectedId = $derived(lib.selected.length === 1 && list.some((v) => v.id === lib.selected[0]) ? lib.selected[0] : null);
   const title = $derived(lib.folder ? lib.folder.split("/").pop()! : "Video");
@@ -34,6 +42,11 @@
       <h2 class="display">{title}</h2>
       <span class="caps muted">Video · {list.length} video{list.length === 1 ? "" : "s"}{lib.search ? ` matching “${lib.search}”` : ""}</span>
     </div>
+    {#if unplayable.length}
+      <button class="chip warn" class:on={mayNotPlay} onclick={() => (mayNotPlay = !mayNotPlay)} title="Videos that may not play on this computer">
+        <TriangleAlert size={12} />May not play · {unplayable.length}
+      </button>
+    {/if}
     <button class="icon framed" title="Add video files" onclick={addFiles}><FilePlus size={15} /></button>
     <button class="icon framed" title="Show this folder in the file manager" onclick={() => run(api.openAudioFolder("video", lib.folder))}>
       <FolderOpen size={15} />
@@ -126,6 +139,16 @@
   }
   .framed {
     border: 1px solid var(--rule) !important;
+  }
+  .chip.warn {
+    color: var(--warn);
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+  .chip.warn.on {
+    background: var(--warn);
+    border-color: var(--warn);
+    color: var(--accent-text);
   }
   .rows {
     flex: 1;

@@ -25,6 +25,20 @@ whole feature can be turned off in Preferences › Video.
   not play on Linux without extra GStreamer packages, so Comilito offers to convert them to WebM
   with its ffmpeg: when they're added, dropped, downloaded, or found in the `video/` folder.
 
+## Looking at and converting videos
+
+- Each video without `info` is looked at with ffprobe in the background (the ticker, one at a
+  time). This needs the download tools (ffmpeg and ffprobe); without them videos stay "not
+  looked at yet".
+- Videos added in this session (Add files, dropped, found in `video/`, downloaded) that turn
+  out not to play everywhere are collected, and once nothing is left to look at they're offered
+  together in the Convert dialog (or converted, or left, per Preferences › Video).
+- Conversions run one at a time with ffmpeg: VP9, constant quality (crf 32), no sound, same size.
+  The working file is hidden (`.name.converting.webm`) so the folder scan ignores it, and is
+  deleted if the conversion is cut off. The converted file replaces the original in every scene;
+  the original goes to the trash, or stays as a video of its own ("(original)").
+- Conversions aren't resumed after a restart; the video stays marked "may not play".
+
 ## Build plan
 
 Each step is committed and can be tried on its own.
@@ -33,7 +47,7 @@ Each step is committed and can be tried on its own.
    `videoEffects`, `defaults.video`, `backups.includeVideo`, and the `video` preferences.
 2. [x] Video files in the project: the `video/` folder, adding files, finding new or missing
    files, the Library's Video category and a video's page.
-3. [ ] Measuring videos with ffprobe, the conversion queue, and the Convert dialog (on import,
+3. [x] Measuring videos with ffprobe, the conversion queue, and the Convert dialog (on import,
    on drop and for files found in the folder).
 4. [ ] The scene editor's Video section and video effects, and the drawer's Video column.
 5. [ ] The video window: a second window that plays the top scene's videos, follows Space and
