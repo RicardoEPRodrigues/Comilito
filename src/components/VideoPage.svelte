@@ -211,6 +211,9 @@
     /* Not "stretch": the video's height comes from its own proportions. */
     align-items: flex-start;
     min-height: 6rem;
+    /* The page is a scrolling column: without this, a long page squeezes the player (and
+       crops the video) instead of scrolling. */
+    flex: none;
   }
   /* Width and height both auto, with only maximums: the browser keeps the video's own
      proportions (its file's, or `aspect-ratio` until it loads) while fitting both limits. */
