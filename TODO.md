@@ -6,10 +6,8 @@
 - Create a first time experience.
 - add ability to scale the UI. Font and whole UI.
 - Add ability to have plugins.
-- Video, later improvements (the feature itself is done, docs/video.md):
-  - Trimming videos (like cropping sounds).
-  - Video plugins, once plugins exist: the video feature has its own folders and data keys, so
-    it could be moved into one.
+  - Once plugins exist, video could become one: it has its own folders, modules and data keys
+    (docs/video.md).
 - Support projects outside of the projects folder.
 
 ## Bugs

@@ -457,6 +457,8 @@ export interface DownloadJob {
 export interface ConversionJob {
   id: string;
   name: string;
+  /** A trim rather than a plain conversion. */
+  trimming: boolean;
   status: "queued" | "running" | "done" | "failed" | "cancelled";
   progress: number;
   message: string | null;

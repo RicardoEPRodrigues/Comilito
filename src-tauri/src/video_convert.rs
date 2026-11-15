@@ -31,7 +31,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::{
     commands::{AppStateRef, lock},
     downloads::JobStatus,
-    project::VideoInfo,
+    project::{TimeRange, VideoInfo},
     state::{AppState, emit_state},
     storage, tools,
 };
@@ -161,10 +161,30 @@ pub struct ConversionJob {
     /// 0.0–1.0 while running.
     pub progress: f32,
     pub message: Option<String>,
+    /// A trim (true) rather than a plain conversion, for the UI's wording.
+    pub trimming: bool,
     #[serde(skip)]
     keep_original: bool,
     #[serde(skip)]
     project_dir: PathBuf,
+    /// Trimming: the part to keep, and whether the result is a new video ("(trimmed)") rather
+    /// than replacing the original.
+    #[serde(skip)]
+    trim: Option<TimeRange>,
+    #[serde(skip)]
+    as_copy: bool,
+    /// A number unique to this run of the job. A job closed with its project and queued again
+    /// when it reopens has the same video id; the old run (whose ffmpeg may still be stopping)
+    /// must never update the new one, so everything a run does is matched on this too.
+    #[serde(skip)]
+    run: u64,
+}
+
+/// Gives each job run its own number (see `ConversionJob::run`).
+fn next_run() -> u64 {
+    // An atomic counter: a number several threads can increment safely without a Mutex.
+    static RUNS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+    RUNS.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
 /// An unfinished conversion as written to `conversions.json`.
@@ -174,6 +194,10 @@ pub struct SavedConversion {
     pub project_dir: PathBuf,
     pub video_id: String,
     pub keep_original: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trim: Option<TimeRange>,
+    #[serde(default)]
+    pub as_copy: bool,
 }
 
 const SAVED_FILE: &str = "conversions.json";
@@ -201,6 +225,8 @@ pub fn save_unfinished(state: &AppState) {
             project_dir: j.project_dir.clone(),
             video_id: j.id.clone(),
             keep_original: j.keep_original,
+            trim: j.trim,
+            as_copy: j.as_copy,
         })
         .collect();
     list.extend(state.waiting_conversions.iter().cloned());
@@ -231,6 +257,8 @@ pub fn park_for(state: &mut AppState, dir: &Path) {
                 project_dir: job.project_dir.clone(),
                 video_id: job.id.clone(),
                 keep_original: job.keep_original,
+                trim: job.trim,
+                as_copy: job.as_copy,
             });
         }
     }
@@ -246,36 +274,56 @@ pub fn resume_for(state: &mut AppState, dir: &Path) {
         return;
     }
     crate::logging::info(&format!("Resuming {} unfinished conversion(s)", resume.len()));
-    for keep_original in [false, true] {
-        let ids: Vec<String> = resume.iter().filter(|c| c.keep_original == keep_original).map(|c| c.video_id.clone()).collect();
-        enqueue(state, &ids, keep_original);
+    for c in resume {
+        push_job(state, &c.video_id, c.keep_original, c.trim, c.as_copy);
     }
+    wake_and_save(state);
 }
 
 /// Adds videos to the conversion queue (skipping ones already waiting) and wakes the worker.
 pub fn enqueue(state: &mut AppState, ids: &[String], keep_original: bool) {
-    let Some(open) = &state.open else { return };
-    let project_dir = open.dir.clone();
     for id in ids {
-        let Some(video) = open.project.video(id) else { continue };
-        let waiting = state
-            .conversions
-            .iter()
-            .any(|j| j.id == *id && matches!(j.status, JobStatus::Queued | JobStatus::Running));
-        if waiting {
-            continue;
-        }
-        state.conversions.retain(|j| j.id != *id);
-        state.conversions.push(ConversionJob {
-            id: id.clone(),
-            name: video.name.clone(),
-            status: JobStatus::Queued,
-            progress: 0.0,
-            message: None,
-            keep_original,
-            project_dir: project_dir.clone(),
-        });
+        push_job(state, id, keep_original, None, false);
     }
+    wake_and_save(state);
+}
+
+/// Queues a trim (decision 0039's follow-up): the part between `range`'s start and end is
+/// re-encoded, so the cut is exact, into a new video or in place of the original.
+pub fn enqueue_trim(state: &mut AppState, id: &str, range: TimeRange, as_copy: bool) {
+    push_job(state, id, false, Some(range), as_copy);
+    wake_and_save(state);
+}
+
+/// Adds one job for a video of the open project, unless one is already waiting for it.
+fn push_job(state: &mut AppState, id: &str, keep_original: bool, trim: Option<TimeRange>, as_copy: bool) {
+    let Some(open) = &state.open else { return };
+    let Some(video) = open.project.video(id) else { return };
+    let waiting = state
+        .conversions
+        .iter()
+        .any(|j| j.id == id && matches!(j.status, JobStatus::Queued | JobStatus::Running));
+    if waiting {
+        return;
+    }
+    let job = ConversionJob {
+        id: id.to_string(),
+        name: video.name.clone(),
+        status: JobStatus::Queued,
+        progress: 0.0,
+        message: None,
+        trimming: trim.is_some(),
+        keep_original,
+        project_dir: open.dir.clone(),
+        trim,
+        as_copy,
+        run: next_run(),
+    };
+    state.conversions.retain(|j| j.id != id);
+    state.conversions.push(job);
+}
+
+fn wake_and_save(state: &mut AppState) {
     if let Some(tx) = &state.conversion_wakeup {
         let _ = tx.send(());
     }
@@ -286,33 +334,37 @@ pub fn emit_conversions(app: &AppHandle, state: &AppState) {
     let _ = app.emit("conversions-changed", &state.conversions);
 }
 
-fn update(app: &AppHandle, id: &str, f: impl FnOnce(&mut ConversionJob)) {
+fn update(app: &AppHandle, run: u64, f: impl FnOnce(&mut ConversionJob)) {
     let state = app.state::<Mutex<AppState>>();
     if let Ok(mut s) = state.lock() {
-        if let Some(job) = s.conversions.iter_mut().find(|j| j.id == id) {
+        if let Some(job) = s.conversions.iter_mut().find(|j| j.run == run) {
             f(job);
         }
         emit_conversions(app, &s);
     }
 }
 
-fn is_cancelled(app: &AppHandle, id: &str) -> bool {
+/// Whether this run should stop: quitting, cancelled, or replaced by a newer run of the job.
+fn is_cancelled(app: &AppHandle, run: u64) -> bool {
     let state = app.state::<Mutex<AppState>>();
     state
         .lock()
-        .map(|s| s.quitting || s.conversions.iter().any(|j| j.id == id && j.status == JobStatus::Cancelled))
+        .map(|s| s.quitting || !s.conversions.iter().any(|j| j.run == run && j.status == JobStatus::Running))
         .unwrap_or(true)
 }
 
 /// What a conversion needs, read under the lock before it starts.
 struct Work {
     id: String,
+    run: u64,
     dir: PathBuf,
     /// The video's stored path when the conversion started, to notice if it changed meanwhile.
     stored_path: String,
     input: PathBuf,
     duration_ms: u64,
     keep_original: bool,
+    trim: Option<TimeRange>,
+    as_copy: bool,
     tools_dir: PathBuf,
 }
 
@@ -331,11 +383,14 @@ pub fn worker(app: AppHandle, wakeup: mpsc::Receiver<()>) {
                     let video = open.project.video(&job.id)?;
                     Some(Work {
                         id: job.id.clone(),
+                        run: job.run,
                         dir: open.dir.clone(),
                         stored_path: video.file.path.clone(),
                         input: storage::absolute_audio_path(&open.dir, &video.file),
                         duration_ms: video.info.as_ref().map_or(0, |i| i.duration_ms),
                         keep_original: job.keep_original,
+                        trim: job.trim,
+                        as_copy: job.as_copy,
                         tools_dir: s.tools_dir.clone(),
                     })
                 });
@@ -375,7 +430,14 @@ fn convert(app: &AppHandle, work: &Work) -> Result<PathBuf, String> {
     }
     let output = working_path(&work.input);
     let mut cmd = tools::hidden_command(&ffmpeg);
-    cmd.args(["-hide_banner", "-nostats", "-loglevel", "error", "-y", "-i"])
+    cmd.args(["-hide_banner", "-nostats", "-loglevel", "error", "-y"]);
+    // A trim: `-ss` before `-i` seeks quickly, and since the video is re-encoded the cut is
+    // still exact to the frame; `-t` is the length to keep.
+    if let Some(range) = work.trim {
+        let seconds = crate::crop::seconds;
+        cmd.args(["-ss", &seconds(range.start_ms), "-t", &seconds(range.end_ms.saturating_sub(range.start_ms))]);
+    }
+    cmd.arg("-i")
         .arg(&work.input)
         .args(["-map", "0:v:0", "-an", "-sn"])
         // Constant quality (crf) VP9; "good" with cpu-used 4 is a fair speed for the quality,
@@ -401,7 +463,9 @@ fn convert(app: &AppHandle, work: &Work) -> Result<PathBuf, String> {
         s.conversion_process = Some(child.clone());
     }
 
-    let (app2, id2, total) = (app.clone(), work.id.clone(), work.duration_ms);
+    // Progress is counted against what's being written: the trimmed part, or the whole video.
+    let total = work.trim.map_or(work.duration_ms, |r| r.end_ms.saturating_sub(r.start_ms));
+    let (app2, run2, total) = (app.clone(), work.run, total);
     let progress = thread::spawn(move || {
         let mut last = Instant::now() - Duration::from_secs(1);
         for line in BufReader::new(stdout).lines().map_while(Result::ok) {
@@ -410,7 +474,7 @@ fn convert(app: &AppHandle, work: &Work) -> Result<PathBuf, String> {
             };
             if total > 0 && last.elapsed() > Duration::from_millis(400) {
                 last = Instant::now();
-                update(&app2, &id2, |j| j.progress = (us as f32 / 1000.0 / total as f32).clamp(0.0, 1.0));
+                update(&app2, run2, |j| j.progress = (us as f32 / 1000.0 / total as f32).clamp(0.0, 1.0));
             }
         }
     });
@@ -422,7 +486,7 @@ fn convert(app: &AppHandle, work: &Work) -> Result<PathBuf, String> {
 
     let result = loop {
         let Ok(mut process) = child.lock() else { break Err("busy".to_string()) };
-        if is_cancelled(app, &work.id) {
+        if is_cancelled(app, work.run) {
             tools::kill_tree(&mut process);
             break Err("CANCELLED".into());
         }
@@ -459,17 +523,23 @@ fn convert(app: &AppHandle, work: &Work) -> Result<PathBuf, String> {
 fn finish(app: &AppHandle, work: &Work, result: Result<PathBuf, String>) {
     let state = app.state::<Mutex<AppState>>();
     let Ok(mut s) = state.lock() else { return };
-    if s.quitting {
+    // Quitting, or this run was cancelled or replaced meanwhile (its project closed): its file
+    // isn't used, and the job's entry (perhaps a newer run) is left alone.
+    let still_current = s.conversions.iter().any(|j| j.run == work.run && j.status == JobStatus::Running);
+    if s.quitting || !still_current {
         if let Ok(path) = &result {
             let _ = fs::remove_file(path);
+        }
+        if !s.quitting {
+            emit_conversions(app, &s);
         }
         return;
     }
     let tools_dir = s.tools_dir.clone();
     let mut problems = Vec::new();
     let outcome = result.and_then(|working| place(&mut s, work, &working, &tools_dir, &mut problems));
-    let name = s.conversions.iter().find(|j| j.id == work.id).map(|j| j.name.clone()).unwrap_or_default();
-    if let Some(job) = s.conversions.iter_mut().find(|j| j.id == work.id) {
+    let name = s.conversions.iter().find(|j| j.run == work.run).map(|j| j.name.clone()).unwrap_or_default();
+    if let Some(job) = s.conversions.iter_mut().find(|j| j.run == work.run) {
         match &outcome {
             Ok(()) => {
                 job.status = JobStatus::Done;
@@ -485,8 +555,9 @@ fn finish(app: &AppHandle, work: &Work, result: Result<PathBuf, String>) {
     }
     match &outcome {
         Ok(()) => {
-            crate::logging::info(&format!("Converted \"{name}\" to WebM"));
-            problems.push(format!("Converted \"{name}\"."));
+            let done = if work.trim.is_some() { "Trimmed" } else { "Converted" };
+            crate::logging::info(&format!("{done} \"{name}\" (WebM)"));
+            problems.push(format!("{done} \"{name}\"."));
             problems.extend(s.project_changed(Duration::ZERO));
         }
         Err(e) if e != "CANCELLED" => crate::logging::error(&format!("Converting \"{name}\" failed: {e}")),
@@ -507,6 +578,28 @@ fn place(s: &mut AppState, work: &Work, working: &Path, tools_dir: &Path, proble
     let original = work.input.clone();
     let stem = original.file_stem().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "video".into());
     let folder = original.parent().ok_or("no folder")?;
+
+    // A trim saved as a copy: a new video next to the original, which stays as it is.
+    if work.as_copy {
+        let target = storage::unique_path(folder, Path::new(&format!("{stem} (trimmed).webm")));
+        fs::rename(working, &target).map_err(|e| format!("could not save the trimmed video: {e}"))?;
+        let relative = target.strip_prefix(&work.dir).map_err(|e| e.to_string())?.to_path_buf();
+        let file = storage::file_info(&work.dir, &relative)?;
+        let mut copy = crate::video::new_video(format!("{} (trimmed)", video.name), file, video.kind);
+        copy.tags = video.tags.clone();
+        copy.source = video.source.clone();
+        copy.info = tools::ffprobe_path(tools_dir).and_then(|ffprobe| probe(&ffprobe, &target).ok());
+        let index = open.project.videos.iter().position(|v| v.id == work.id).map_or(open.project.videos.len(), |i| i + 1);
+        open.project.videos.insert(index, copy);
+        return Ok(());
+    }
+
+    // Replacing: the original goes first, so the new file can take its name (a trimmed WebM
+    // keeps "gate.webm" instead of becoming "gate (2).webm").
+    let replacing = !work.keep_original;
+    if replacing && let Err(e) = trash::delete(&original) {
+        problems.push(format!("could not move the original to the trash: {e}"));
+    }
     let target = storage::unique_path(folder, Path::new(&format!("{stem}.webm")));
     fs::rename(working, &target).map_err(|e| format!("could not save the converted video: {e}"))?;
     let relative = target.strip_prefix(&work.dir).map_err(|e| e.to_string())?.to_path_buf();
@@ -526,8 +619,6 @@ fn place(s: &mut AppState, work: &Work, working: &Path, tools_dir: &Path, proble
         kept.info = old.info.clone();
         kept.tags = old.tags.clone();
         open.project.videos.push(kept);
-    } else if let Err(e) = trash::delete(&original) {
-        problems.push(format!("could not move the original to the trash: {e}"));
     }
     open.video_folders = crate::video::list_folders(&open.dir);
     Ok(())
@@ -561,6 +652,26 @@ pub fn convert_videos(ids: Vec<String>, keep_originals: bool, app: AppHandle, st
         return Err("TOOLS_MISSING".into());
     }
     enqueue(&mut s, &ids, keep_originals);
+    emit_conversions(&app, &s);
+    Ok(())
+}
+
+/// Trims a video to the part between `start_ms` and `end_ms`, in the background (it's
+/// re-encoded, so the cut is exact): into a new video "(trimmed)", or in place of the original
+/// (which goes to the trash).
+#[tauri::command]
+pub fn trim_video(id: String, start_ms: u64, end_ms: u64, as_copy: bool, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    if tools::ffmpeg_path(&s.tools_dir).is_none() {
+        return Err("TOOLS_MISSING".into());
+    }
+    if end_ms <= start_ms + 100 {
+        return Err("the end must be after the start".into());
+    }
+    if s.open_ref()?.project.video(&id).is_none() {
+        return Err("that video no longer exists".into());
+    }
+    enqueue_trim(&mut s, &id, TimeRange { start_ms, end_ms }, as_copy);
     emit_conversions(&app, &s);
     Ok(())
 }
@@ -629,13 +740,26 @@ mod tests {
         fs::create_dir_all(&project).unwrap();
         fs::write(project.join(storage::PROJECT_FILE), "{}").unwrap();
         let saved = vec![
-            SavedConversion { project_dir: project.clone(), video_id: "vid-1".into(), keep_original: true },
-            SavedConversion { project_dir: data.0.join("Deleted"), video_id: "vid-2".into(), keep_original: false },
+            SavedConversion {
+                project_dir: project.clone(),
+                video_id: "vid-1".into(),
+                keep_original: true,
+                trim: Some(TimeRange { start_ms: 1000, end_ms: 5000 }),
+                as_copy: true,
+            },
+            SavedConversion {
+                project_dir: data.0.join("Deleted"),
+                video_id: "vid-2".into(),
+                keep_original: false,
+                trim: None,
+                as_copy: false,
+            },
         ];
         fs::write(data.0.join(SAVED_FILE), serde_json::to_string(&saved).unwrap()).unwrap();
         let loaded = load_saved(&data.0);
         assert_eq!(loaded.len(), 1);
         assert_eq!((loaded[0].video_id.as_str(), loaded[0].keep_original), ("vid-1", true));
+        assert_eq!(loaded[0].trim, Some(TimeRange { start_ms: 1000, end_ms: 5000 }), "a trim resumes as a trim");
     }
 
     #[test]

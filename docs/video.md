@@ -91,7 +91,15 @@ only WebM can be streamed that way. Seeks and starts in the middle use the WebM'
 (`src/lib/webmIndex.ts`), which conversions put at the front of the file. On Windows and macOS a
 plain `src` is used.
 
+## Trimming
+
+A video's page has *Trim…*: choose the part to keep (typed, or taken from the preview's
+position), preview it, then save it as a copy ("(trimmed)") or replace the original (which goes
+to the trash and whose name is kept). The part is re-encoded to WebM in the conversion queue, so
+the cut is exact to the frame and it runs in the background; it shows its progress, can be
+cancelled, and resumes like any conversion. Re-encoding only the part makes short trims of long
+videos quick.
+
 ## Known limits
 
-Listed in TODO.md: trimming videos, remembering positions across restarts, fingerprinting
-videos, resuming conversions after a restart, and the untested Windows and macOS side.
+The Windows and macOS side is untested (TODO.md).

@@ -149,6 +149,8 @@ export const api = {
   videoStreaming: () => invoke<boolean>("video_streaming"),
   convertVideos: (ids: string[], keepOriginals: boolean) => invoke<void>("convert_videos", { ids, keepOriginals }),
   cancelConversion: (id: string) => invoke<void>("cancel_conversion", { id }),
+  trimVideo: (id: string, startMs: number, endMs: number, asCopy: boolean) =>
+    invoke<void>("trim_video", { id, startMs: Math.round(startMs), endMs: Math.round(endMs), asCopy }),
   clearConversions: () => invoke<void>("clear_conversions"),
   listConversions: () => invoke<ConversionJob[]>("list_conversions"),
   toggleVideoWindow: () => invoke<void>("toggle_video_window"),

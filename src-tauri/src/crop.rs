@@ -34,7 +34,7 @@ fn encoder_args(ext: &str) -> Result<&'static [&'static str], String> {
     })
 }
 
-fn seconds(ms: u64) -> String {
+pub(crate) fn seconds(ms: u64) -> String {
     format!("{:.3}", ms as f64 / 1000.0)
 }
 

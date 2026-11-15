@@ -29,6 +29,7 @@
   const running = $derived(ui.downloads.filter((d) => d.status === "running" || d.status === "queued").length);
   const convertingIds = $derived(ui.conversions.filter((c) => c.status === "running" || c.status === "queued").map((c) => c.id));
   const converting = $derived(convertingIds.length);
+  const onlyTrims = $derived(ui.conversions.filter((c) => convertingIds.includes(c.id)).every((c) => c.trimming));
 
   async function removeMissing() {
     const ok = await confirmAction(
@@ -60,7 +61,7 @@
     {/if}
     {#if converting > 0}
       <button class="status link" onclick={() => (ui.convertOffer = { ids: convertingIds, origin: "library" })}>
-        Converting {converting} video{converting === 1 ? "" : "s"}…
+        {onlyTrims ? "Trimming" : "Converting"} {converting} video{converting === 1 ? "" : "s"}…
       </button>
     {/if}
     {#if snapshot.analyzingRemaining > 0}

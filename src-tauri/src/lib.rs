@@ -192,6 +192,7 @@ pub fn run() {
             video::add_video_to_scene,
             video::video_streaming,
             video_convert::convert_videos,
+            video_convert::trim_video,
             video_convert::cancel_conversion,
             video_convert::clear_conversions,
             video_convert::list_conversions,

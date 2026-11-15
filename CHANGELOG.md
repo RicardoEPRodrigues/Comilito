@@ -62,7 +62,9 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
   Like sounds, videos come in two kinds, *ambience videos* and *video effects*, each going in
   its own place in scenes; the Library has Sounds and Videos tabs (in the workspace and in the
   drawer). Videos can be downloaded from URLs too (the picture only, up to a chosen resolution), and
-  exported or backed up with the project if you want. Space pauses only the sound (the video
+  exported or backed up with the project if you want. Videos can be trimmed (exactly, in the
+  background), remember where they left off across restarts, are fingerprinted like sounds,
+  and unfinished conversions carry on when the project opens again. Space pauses only the sound (the video
   keeps playing; Esc blanks it). Everything video can be turned off in Preferences › Video.
 - **Loudness normalization can be turned on or off for one sound**, in its Loudness section in
   the Library, overriding its category's setting in Project settings.

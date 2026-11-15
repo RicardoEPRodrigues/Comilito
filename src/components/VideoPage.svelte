@@ -2,13 +2,14 @@
   // One video in the Library workspace (decision 0035, design screen 6): a muted preview, name,
   // folder, tags, format, where it's used, its file and source. Unlike the sound editor there
   // is no draft: each change is saved straight away, since there are no levels to try out.
-  import { CircleCheck, ExternalLink, FileVideo, FolderOpen, FolderSearch, RefreshCw, Scroll, Star, Trash2, TriangleAlert, X } from "@lucide/svelte";
+  import { CircleCheck, ExternalLink, FileVideo, FolderOpen, FolderSearch, Play, RefreshCw, Scissors, Scroll, Star, Trash2, TriangleAlert, X } from "@lucide/svelte";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { api } from "../lib/api";
   import { askText, formatBytes, formatDuration, run, ui } from "../lib/store.svelte";
   import type { Video, VideoKind } from "../lib/types";
   import { describeVideo, folderOfVideo, kindOf, moveVideos, relinkVideo, removeVideo, scenesUsingVideo, shelfOfKind, videoById } from "../lib/video";
   import { videoSource } from "../lib/videoStream";
+  import TimeInput from "./TimeInput.svelte";
 
   let { id }: { id: string } = $props();
 
@@ -17,6 +18,50 @@
   const folders = $derived(video && kindOf(video) === "effect" ? ui.snapshot!.videoFolders.effect : ui.snapshot!.videoFolders.ambience);
   const usedIn = $derived(scenesUsingVideo(id));
   const conversion = $derived(ui.conversions.find((c) => c.id === id));
+  const busy = $derived(!!conversion && (conversion.status === "running" || conversion.status === "queued"));
+
+  // ---- Trimming: keep only a part, re-encoded in the background so the cut is exact ----
+  let playerEl = $state<HTMLVideoElement>();
+  let trimming = $state(false);
+  let trimStart = $state(0);
+  let trimEnd = $state(0);
+  let trimAsCopy = $state(true);
+  let trimError = $state("");
+  /** Playing the selection from the panel: stop at its end. */
+  let previewingTrim = false;
+  const lengthMs = $derived(video?.info?.durationMs ?? (playerEl ? playerEl.duration * 1000 : 0));
+  const here = () => Math.round((playerEl?.currentTime ?? 0) * 1000);
+
+  function openTrim() {
+    trimStart = 0;
+    trimEnd = Math.round(lengthMs);
+    trimError = "";
+    trimming = true;
+  }
+
+  function previewTrim() {
+    if (!playerEl) return;
+    playerEl.currentTime = trimStart / 1000;
+    previewingTrim = true;
+    playerEl.play().catch(() => {});
+  }
+
+  function stopAtTrimEnd() {
+    if (previewingTrim && playerEl && playerEl.currentTime * 1000 >= trimEnd) {
+      playerEl.pause();
+      previewingTrim = false;
+    }
+  }
+
+  async function trim() {
+    trimError = "";
+    try {
+      await api.trimVideo(id, trimStart, trimEnd, trimAsCopy);
+      trimming = false;
+    } catch (e) {
+      trimError = String(e) === "TOOLS_MISSING" ? "Trimming needs ffmpeg: install the download tools in Preferences › Projects & storage." : String(e);
+    }
+  }
   let newTag = $state("");
 
   function save(change: Partial<Video>) {
@@ -68,7 +113,10 @@
         <!-- Sized by its own proportions (known from the file before it loads), within the
              page's width and 42% of the window's height. -->
         <video
+          bind:this={playerEl}
           use:videoSource={{ video }}
+          ontimeupdate={stopAtTrimEnd}
+          onpause={() => (previewingTrim = false)}
           controls
           muted
           style:aspect-ratio={video.info ? `${video.info.width} / ${video.info.height}` : "16 / 9"}
@@ -81,6 +129,40 @@
       {/if}
     </div>
 
+    {#if !missing}
+      <div class="trim-bar">
+        {#if trimming}
+          <div class="trim">
+            <div class="trim-times">
+              <span class="caps">Keep from</span>
+              <TimeInput label="Start" value={trimStart} onchange={(ms) => (trimStart = ms)} />
+              <button class="small" title="Take the preview's position" onclick={() => (trimStart = here())}>Set to the preview's position</button>
+              <span class="caps">to</span>
+              <TimeInput label="End" value={trimEnd} onchange={(ms) => (trimEnd = ms)} />
+              <button class="small" title="Take the preview's position" onclick={() => (trimEnd = here())}>Set to the preview's position</button>
+            </div>
+            <div class="trim-times">
+              <span class="muted">Keeps {formatDuration(Math.max(0, trimEnd - trimStart))}</span>
+              <button class="small" onclick={previewTrim} disabled={trimEnd <= trimStart}><Play size={12} />Preview the part</button>
+              <span class="grow"></span>
+              <label class="radio"><input type="radio" checked={trimAsCopy} onchange={() => (trimAsCopy = true)} />Save as a copy</label>
+              <label class="radio"><input type="radio" checked={!trimAsCopy} onchange={() => (trimAsCopy = false)} />Replace the original (it goes to the trash)</label>
+            </div>
+            {#if trimError}<p class="error">{trimError}</p>{/if}
+            <div class="trim-times">
+              <span class="muted small grow">Re-encoded in the background (as WebM), so the cut is exact; a short part is quick.</span>
+              <button class="ghost" onclick={() => (trimming = false)}>Cancel</button>
+              <button class="primary" onclick={trim} disabled={trimEnd <= trimStart + 100}><Scissors size={13} />Trim</button>
+            </div>
+          </div>
+        {:else if busy && conversion}
+          <span class="muted">{conversion.trimming ? "Trimming" : "Converting"} · {Math.round(conversion.progress * 100)}%</span>
+          <button class="ghost small" onclick={() => run(api.cancelConversion(id))}>Cancel</button>
+        {:else}
+          <button onclick={openTrim} disabled={!lengthMs}><Scissors size={13} />Trim…</button>
+        {/if}
+      </div>
+    {/if}
     <section>
       <div class="grid">
         <label class="field">
@@ -124,8 +206,8 @@
             <span class="ok"><CircleCheck size={15} />{describeVideo(video, formatDuration)} · {formatBytes(video.file.size)} · plays here</span>
           {:else}
             <span class="warn"><TriangleAlert size={15} />{describeVideo(video, formatDuration)} · {formatBytes(video.file.size)} · may not play on every computer</span>
-            {#if conversion && (conversion.status === "running" || conversion.status === "queued")}
-              <span class="muted">converting · {Math.round(conversion.progress * 100)}%</span>
+            {#if busy && conversion}
+              <span class="muted">{conversion.trimming ? "trimming" : "converting"} · {Math.round(conversion.progress * 100)}%</span>
             {:else}
               <button onclick={() => (ui.convertOffer = { ids: [id], origin: "library" })}><RefreshCw size={13} />Convert…</button>
             {/if}
@@ -180,6 +262,44 @@
 {/if}
 
 <style>
+  .trim-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex: none;
+  }
+  .trim {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.8rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+  }
+  .trim-times {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .trim .small {
+    font-size: 0.62rem;
+  }
+  .trim .radio {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+  }
+  .error {
+    color: var(--danger);
+    margin: 0;
+  }
+  .muted.small {
+    font-size: 0.75rem;
+  }
   .page {
     flex: 1;
     overflow: auto;
