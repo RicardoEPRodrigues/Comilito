@@ -121,6 +121,9 @@ export const ui = $state({
     cropping: false,
   },
   drag: null as Drag,
+  /** While files from outside are dragged over a Library folder or category: which one, as
+   *  `category:folder` ("" for the category folder). See FileDropImport.svelte. */
+  fileDropTarget: null as string | null,
   /** While the projects folder is being moved (a dialog covers the app). */
   moving: null as null | { doneBytes: number; totalBytes: number; current: string },
   question: null as Question | null,

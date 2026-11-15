@@ -70,7 +70,8 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
   Linux) instead of a `Backups` folder among your projects, so the projects folder holds only
   projects. Existing backups are moved there automatically. *Remove all data and quit* asks
   whether to keep them.
-- **Dropping audio files** from the file manager onto the window imports copies of them.
+- **Dropping audio files** from the file manager onto the window imports copies of them. Dropped
+  on a Library folder or category (in the drawer or the Library workspace), they go there.
 - **Scene groups** can be renamed and ungrouped from their ⋯ menu (or right-click), and scenes
   moved between groups.
 - **Home screen:** continue with the last project, other projects ordered by when you last used

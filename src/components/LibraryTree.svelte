@@ -228,7 +228,9 @@
         <button
           class="node strong"
           class:selected={lib.category === c.id && lib.folder === null}
-          class:drop={dropTarget === `${c.id}:`}
+          class:drop={dropTarget === `${c.id}:` || ui.fileDropTarget === `${c.id}:`}
+          data-drop-category={c.id}
+          data-drop-folder=""
           onclick={() => selectFolder(c.id, null)}
           oncontextmenu={(e) => openMenu(e, categoryMenu(c.id), c.label)}
           ondragover={(e) => dragOver(e, c.id, "")}
@@ -248,7 +250,9 @@
               <button
                 class="node"
                 class:selected
-                class:drop={dropTarget === `${c.id}:${folder}`}
+                class:drop={dropTarget === `${c.id}:${folder}` || ui.fileDropTarget === `${c.id}:${folder}`}
+                data-drop-category={c.id}
+                data-drop-folder={folder}
                 style:padding-left="{1.7 + (parts.length - 1) * 0.9}rem"
                 onclick={() => selectFolder(c.id, folder)}
                 oncontextmenu={(e) => openMenu(e, folderMenu(c.id, folder), parts[parts.length - 1])}

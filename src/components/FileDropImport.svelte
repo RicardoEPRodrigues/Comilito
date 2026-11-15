@@ -1,6 +1,8 @@
 <script lang="ts">
   // Dropping audio files from the file manager onto the window imports copies of them, after
-  // asking where they should go (TODO.md). The native drop handler is off (decision 0014), so
+  // asking where they should go. Dropped on a Library folder or category (anything marked with
+  // `data-drop-category` / `data-drop-folder`), that's where they go; anywhere else, to the
+  // folder the Library is showing. The native drop handler is off (decision 0014), so
   // Where the files come from depends on the platform (decision 0022):
   //   - Linux: WebKitGTK hides dropped files from the page, so Tauri's native drop event is on
   //     (tauri.linux.conf.json) and gives their paths; `add_sounds` copies them, like "Add files…".
@@ -24,8 +26,40 @@
 
   const fromPath = (path: string): Dropped => ({ name: path.split(/[\\/]/).pop() ?? path, size: null, path });
 
+  type Target = { category: Category; folder: string };
+
+  /** The Library folder or category under a point of the window (CSS pixels), if any. */
+  function targetAt(x: number, y: number): Target | null {
+    const el = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-drop-category]");
+    if (!el) return null;
+    return { category: el.dataset.dropCategory as Category, folder: el.dataset.dropFolder ?? "" };
+  }
+
+  /** Lights up the folder under the pointer while files are dragged (see `ui.fileDropTarget`). */
+  function point(x: number, y: number) {
+    const t = targetAt(x, y);
+    target = t;
+    ui.fileDropTarget = t ? `${t.category}:${t.folder}` : null;
+  }
+
+  /** Tauri gives physical pixels; the page works in CSS pixels. */
+  const css = (p: { x: number; y: number }) => [p.x / window.devicePixelRatio, p.y / window.devicePixelRatio] as const;
+
   /** True while files from outside are dragged over the window (shows the overlay). */
   let hovering = $state(false);
+  /** Where the files would go if dropped now (null: the folder the Library is showing). */
+  let target = $state<Target | null>(null);
+  const targetLabel = $derived(
+    target ? [CATEGORIES.find((c) => c.id === target!.category)?.label, ...target.folder.split("/").filter(Boolean)].join(" › ") : "",
+  );
+
+  // Hovering ends (dropped, left the window): nothing is lit up any more.
+  $effect(() => {
+    if (!hovering) {
+      ui.fileDropTarget = null;
+      target = null;
+    }
+  });
   let files = $state<Dropped[]>([]);
   let skipped = $state<string[]>([]);
   let category = $state<Category>("music");
@@ -50,6 +84,7 @@
       const accept = !!project() && !files.length;
       e.dataTransfer!.dropEffect = accept ? "copy" : "none";
       hovering = accept;
+      if (accept) point(e.clientX, e.clientY);
     }
     function leave(e: DragEvent) {
       // WebKitGTK sends dragleave without relatedTarget, so leaving the window is detected
@@ -61,18 +96,23 @@
       if (!fromOutside(e)) return;
       e.preventDefault();
       if (!project() || files.length) return;
-      receive(Array.from(e.dataTransfer!.files).map((file) => ({ name: file.name, size: file.size, file })));
+      receive(
+        Array.from(e.dataTransfer!.files).map((file) => ({ name: file.name, size: file.size, file })),
+        targetAt(e.clientX, e.clientY),
+      );
     }
     // Linux: the native drop event (see the top of this file).
     const native = getCurrentWebview().onDragDropEvent(({ payload }) => {
       if (payload.type === "leave") hovering = false;
       else if (payload.type === "enter") hovering = !!project() && !files.length && payload.paths.length > 0;
-      else if (payload.type === "drop") {
+      else if (payload.type === "over") {
+        if (hovering) point(...css(payload.position));
+      } else if (payload.type === "drop") {
         hovering = false;
-        if (project() && !files.length) receive(payload.paths.map(fromPath));
+        if (project() && !files.length) receive(payload.paths.map(fromPath), targetAt(...css(payload.position)));
       }
     });
-    function receive(all: Dropped[]) {
+    function receive(all: Dropped[], at: Target | null) {
       if (!all.length) return;
       files = all.filter((f) => isAudio(f.name));
       skipped = all.filter((f) => !isAudio(f.name)).map((f) => f.name);
@@ -81,9 +121,14 @@
         skipped = [];
         return;
       }
-      // Start where the library is pointing, if anywhere.
-      category = ui.library.category ?? "music";
-      folder = ui.library.category && ui.library.folder ? ui.library.folder : "";
+      // Where they were dropped, or else where the library is pointing, if anywhere.
+      if (at) {
+        category = at.category;
+        folder = at.folder;
+      } else {
+        category = ui.library.category ?? "music";
+        folder = ui.library.category && ui.library.folder ? ui.library.folder : "";
+      }
     }
     window.addEventListener("dragover", over);
     window.addEventListener("dragleave", leave);
@@ -138,11 +183,16 @@
 </script>
 
 {#if hovering}
-  <div class="overlay">
+  <!-- Over a Library folder, the overlay steps aside so the lit-up folder stays visible. -->
+  <div class="overlay" class:aside={target}>
     <div class="target">
-      <Upload size={34} />
-      <span class="display">Drop to import</span>
-      <span class="muted">Copies of the files are added to the project</span>
+      <Upload size={target ? 18 : 34} />
+      {#if target}
+        <span>Drop into <strong>{targetLabel}</strong></span>
+      {:else}
+        <span class="display">Drop to import</span>
+        <span class="muted">Copies of the files are added to the project · drop on a Library folder to put them there</span>
+      {/if}
     </div>
   </div>
 {/if}
@@ -218,6 +268,16 @@
     border-radius: 10px;
     background: var(--surface);
     color: var(--accent);
+  }
+  .overlay.aside {
+    background: transparent;
+    place-items: end center;
+    padding-bottom: 2rem;
+  }
+  .overlay.aside .target {
+    flex-direction: row;
+    padding: 0.6rem 1.2rem;
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.3);
   }
   .target .display {
     font-size: 2rem;

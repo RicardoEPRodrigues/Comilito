@@ -223,7 +223,7 @@
       {#each CATEGORIES as c (c.id)}
         {@const Icon = ICONS[c.id]}
         {@const groups = columns(c.id)}
-        <div class="column" role="list">
+        <div class="column" class:drop={ui.fileDropTarget === `${c.id}:`} role="list" data-drop-category={c.id} data-drop-folder="">
           <div class="col-head">
             <Icon size={14} />
             <span class="caps">{c.label}</span>
@@ -242,17 +242,20 @@
               {:else if !insideFolded(c.id, g.folder)}
                 {@const label = folderLabel(g.folder)}
                 {@const isFolded = folded(c.id, g.folder)}
-                <button class="folder" style:padding-left="{label.depth * 0.9}rem" onclick={() => toggleFolder(c.id, g.folder)}>
-                  {#if isFolded}<ChevronRight size={13} />{:else}<ChevronDown size={13} />{/if}
-                  {#if isFolded}<Folder size={13} />{:else}<FolderOpen size={13} />{/if}
-                  <span class="fname">{label.name}</span>
-                  <span class="count">{g.sounds.length}</span>
-                </button>
-                {#if !isFolded}
-                  <div class="nested" transition:fold style:padding-left="{label.depth * 0.9 + 1.2}rem">
-                    {#each g.sounds as s (s.id)}<SoundRow sound={s} />{/each}
-                  </div>
-                {/if}
+                <!-- One box per folder (heading and sounds), so files dropped anywhere on it go there. -->
+                <div class="group" class:drop={ui.fileDropTarget === `${c.id}:${g.folder}`} data-drop-category={c.id} data-drop-folder={g.folder}>
+                  <button class="folder" style:padding-left="{label.depth * 0.9}rem" onclick={() => toggleFolder(c.id, g.folder)}>
+                    {#if isFolded}<ChevronRight size={13} />{:else}<ChevronDown size={13} />{/if}
+                    {#if isFolded}<Folder size={13} />{:else}<FolderOpen size={13} />{/if}
+                    <span class="fname">{label.name}</span>
+                    <span class="count">{g.sounds.length}</span>
+                  </button>
+                  {#if !isFolded}
+                    <div class="nested" transition:fold style:padding-left="{label.depth * 0.9 + 1.2}rem">
+                      {#each g.sounds as s (s.id)}<SoundRow sound={s} />{/each}
+                    </div>
+                  {/if}
+                </div>
               {/if}
             {/each}
             {#if groups.length === 0}
@@ -400,6 +403,14 @@
     flex-direction: column;
     min-height: 0;
     min-width: 0;
+    border-radius: var(--radius);
+  }
+  /* Files from outside dragged over a column or a folder (FileDropImport.svelte). */
+  .column.drop,
+  .group.drop {
+    outline: 2px dashed var(--accent);
+    outline-offset: -2px;
+    border-radius: var(--radius);
   }
   .col-head {
     display: flex;

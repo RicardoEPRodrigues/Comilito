@@ -28,7 +28,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0019](0019-download-audio-from-urls.md) | Download audio from video sites and direct URLs (no streaming) | Accepted | 2026-11-13 |
 | [0020](0020-cropping-sounds.md) | Crop sounds in the app, saving a copy or overwriting | Accepted | 2026-11-13 |
 | [0021](0021-no-play-edit-mode.md) | Remove the Play / Edit mode; everything is always editable | Accepted | 2026-11-13 |
-| [0022](0022-dropping-files-onto-the-window.md) | Import audio by dropping files onto the window | Accepted | 2026-11-13 |
+| [0022](0022-dropping-files-onto-the-window.md) | Import audio by dropping files onto the window | Accepted (drop target: 0034) | 2026-11-13 |
 | [0023](0023-home-screen-and-projects-folder.md) | Home screen, recent projects and moving the projects folder | Accepted | 2026-11-13 |
 | [0024](0024-background-move-and-window-state.md) | Move the projects folder in the background; remember the window size | Accepted | 2026-11-13 |
 | [0025](0025-theme-packages.md) | Themes can bring a watermark and fonts, shared as `.comilito-theme` packages | Accepted (editor: 0027) | 2026-11-13 |
@@ -40,6 +40,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0031](0031-scenes-that-duck-all-ambience.md) | A scene can duck all the ambience below | Accepted | 2026-11-14 |
 | [0032](0032-choosing-the-audio-output.md) | Choosing the audio output | Accepted | 2026-11-14 |
 | [0033](0033-resuming-downloads-and-quit-warning.md) | Resuming downloads after a restart, and warning when quitting while busy | Accepted | 2026-11-14 |
+| [0034](0034-dropping-files-on-a-library-folder.md) | Dropping files on a Library folder imports them there | Accepted | 2026-11-15 |
 
 ## Template
 

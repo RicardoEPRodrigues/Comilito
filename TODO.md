@@ -3,10 +3,9 @@
 ## Feature
 
 - flatpak version (not now)
+- Create a first time experience.
 - Add ability to have plugins.
 - Add a plug in that associates a video with a scene and the top scene's video plays on a seperate window.
-- Create a first time experience.
-- draggin a file onto the library should add it to the selected folder or where the mouse drops.
 
 ## Bugs
 
@@ -34,10 +33,8 @@
 
 ### Other checks
 
-- The quit warning, resuming downloads and the drawer's fold/unfold-all buttons (all and per
-  category) were checked by type-checks and unit tests only (no virtual display available this
-  time). Worth one manual try: start a long download, close the window, choose *Quit anyway*, reopen the project and see
-  it continue from where it stopped.
+- Dropping files on a Library folder (decision 0034) was only type-checked. Worth trying on a
+  folder in the drawer and in the Library workspace, and on a scaled (HiDPI) display.
 - Moving the projects folder across disks (the slow, copying case) was only tested by unit
   tests; on the virtual display both folders were on one disk, so the move was an instant rename.
   Worth trying once with a big project and a USB drive to see the progress dialog.
