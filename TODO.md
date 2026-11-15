@@ -65,7 +65,6 @@
   trying: adding an MP4 and converting it; a scene with two videos and "switch every 1 min";
   coming back to a scene (resume); a video effect; Space and Esc; the video window on a second
   screen and fullscreen; downloading a part of a YouTube video as video; exporting with videos.
-
 - Moving the projects folder across disks (the slow, copying case) was only tested by unit
   tests; on the virtual display both folders were on one disk, so the move was an instant rename.
   Worth trying once with a big project and a USB drive to see the progress dialog.
