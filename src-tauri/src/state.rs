@@ -82,6 +82,8 @@ pub struct OpenProject {
     pub analysis_failed: Vec<String>,
     /// The Library folders on disk (subfolders of `audio/<category>/`).
     pub folders: PerCategory<Vec<String>>,
+    /// The Library's video folders (subfolders of `video/`, decision 0035).
+    pub video_folders: Vec<String>,
     /// New audio files seen in the folder but not added yet, with their size. A file is only
     /// added once its size is the same on two scans in a row, so we never pick up a file
     /// that's still being copied or synced.
@@ -91,10 +93,20 @@ pub struct OpenProject {
     pub levels_fade_ms: u32,
 }
 
+/// Ids of sounds and videos whose file is missing (both kinds share one list; their ids
+/// never collide).
+pub fn all_missing(dir: &Path, project: &Project) -> Vec<String> {
+    let mut missing = storage::missing_sounds(dir, project);
+    missing.extend(crate::video::missing(dir, project));
+    missing
+}
+
 /// What `refresh_from_disk` changed.
 #[derive(Debug, Default, PartialEq)]
 pub struct DiskRefresh {
     pub added: usize,
+    /// Ids of videos found in `video/` and added (they may need converting).
+    pub new_videos: Vec<String>,
     pub missing_changed: bool,
 }
 
@@ -125,9 +137,28 @@ impl OpenProject {
             self.project.sounds.push(Sound::new(file.category, name, info));
             result.added += 1;
         }
+
+        // The same for videos in `video/` (decision 0035).
+        let known: HashSet<String> = self.project.videos.iter().map(|v| v.file.path.clone()).collect();
+        for (path, size) in crate::video::scan_files(&self.dir).into_iter().filter(|(p, _)| !known.contains(p)) {
+            if self.pending_files.get(&path) != Some(&size) {
+                still_pending.insert(path, size);
+                continue;
+            }
+            let Ok(info) = storage::file_info(&self.dir, Path::new(&path)) else {
+                continue;
+            };
+            let name = Path::new(&path)
+                .file_stem()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "Video".into());
+            let video = crate::video::new_video(name, info);
+            result.new_videos.push(video.id.clone());
+            self.project.videos.push(video);
+        }
         self.pending_files = still_pending;
 
-        let missing = storage::missing_sounds(&self.dir, &self.project);
+        let missing = all_missing(&self.dir, &self.project);
         if missing != self.missing {
             self.missing = missing;
             result.missing_changed = true;
@@ -135,6 +166,11 @@ impl OpenProject {
         let folders = storage::list_folders(&self.dir);
         if folders != self.folders {
             self.folders = folders;
+            result.missing_changed = true;
+        }
+        let video_folders = crate::video::list_folders(&self.dir);
+        if video_folders != self.video_folders {
+            self.video_folders = video_folders;
             result.missing_changed = true;
         }
         result
@@ -166,6 +202,7 @@ pub struct Snapshot {
     /// How many sounds still wait for their loudness to be measured.
     pub analyzing_remaining: usize,
     pub folders: PerCategory<Vec<String>>,
+    pub video_folders: Vec<String>,
     pub stack_status: StackStatus,
     /// Preset groups in display order (including empty ones).
     pub preset_groups: Vec<String>,
@@ -239,12 +276,13 @@ impl AppState {
         let project = storage::load_project(&dir)?;
         self.close_project()?;
 
-        let missing = storage::missing_sounds(&dir, &project);
+        let missing = all_missing(&dir, &project);
         let mix = target_mix(&project);
         self.engine.apply_levels(&project, &mix, Duration::ZERO);
         let folders = storage::list_folders(&dir);
         self.open = Some(OpenProject {
             folders,
+            video_folders: crate::video::list_folders(&dir),
             known_file_time: storage::project_file_modified(&dir),
             dir,
             project,
@@ -374,6 +412,7 @@ impl AppState {
                     })
                     .count(),
                 folders: open.folders.clone(),
+                video_folders: open.video_folders.clone(),
                 stack_status: open.project.stack_status(),
                 preset_groups: open.project.all_preset_groups(),
                 levels_fade_ms: open.levels_fade_ms,
@@ -388,6 +427,7 @@ impl AppState {
                 hashing_remaining: 0,
                 analyzing_remaining: 0,
                 folders: PerCategory::default(),
+                video_folders: Vec::new(),
                 stack_status: StackStatus::Empty,
                 preset_groups: Vec::new(),
                 levels_fade_ms: 0,
@@ -416,6 +456,9 @@ pub fn emit_state(app: &AppHandle, state: &AppState, problems: Vec<String>) {
         crate::logging::warn(&message);
         let _ = app.emit("notice", message);
     }
+    if let Some(open) = &state.open {
+        crate::video::allow_media(app, &open.dir);
+    }
     // `let _ =` explicitly ignores the Result: if the window is gone there's no one to tell.
     let _ = app.emit("state-changed", state.snapshot());
 }
@@ -429,7 +472,7 @@ mod tests {
         let project = storage::load_project(&dir).unwrap();
         OpenProject {
             mix: target_mix(&project),
-            missing: storage::missing_sounds(&dir, &project),
+            missing: all_missing(&dir, &project),
             known_file_time: None,
             dir,
             project,
@@ -440,6 +483,7 @@ mod tests {
             analysis_failed: Vec::new(),
             pending_files: HashMap::new(),
             folders: PerCategory::default(),
+            video_folders: Vec::new(),
             levels_fade_ms: 0,
         }
     }
@@ -461,6 +505,27 @@ mod tests {
         assert_eq!(sound.name, "rain");
         assert_eq!(sound.category, crate::project::Category::Ambience);
         assert_eq!(open.refresh_from_disk().added, 0, "not added twice");
+    }
+
+    #[test]
+    fn videos_in_the_video_folder_are_added_and_missing_ones_noticed() {
+        let root = TempDir::new();
+        let dir = storage::create_project(&root.0, "P", ProjectDefaults::default()).unwrap();
+        let mut open = open_project(dir.clone());
+        std::fs::create_dir_all(dir.join("video/Castle")).unwrap();
+        let file = dir.join("video/Castle/gate.webm");
+        std::fs::write(&file, b"video").unwrap();
+
+        assert!(open.refresh_from_disk().new_videos.is_empty(), "first sighting waits");
+        let found = open.refresh_from_disk();
+        assert_eq!(found.new_videos.len(), 1);
+        assert_eq!(found.added, 0, "videos aren't counted as sounds");
+        assert_eq!(open.project.videos[0].name, "gate");
+        assert_eq!(open.video_folders, ["Castle"]);
+
+        std::fs::remove_file(&file).unwrap();
+        open.refresh_from_disk();
+        assert_eq!(open.missing, [open.project.videos[0].id.clone()]);
     }
 
     #[test]

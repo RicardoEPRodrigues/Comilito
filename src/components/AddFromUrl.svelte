@@ -6,7 +6,7 @@
   import { onMount } from "svelte";
   import { api } from "../lib/api";
   import { askText, formatBytes, formatDuration, refreshTools, run, ui, type UrlPrefill } from "../lib/store.svelte";
-  import { CATEGORIES, type Category, type Probe } from "../lib/types";
+  import { CATEGORIES, type Category, type Probe, type Shelf } from "../lib/types";
   import Modal from "./Modal.svelte";
   import TimeInput from "./TimeInput.svelte";
   import ToolsInstall from "./ToolsInstall.svelte";
@@ -16,7 +16,7 @@
     onclose,
     prefill,
     target,
-  }: { onclose: () => void; prefill?: UrlPrefill; target?: { category: Category; folder: string } } = $props();
+  }: { onclose: () => void; prefill?: UrlPrefill; target?: { category: Shelf; folder: string } } = $props();
 
   // svelte-ignore state_referenced_locally
   let url = $state(prefill?.url ?? "");
@@ -32,9 +32,12 @@
   let toMs = $state(prefill?.range?.endMs ?? 10 * 60 * 1000);
   let name = $state("");
   // svelte-ignore state_referenced_locally
-  let category = $state<Category>(prefill?.category ?? target?.category ?? ui.library.category ?? "ambience");
+  const startShelf = prefill?.category ?? target?.category ?? ui.library.category ?? "ambience";
+  let category = $state<Category>(startShelf === "video" ? "ambience" : startShelf);
   // svelte-ignore state_referenced_locally
-  let folder = $state(prefill?.folder ?? target?.folder ?? (ui.library.category && ui.library.folder ? ui.library.folder : ""));
+  let folder = $state(
+    startShelf === "video" ? "" : (prefill?.folder ?? target?.folder ?? (ui.library.category && ui.library.folder ? ui.library.folder : "")),
+  );
   let updateAvailable = $state<boolean | null>(null);
 
   onMount(() => {

@@ -2,7 +2,8 @@
   // Left column of the Library workspace (decision 0018): smart lists, then each category with
   // its folders (real subfolders of audio/<category>/). Drop sounds on a folder to move them
   // there, or drag a folder onto another (or onto its category) to move it inside. The
-  // downloads queue sits at the bottom.
+  // downloads queue sits at the bottom. Videos (decision 0035) are a fourth shelf with folders
+  // of their own, after the three audio categories.
   import { fitText } from "../lib/fit";
   import {
     AudioLines,
@@ -10,6 +11,7 @@
     ChevronRight,
     CircleDashed,
     FilePlus,
+    Film,
     Folder,
     FolderOpen,
     FolderInput,
@@ -27,10 +29,11 @@
   } from "@lucide/svelte";
   import type { Component } from "svelte";
   import { api } from "../lib/api";
-  import { addSoundFiles, moveFolder, moveSounds, moveTargets, newFolder } from "../lib/actions";
+  import { addSoundFiles, foldersOf, moveFolder, moveSounds, moveTargets, newFolder } from "../lib/actions";
+  import { addVideoFiles, folderOfVideo, videoEnabled } from "../lib/video";
   import { fold } from "../lib/motion";
   import { askText, folderOf, remember, run, ui, type SmartList } from "../lib/store.svelte";
-  import { CATEGORIES, type Category } from "../lib/types";
+  import { CATEGORIES, type Shelf } from "../lib/types";
   import { openMenu, type MenuItem } from "./ContextMenu.svelte";
   import Downloads from "./Downloads.svelte";
 
@@ -38,7 +41,13 @@
   const project = $derived(snapshot.project!);
   const lib = ui.library;
 
-  const ICONS: Record<Category, Component> = { music: Music, ambience: AudioLines, effects: Zap };
+  const ICONS: Record<Shelf, Component> = { music: Music, ambience: AudioLines, effects: Zap, video: Film };
+  /** The shelves shown: the audio categories, and Video unless it's turned off. */
+  const SHELVES = $derived<{ id: Shelf; label: string }[]>([
+    ...CATEGORIES,
+    ...(videoEnabled() ? [{ id: "video" as const, label: "Video" }] : []),
+  ]);
+  const shelfLabel = (shelf: Shelf) => SHELVES.find((s) => s.id === shelf)?.label ?? shelf;
   const SMART: { id: SmartList; label: string; icon: Component }[] = [
     { id: "all", label: "All sounds", icon: Library },
     { id: "favourites", label: "Favourites", icon: Star },
@@ -69,11 +78,16 @@
       case "unused":
         return s.filter((x) => !used.has(x.id)).length;
       case "missing":
-        return snapshot.missing.length;
+        // Sounds only: missing videos are marked in the Video shelf.
+        return project.sounds.filter((x) => snapshot.missing.includes(x.id)).length;
     }
   }
 
-  function countIn(category: Category, folder: string | null) {
+  function countIn(category: Shelf, folder: string | null) {
+    if (category === "video") {
+      const inFolder = (f: string) => folder === null || f === folder || f.startsWith(`${folder}/`);
+      return (project.videos ?? []).filter((v) => inFolder(folderOfVideo(v))).length;
+    }
     return project.sounds.filter(
       (s) => s.category === category && (folder === null || folderOf(s) === folder || folderOf(s).startsWith(`${folder}/`)),
     ).length;
@@ -86,23 +100,23 @@
     lib.cropping = false;
   }
 
-  function selectFolder(category: Category, folder: string | null) {
+  function selectFolder(category: Shelf, folder: string | null) {
     lib.smart = "all";
     lib.category = category;
     lib.folder = folder;
     lib.cropping = false;
   }
 
-  function isOpen(category: Category) {
+  function isOpen(category: Shelf) {
     return !ui.collapsed.includes(`tree:${category}`);
   }
-  function toggle(category: Category) {
+  function toggle(category: Shelf) {
     const key = `tree:${category}`;
     ui.collapsed = ui.collapsed.includes(key) ? ui.collapsed.filter((k) => k !== key) : [...ui.collapsed, key];
     remember("collapsed", ui.collapsed);
   }
 
-  async function renameFolder(category: Category, folder: string) {
+  async function renameFolder(category: Shelf, folder: string) {
     const parts = folder.split("/");
     const name = await askText("Rename folder", "Name", parts[parts.length - 1]);
     if (!name) return;
@@ -111,20 +125,25 @@
     if (lib.category === category && lib.folder === folder) lib.folder = to;
   }
 
-  async function deleteFolder(category: Category, folder: string) {
+  async function deleteFolder(category: Shelf, folder: string) {
     await run(api.deleteFolder(category, folder));
     if (lib.category === category && lib.folder === folder) lib.folder = null;
   }
 
-  function addFromUrl(category: Category, folder: string) {
+  function addFromUrl(category: Shelf, folder: string) {
     ui.editing = { kind: "addUrl", target: { category, folder } };
   }
 
-  function folderMenu(category: Category, folder: string): MenuItem[] {
-    const label = CATEGORIES.find((c) => c.id === category)!.label;
+  /** "Add files…" picks audio or video files, depending on the shelf. */
+  function addFilesTo(category: Shelf, folder: string | null) {
+    return category === "video" ? addVideoFiles(folder) : addSoundFiles(category, folder);
+  }
+
+  function folderMenu(category: Shelf, folder: string): MenuItem[] {
+    const label = shelfLabel(category);
     const targets = moveTargets(category, folder);
     return [
-      { label: "Add files here…", icon: FilePlus, action: () => addSoundFiles(category, folder) },
+      { label: "Add files here…", icon: FilePlus, action: () => addFilesTo(category, folder) },
       { label: "Add from URL here…", icon: Link, action: () => addFromUrl(category, folder) },
       { label: "New folder inside…", icon: FolderPlus, action: () => newFolder(category, folder) },
       { label: "Rename…", icon: Pencil, action: () => renameFolder(category, folder) },
@@ -143,9 +162,9 @@
     ];
   }
 
-  function categoryMenu(category: Category): MenuItem[] {
+  function categoryMenu(category: Shelf): MenuItem[] {
     return [
-      { label: "Add files…", icon: FilePlus, action: () => addSoundFiles(category, null) },
+      { label: "Add files…", icon: FilePlus, action: () => addFilesTo(category, null) },
       { label: "Add from URL…", icon: Link, action: () => addFromUrl(category, "") },
       { label: "New folder…", icon: FolderPlus, action: () => newFolder(category) },
       { label: "Show in file manager", icon: FolderOpen, action: () => run(api.openAudioFolder(category, null)) },
@@ -155,24 +174,26 @@
   // Dropping sounds on a folder (or category) moves them there; so does dropping a folder,
   // within its own category (a folder's sounds can't change category by being dragged).
   let dropTarget = $state<string | null>(null);
-  function accepts(category: Category, folder: string): boolean {
+  function accepts(category: Shelf, folder: string): boolean {
     const d = ui.drag;
-    if (d?.kind === "sound") return true;
+    // Sounds go to audio folders, videos to video folders.
+    if (d?.kind === "sound") return category !== "video";
+    if (d?.kind === "video") return category === "video";
     return d?.kind === "folder" && d.category === category && moveTargets(category, d.folder).includes(folder);
   }
-  function dragOver(e: DragEvent, category: Category, folder: string) {
+  function dragOver(e: DragEvent, category: Shelf, folder: string) {
     if (!accepts(category, folder)) return;
     e.preventDefault();
     if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
     dropTarget = `${category}:${folder}`;
   }
-  function folderDragStart(e: DragEvent, category: Category, folder: string) {
+  function folderDragStart(e: DragEvent, category: Shelf, folder: string) {
     ui.drag = { kind: "folder", category, folder };
     e.dataTransfer?.setData("text/plain", folder);
     // As for sounds: WebKit refuses a drop unless "move" is allowed.
     if (e.dataTransfer) e.dataTransfer.effectAllowed = "copyMove";
   }
-  async function drop(e: DragEvent, category: Category, folder: string) {
+  async function drop(e: DragEvent, category: Shelf, folder: string) {
     const d = ui.drag;
     if (!d || !accepts(category, folder)) return;
     e.preventDefault();
@@ -182,15 +203,16 @@
       await moveFolder(category, d.folder, folder);
       return;
     }
-    if (d.kind !== "sound") return;
+    if (d.kind !== "sound" && d.kind !== "video") return;
     const dragged = d.id;
-    // Dragging one of several selected sounds moves the whole selection.
+    // Dragging one of several selected items moves the whole selection.
     const ids = lib.selected.includes(dragged) ? [...lib.selected] : [dragged];
-    await moveSounds(ids, category, folder);
+    if (d.kind === "video") await run(api.moveVideos(ids, folder));
+    else if (category !== "video") await moveSounds(ids, category, folder);
   }
 
   function addFiles() {
-    addSoundFiles(lib.category ?? "ambience", lib.category ? lib.folder : null);
+    addFilesTo(lib.category ?? "ambience", lib.category ? lib.folder : null);
   }
 </script>
 
@@ -222,7 +244,7 @@
     </div>
     <hr />
     <div class="group">
-      {#each CATEGORIES as c (c.id)}
+      {#each SHELVES as c (c.id)}
         {@const Icon = ICONS[c.id]}
         {@const open = isOpen(c.id)}
         <button
@@ -244,7 +266,7 @@
         </button>
         {#if open}
           <div class="folders" transition:fold>
-            {#each snapshot.folders[c.id] as folder (folder)}
+            {#each foldersOf(c.id) as folder (folder)}
               {@const parts = folder.split("/")}
               {@const selected = lib.category === c.id && lib.folder === folder}
               <button

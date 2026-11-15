@@ -23,7 +23,7 @@ use crate::{
     bundle,
     prefs::Preferences,
     project::{
-        BackupSettings, Category, Layer, Playlist, PresetEntry, ProjectDefaults, Role, Scene, Sound, StackEntry,
+        BackupSettings, Category, Layer, Playlist, PresetEntry, ProjectDefaults, Role, Scene, Shelf, Sound, StackEntry,
         StackPreset, folder_of_path, new_id,
     },
     state::{AppState, OpenProject, Snapshot, emit_state},
@@ -33,11 +33,11 @@ use crate::{
 /// The type every command receives to reach the shared state.
 /// `'_` is an anonymous *lifetime*: it says "this borrows something Tauri owns, for as long
 /// as the command runs". You mostly see lifetimes when a type holds a reference.
-type AppStateRef<'a> = State<'a, Mutex<AppState>>;
+pub type AppStateRef<'a> = State<'a, Mutex<AppState>>;
 
 /// Locks the state. `lock()` fails only if a thread panicked while holding the lock.
 /// The guard unlocks automatically when it goes out of scope (like C++ RAII).
-fn lock<'a>(state: &'a AppStateRef) -> Result<MutexGuard<'a, AppState>, String> {
+pub fn lock<'a>(state: &'a AppStateRef) -> Result<MutexGuard<'a, AppState>, String> {
     state.lock().map_err(|_| "internal error: state lock poisoned".to_string())
 }
 
@@ -445,20 +445,26 @@ pub fn relink_from_folder(folder: PathBuf, app: AppHandle, state: AppStateRef) -
     let mut problems = Vec::new();
 
     for id in open.missing.clone() {
-        let Some(sound) = open.project.sound(&id) else { continue };
-        let file_name = sound.file.path.rsplit('/').next().unwrap_or_default().to_string();
+        // Sounds and videos share the missing list; each is relinked its own way.
+        let (file, is_video) = match (open.project.sound(&id), open.project.video(&id)) {
+            (Some(sound), _) => (sound.file.clone(), false),
+            (None, Some(video)) => (video.file.clone(), true),
+            (None, None) => continue,
+        };
+        let file_name = file.path.rsplit('/').next().unwrap_or_default().to_string();
         let candidates = bundle::find_by_name(&folder, &file_name);
-        let Some(found) = bundle::best_candidate(candidates, sound.file.size, sound.file.sha256.as_deref()) else {
+        let Some(found) = bundle::best_candidate(candidates, file.size, file.sha256.as_deref()) else {
             continue;
         };
-        match relink(open, &id, &found) {
+        let result = if is_video { crate::video::relink(open, &id, &found) } else { relink(open, &id, &found) };
+        match result {
             Ok(()) => fixed += 1,
             Err(e) => problems.push(e),
         }
     }
 
     let still = s.open_ref()?.missing.len();
-    problems.push(format!("Relinked {fixed} sound(s); {still} still missing."));
+    problems.push(format!("Relinked {fixed} file(s); {still} still missing."));
     problems.extend(s.project_changed(Duration::ZERO));
     emit_state(&app, &s, problems);
     Ok(())
@@ -1073,23 +1079,41 @@ pub fn import_dropped_file(
     };
     let name = header("x-name");
     let folder = header("x-folder");
-    let category = match header("x-category").as_str() {
-        "music" => Category::Music,
-        "effects" => Category::Effects,
-        _ => Category::Ambience,
+    let shelf = match header("x-category").as_str() {
+        "music" => Shelf::Music,
+        "effects" => Shelf::Effects,
+        "video" => Shelf::Video,
+        _ => Shelf::Ambience,
     };
 
     let mut s = lock(&state)?;
     let open = s.open_mut()?;
-    let info = storage::save_dropped_file(&open.dir, category, &folder, &name, bytes)?;
+    let info = storage::save_dropped_file(&open.dir, shelf, &folder, &name, bytes)?;
     let stem = std::path::Path::new(&name)
         .file_stem()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| "Sound".into());
-    let sound = Sound::new(category, stem, info);
-    let id = sound.id.clone();
-    open.project.sounds.push(sound);
+    let id = match shelf {
+        Shelf::Video => {
+            let video = crate::video::new_video(stem, info);
+            let id = video.id.clone();
+            open.project.videos.push(video);
+            id
+        }
+        Shelf::Music | Shelf::Ambience | Shelf::Effects => {
+            let category = match shelf {
+                Shelf::Music => Category::Music,
+                Shelf::Effects => Category::Effects,
+                _ => Category::Ambience,
+            };
+            let sound = Sound::new(category, stem, info);
+            let id = sound.id.clone();
+            open.project.sounds.push(sound);
+            id
+        }
+    };
     open.folders = storage::list_folders(&open.dir);
+    open.video_folders = crate::video::list_folders(&open.dir);
     crate::logging::info(&format!("Imported dropped file \"{name}\""));
     let problems = s.project_changed(Duration::ZERO);
     emit_state(&app, &s, problems);
@@ -1099,19 +1123,21 @@ pub fn import_dropped_file(
 // ---- Library folders ------------------------------------------------------------------------
 
 #[tauri::command]
-pub fn create_folder(category: Category, folder: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+pub fn create_folder(category: Shelf, folder: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
     let mut s = lock(&state)?;
     let open = s.open_mut()?;
     storage::create_folder(&open.dir, category, folder.trim())?;
     open.folders = storage::list_folders(&open.dir);
+    open.video_folders = crate::video::list_folders(&open.dir);
     emit_state(&app, &s, Vec::new());
     Ok(())
 }
 
-/// Renames a Library folder and points every sound inside it at its new path.
+/// Renames a Library folder and points every sound (or video) inside it at its new path.
+/// `category` is a shelf: an audio category, or "video".
 #[tauri::command]
 pub fn rename_folder(
-    category: Category,
+    category: Shelf,
     from: String,
     to: String,
     app: AppHandle,
@@ -1122,18 +1148,26 @@ pub fn rename_folder(
     let to = to.trim().trim_matches('/').to_string();
     storage::rename_folder(&open.dir, category, &from, &to)?;
     // The folder on disk now has its final name; rebuild each moved sound's stored path.
-    let old_prefix = format!("audio/{}/{}/", category.folder_name(), from);
-    let new_root = storage::category_folder_path(&open.dir, category, &to);
+    let old_prefix = format!("{}/{}/", category.root(), from);
+    let new_root = storage::shelf_folder_path(&open.dir, category, &to);
     let new_prefix = format!(
         "{}/",
         storage::to_json_path(new_root.strip_prefix(&open.dir).unwrap_or(&new_root))
     );
-    for sound in &mut open.project.sounds {
-        if let Some(rest) = sound.file.path.strip_prefix(&old_prefix) {
-            sound.file.path = format!("{new_prefix}{rest}");
+    // `iter_mut().map(...)` over both lists: each item's `file` is borrowed mutably in turn.
+    let files = open
+        .project
+        .sounds
+        .iter_mut()
+        .map(|s| &mut s.file)
+        .chain(open.project.videos.iter_mut().map(|v| &mut v.file));
+    for file in files {
+        if let Some(rest) = file.path.strip_prefix(&old_prefix) {
+            file.path = format!("{new_prefix}{rest}");
         }
     }
     open.folders = storage::list_folders(&open.dir);
+    open.video_folders = crate::video::list_folders(&open.dir);
     s.engine.clear_cache();
     let problems = s.project_changed(Duration::ZERO);
     emit_state(&app, &s, problems);
@@ -1141,11 +1175,12 @@ pub fn rename_folder(
 }
 
 #[tauri::command]
-pub fn delete_folder(category: Category, folder: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+pub fn delete_folder(category: Shelf, folder: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
     let mut s = lock(&state)?;
     let open = s.open_mut()?;
     storage::delete_empty_folder(&open.dir, category, &folder)?;
     open.folders = storage::list_folders(&open.dir);
+    open.video_folders = crate::video::list_folders(&open.dir);
     emit_state(&app, &s, Vec::new());
     Ok(())
 }
@@ -1153,7 +1188,7 @@ pub fn delete_folder(category: Category, folder: String, app: AppHandle, state: 
 /// Opens a Library folder (or the whole `audio/` folder) in the system file manager.
 #[tauri::command]
 pub fn open_audio_folder(
-    category: Option<Category>,
+    category: Option<Shelf>,
     folder: Option<String>,
     app: AppHandle,
     state: AppStateRef,
@@ -1161,7 +1196,7 @@ pub fn open_audio_folder(
     let s = lock(&state)?;
     let dir = &s.open_ref()?.dir;
     let path = match category {
-        Some(c) => storage::category_folder_path(dir, c, folder.as_deref().unwrap_or("")),
+        Some(c) => storage::shelf_folder_path(dir, c, folder.as_deref().unwrap_or("")),
         None => dir.join("audio"),
     };
     std::fs::create_dir_all(&path).map_err(|e| format!("could not create {}: {e}", path.display()))?;
@@ -1402,7 +1437,7 @@ pub fn remove_sound_from_scene(
     Ok(())
 }
 
-/// Removes every sound whose audio file is missing (from the library and all scenes).
+/// Removes every sound and video whose file is missing (from the library and all scenes).
 /// For when files were deleted on purpose outside the app.
 #[tauri::command]
 pub fn remove_missing_sounds(app: AppHandle, state: AppStateRef) -> Result<(), String> {
@@ -1410,6 +1445,7 @@ pub fn remove_missing_sounds(app: AppHandle, state: AppStateRef) -> Result<(), S
     let open = s.open_mut()?;
     let missing = std::mem::take(&mut open.missing);
     open.project.sounds.retain(|snd| !missing.contains(&snd.id));
+    open.project.videos.retain(|v| !missing.contains(&v.id));
     open.project.remove_dangling_references();
     let problems = s.project_changed(Duration::from_millis(500));
     emit_state(&app, &s, problems);

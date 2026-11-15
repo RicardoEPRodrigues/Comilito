@@ -30,7 +30,7 @@
   async function removeMissing() {
     const ok = await confirmAction(
       "Remove sounds with missing files?",
-      `${missingCount} sound(s) will be removed from the library and from every scene.`,
+      `${missingCount} sound(s) or video(s) will be removed from the library and from every scene.`,
       "Remove",
       true,
     );
@@ -84,8 +84,8 @@
   {#if missingCount > 0}
     <div class="banner">
       <span>
-        {missingCount} sound{missingCount === 1 ? "" : "s"} can't find {missingCount === 1 ? "its" : "their"} audio
-        file. They're listed under Missing files in the Library.
+        {missingCount} file{missingCount === 1 ? "" : "s"} can't be found (missing sounds are listed under Missing
+        files in the Library, missing videos are marked in its Video shelf).
       </span>
       <button onclick={relinkFromFolder}>Find in a folder…</button>
       <button class="danger" onclick={removeMissing}>Remove them</button>

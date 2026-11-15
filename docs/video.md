@@ -31,7 +31,7 @@ Each step is committed and can be tried on its own.
 
 1. [x] Data model and save format: `videos`, a scene's `video`, `hidesVideo` and
    `videoEffects`, `defaults.video`, `backups.includeVideo`, and the `video` preferences.
-2. [ ] Video files in the project: the `video/` folder, adding files, finding new or missing
+2. [x] Video files in the project: the `video/` folder, adding files, finding new or missing
    files, the Library's Video category and a video's page.
 3. [ ] Measuring videos with ffprobe, the conversion queue, and the Convert dialog (on import,
    on drop and for files found in the folder).

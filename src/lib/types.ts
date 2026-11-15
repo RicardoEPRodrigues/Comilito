@@ -250,6 +250,9 @@ export interface OutputDevice {
   name: string;
 }
 
+/** A part of the Library with its own folder: an audio category, or the videos. */
+export type Shelf = Category | "video";
+
 export interface Snapshot {
   /** How long the category volumes take to reach `mix.volumes`, for the mixer's sliders. */
   levelsFadeMs: number;
@@ -262,6 +265,8 @@ export interface Snapshot {
   hashingRemaining: number;
   analyzingRemaining: number;
   folders: PerCategory<string[]>;
+  /** Subfolders of `video/`. */
+  videoFolders: string[];
   stackStatus: StackStatus;
   presetGroups: string[];
 }

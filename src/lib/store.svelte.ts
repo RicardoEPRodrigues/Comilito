@@ -13,6 +13,7 @@ import { api } from "./api";
 import type {
   Appearance,
   Category,
+  Shelf,
   DesktopAppearance,
   DownloadJob,
   InstallProgress,
@@ -31,7 +32,7 @@ export type Editing =
   | { kind: "projectSettings" }
   | { kind: "preferences"; page?: string }
   | { kind: "about" }
-  | { kind: "addUrl"; prefill?: UrlPrefill; target?: { category: Category; folder: string } }
+  | { kind: "addUrl"; prefill?: UrlPrefill; target?: { category: Shelf; folder: string } }
   | null;
 
 /** "Download again": the URL dialog opens with the original download's settings. */
@@ -61,7 +62,8 @@ export type Drag =
   | { kind: "preset"; id: string }
   | { kind: "entry"; id: string }
   | { kind: "sound"; id: string }
-  | { kind: "folder"; category: Category; folder: string }
+  | { kind: "video"; id: string }
+  | { kind: "folder"; category: Shelf; folder: string }
   | { kind: "presetEntry"; index: number }
   | null;
 
@@ -113,7 +115,7 @@ export const ui = $state({
   collapsed: remembered<string[]>("collapsed", []),
   library: {
     smart: "all" as SmartList,
-    category: null as Category | null,
+    category: null as Shelf | null,
     /** null = the whole category; "" = the category folder itself. */
     folder: null as string | null,
     search: "",

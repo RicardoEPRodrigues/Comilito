@@ -16,6 +16,7 @@ mod state;
 mod storage;
 mod themes;
 mod tools;
+mod video;
 mod waveform;
 
 use std::{
@@ -155,6 +156,12 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::confirm_quit,
+            video::add_videos,
+            video::update_videos,
+            video::remove_video,
+            video::move_videos,
+            video::reveal_video,
+            video::relink_video,
             commands::app_version,
             commands::get_state,
             commands::get_preferences,
@@ -358,7 +365,14 @@ fn ticker(app: AppHandle) {
                             if refresh.added == 1 { "" } else { "s" }
                         ));
                     }
-                    if refresh.added > 0 || refresh.missing_changed {
+                    if !refresh.new_videos.is_empty() {
+                        let n = refresh.new_videos.len();
+                        problems.push(format!(
+                            "Added {n} new video{} found in the project folder.",
+                            if n == 1 { "" } else { "s" }
+                        ));
+                    }
+                    if refresh.added > 0 || !refresh.new_videos.is_empty() || refresh.missing_changed {
                         disk_changed = true;
                     }
                 }

@@ -16,7 +16,7 @@ use std::{
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
-use crate::project::{Category, FORMAT_VERSION, FileInfo, PerCategory, Project, ProjectDefaults};
+use crate::project::{Category, FORMAT_VERSION, FileInfo, PerCategory, Project, ProjectDefaults, Shelf};
 
 pub const PROJECT_FILE: &str = "comilito.json";
 
@@ -164,12 +164,20 @@ pub fn project_file_modified(dir: &Path) -> Option<std::time::SystemTime> {
 /// (empty for the category folder itself). Parts that could escape the folder ("..") are
 /// dropped, so a bad name can never point outside the project.
 pub fn category_folder_path(dir: &Path, category: Category, folder: &str) -> PathBuf {
+    shelf_folder_path(dir, category.into(), folder)
+}
+
+/// The folder of a shelf inside the project: `dir/audio/<category>` or `dir/video`.
+pub fn shelf_root(dir: &Path, shelf: Shelf) -> PathBuf {
+    shelf.root().split('/').fold(dir.to_path_buf(), |p, part| p.join(part))
+}
+
+/// `shelf_root/<folder>`, with the same protection as `category_folder_path`.
+pub fn shelf_folder_path(dir: &Path, shelf: Shelf, folder: &str) -> PathBuf {
     folder
         .split('/')
         .filter(|part| !part.is_empty() && *part != "." && *part != "..")
-        .fold(dir.join("audio").join(category.folder_name()), |p, part| {
-            p.join(safe_file_name(part))
-        })
+        .fold(shelf_root(dir, shelf), |p, part| p.join(safe_file_name(part)))
 }
 
 /// Copies an audio file into `dir/audio/<category>/<folder>/` and returns its `FileInfo`.
@@ -180,10 +188,16 @@ pub fn copy_audio_into_project(
     folder: &str,
     source: &Path,
 ) -> Result<FileInfo, String> {
+    copy_into_shelf(dir, category.into(), folder, source)
+}
+
+/// Copies a file into `<shelf>/<folder>/` (renamed if the name is taken) and returns its
+/// `FileInfo`.
+pub fn copy_into_shelf(dir: &Path, shelf: Shelf, folder: &str, source: &Path) -> Result<FileInfo, String> {
     let file_name = source
         .file_name()
         .ok_or_else(|| format!("{} is not a file", source.display()))?;
-    let target_dir = category_folder_path(dir, category, folder);
+    let target_dir = shelf_folder_path(dir, shelf, folder);
     fs::create_dir_all(&target_dir)
         .map_err(|e| format!("could not create {}: {e}", target_dir.display()))?;
 
@@ -197,14 +211,20 @@ pub fn copy_audio_into_project(
 }
 
 /// Saves the bytes of a file dropped onto the window (it arrives as data, not as a path) into
-/// `audio/<category>/<folder>/<name>`, renamed if the name is taken. Only audio files are accepted.
-pub fn save_dropped_file(dir: &Path, category: Category, folder: &str, name: &str, bytes: &[u8]) -> Result<FileInfo, String> {
+/// `<shelf>/<folder>/<name>`, renamed if the name is taken. Only audio files are accepted on
+/// the audio shelves, only videos on the video shelf.
+pub fn save_dropped_file(dir: &Path, shelf: Shelf, folder: &str, name: &str, bytes: &[u8]) -> Result<FileInfo, String> {
     let name = safe_file_name(Path::new(name).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default().as_str());
     let ext = Path::new(&name).extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
-    if name.is_empty() || !AUDIO_EXTENSIONS.contains(&ext.as_str()) {
-        return Err(format!("\"{name}\" isn't an audio file Comilito can play"));
+    let (accepted, kind): (&[&str], &str) = if shelf == Shelf::Video {
+        (&crate::video::VIDEO_EXTENSIONS, "a video")
+    } else {
+        (&AUDIO_EXTENSIONS, "an audio file")
+    };
+    if name.is_empty() || !accepted.contains(&ext.as_str()) {
+        return Err(format!("\"{name}\" isn't {kind} Comilito can use"));
     }
-    let target_dir = category_folder_path(dir, category, folder);
+    let target_dir = shelf_folder_path(dir, shelf, folder);
     fs::create_dir_all(&target_dir).map_err(|e| format!("could not create {}: {e}", target_dir.display()))?;
     let target = unique_path(&target_dir, Path::new(&name));
     fs::write(&target, bytes).map_err(|e| format!("could not save {}: {e}", target.display()))?;
@@ -215,11 +235,17 @@ pub fn save_dropped_file(dir: &Path, category: Category, folder: &str, name: &st
 /// Moves a sound's file into `audio/<category>/<folder>/` (renamed if the name is taken
 /// there) and returns its updated `FileInfo`. The hash is kept: the content doesn't change.
 pub fn move_audio_file(dir: &Path, info: &FileInfo, category: Category, folder: &str) -> Result<FileInfo, String> {
+    move_into_shelf(dir, info, category.into(), folder)
+}
+
+/// Moves a file into `<shelf>/<folder>/` (renamed if the name is taken there) and returns its
+/// updated `FileInfo`, keeping what was measured about its content.
+pub fn move_into_shelf(dir: &Path, info: &FileInfo, shelf: Shelf, folder: &str) -> Result<FileInfo, String> {
     let source = absolute_audio_path(dir, info);
     let file_name = source
         .file_name()
         .ok_or_else(|| format!("{} is not a file", source.display()))?;
-    let target_dir = category_folder_path(dir, category, folder);
+    let target_dir = shelf_folder_path(dir, shelf, folder);
     if source.parent() == Some(target_dir.as_path()) {
         return Ok(info.clone());
     }
@@ -265,27 +291,7 @@ pub const AUDIO_EXTENSIONS: [&str; 7] = ["mp3", "ogg", "oga", "flac", "wav", "m4
 /// as paths like "Barovia/Castle", sorted. Empty folders are included, so a folder made
 /// with "New folder" shows up before anything is in it.
 pub fn list_folders(dir: &Path) -> PerCategory<Vec<String>> {
-    let scan = |category: Category| {
-        let root = dir.join("audio").join(category.folder_name());
-        let mut found = Vec::new();
-        let mut to_visit = vec![root.clone()];
-        while let Some(folder) = to_visit.pop() {
-            let Ok(entries) = fs::read_dir(&folder) else { continue };
-            for entry in entries.flatten() {
-                let name = entry.file_name().to_string_lossy().into_owned();
-                if name.starts_with('.') || !entry.path().is_dir() {
-                    continue;
-                }
-                let path = entry.path();
-                if let Ok(relative) = path.strip_prefix(&root) {
-                    found.push(to_json_path(relative));
-                }
-                to_visit.push(path);
-            }
-        }
-        found.sort_by_key(|f| f.to_lowercase());
-        found
-    };
+    let scan = |category: Category| subfolders(&shelf_root(dir, category.into()));
     PerCategory {
         music: scan(Category::Music),
         ambience: scan(Category::Ambience),
@@ -293,10 +299,32 @@ pub fn list_folders(dir: &Path) -> PerCategory<Vec<String>> {
     }
 }
 
+/// Every folder under `root`, at any depth, as sorted paths like "Barovia/Castle".
+pub fn subfolders(root: &Path) -> Vec<String> {
+    let mut found = Vec::new();
+    let mut to_visit = vec![root.to_path_buf()];
+    while let Some(folder) = to_visit.pop() {
+        let Ok(entries) = fs::read_dir(&folder) else { continue };
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if name.starts_with('.') || !entry.path().is_dir() {
+                continue;
+            }
+            let path = entry.path();
+            if let Ok(relative) = path.strip_prefix(root) {
+                found.push(to_json_path(relative));
+            }
+            to_visit.push(path);
+        }
+    }
+    found.sort_by_key(|f| f.to_lowercase());
+    found
+}
+
 /// Creates an (empty) Library folder.
-pub fn create_folder(dir: &Path, category: Category, folder: &str) -> Result<(), String> {
-    let path = category_folder_path(dir, category, folder);
-    if path == dir.join("audio").join(category.folder_name()) {
+pub fn create_folder(dir: &Path, shelf: Shelf, folder: &str) -> Result<(), String> {
+    let path = shelf_folder_path(dir, shelf, folder);
+    if path == shelf_root(dir, shelf) {
         return Err("the folder needs a name".into());
     }
     if path.exists() {
@@ -306,9 +334,9 @@ pub fn create_folder(dir: &Path, category: Category, folder: &str) -> Result<(),
 }
 
 /// Renames (or moves) a Library folder. The caller updates the sounds' stored paths.
-pub fn rename_folder(dir: &Path, category: Category, from: &str, to: &str) -> Result<(), String> {
-    let old = category_folder_path(dir, category, from);
-    let new = category_folder_path(dir, category, to);
+pub fn rename_folder(dir: &Path, shelf: Shelf, from: &str, to: &str) -> Result<(), String> {
+    let old = shelf_folder_path(dir, shelf, from);
+    let new = shelf_folder_path(dir, shelf, to);
     if !old.is_dir() {
         return Err(format!("the folder \"{from}\" doesn't exist"));
     }
@@ -325,9 +353,9 @@ pub fn rename_folder(dir: &Path, category: Category, from: &str, to: &str) -> Re
 }
 
 /// Deletes a Library folder, only if it holds no files (empty subfolders are fine).
-pub fn delete_empty_folder(dir: &Path, category: Category, folder: &str) -> Result<(), String> {
-    let path = category_folder_path(dir, category, folder);
-    if path == dir.join("audio").join(category.folder_name()) || !path.is_dir() {
+pub fn delete_empty_folder(dir: &Path, shelf: Shelf, folder: &str) -> Result<(), String> {
+    let path = shelf_folder_path(dir, shelf, folder);
+    if path == shelf_root(dir, shelf) || !path.is_dir() {
         return Err(format!("the folder \"{folder}\" doesn't exist"));
     }
     fn has_files(p: &Path) -> bool {
@@ -339,7 +367,7 @@ pub fn delete_empty_folder(dir: &Path, category: Category, folder: &str) -> Resu
         })
     }
     if has_files(&path) {
-        return Err(format!("\"{folder}\" isn't empty; move its sounds out first"));
+        return Err(format!("\"{folder}\" isn't empty; move what's in it out first"));
     }
     fs::remove_dir_all(&path).map_err(|e| format!("could not delete {}: {e}", path.display()))
 }
@@ -358,36 +386,43 @@ pub struct FoundAudio {
 pub fn scan_audio_files(dir: &Path) -> Vec<FoundAudio> {
     let mut found = Vec::new();
     for category in Category::ALL {
-        let mut to_visit = vec![dir.join("audio").join(category.folder_name())];
-        while let Some(folder) = to_visit.pop() {
-            let Ok(entries) = fs::read_dir(&folder) else {
+        for (path, size) in files_on_shelf(dir, category.into(), &AUDIO_EXTENSIONS) {
+            found.push(FoundAudio { path, category, size });
+        }
+    }
+    found
+}
+
+/// Every file with one of `extensions` under a shelf's folder (subfolders included), as
+/// (path relative to the project with `/`, size). Hidden files are skipped: sync tools and
+/// editors use them for temporary copies.
+pub fn files_on_shelf(dir: &Path, shelf: Shelf, extensions: &[&str]) -> Vec<(String, u64)> {
+    let mut found = Vec::new();
+    let mut to_visit = vec![shelf_root(dir, shelf)];
+    while let Some(folder) = to_visit.pop() {
+        let Ok(entries) = fs::read_dir(&folder) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if name.starts_with('.') {
                 continue;
-            };
-            for entry in entries.flatten() {
-                let path = entry.path();
-                let name = entry.file_name().to_string_lossy().into_owned();
-                if name.starts_with('.') {
-                    continue;
-                }
-                let Ok(meta) = entry.metadata() else { continue };
-                if meta.is_dir() {
-                    to_visit.push(path);
-                    continue;
-                }
-                let is_audio = path
-                    .extension()
-                    .map(|e| e.to_string_lossy().to_lowercase())
-                    .is_some_and(|e| AUDIO_EXTENSIONS.contains(&e.as_str()));
-                if !is_audio {
-                    continue;
-                }
-                let Ok(relative) = path.strip_prefix(dir) else { continue };
-                found.push(FoundAudio {
-                    path: to_json_path(relative),
-                    category,
-                    size: meta.len(),
-                });
             }
+            let Ok(meta) = entry.metadata() else { continue };
+            if meta.is_dir() {
+                to_visit.push(path);
+                continue;
+            }
+            let wanted = path
+                .extension()
+                .map(|e| e.to_string_lossy().to_lowercase())
+                .is_some_and(|e| extensions.contains(&e.as_str()));
+            if !wanted {
+                continue;
+            }
+            let Ok(relative) = path.strip_prefix(dir) else { continue };
+            found.push((to_json_path(relative), meta.len()));
         }
     }
     found
@@ -643,23 +678,23 @@ mod tests {
     fn folders_are_listed_created_renamed_and_deleted() {
         let root = TempDir::new();
         let dir = create_project(&root.0, "P", ProjectDefaults::default()).unwrap();
-        create_folder(&dir, Category::Music, "Barovia").unwrap();
-        create_folder(&dir, Category::Music, "Barovia/Castle").unwrap();
-        assert!(create_folder(&dir, Category::Music, "Barovia").is_err());
+        create_folder(&dir, Shelf::Music, "Barovia").unwrap();
+        create_folder(&dir, Shelf::Music, "Barovia/Castle").unwrap();
+        assert!(create_folder(&dir, Shelf::Music, "Barovia").is_err());
         assert_eq!(list_folders(&dir).music, vec!["Barovia", "Barovia/Castle"]);
 
-        rename_folder(&dir, Category::Music, "Barovia", "Ravenloft").unwrap();
+        rename_folder(&dir, Shelf::Music, "Barovia", "Ravenloft").unwrap();
         assert_eq!(list_folders(&dir).music, vec!["Ravenloft", "Ravenloft/Castle"]);
 
         let source = root.0.join("theme.ogg");
         fs::write(&source, b"x").unwrap();
         let info = copy_audio_into_project(&dir, Category::Music, "Ravenloft/Castle", &source).unwrap();
         assert_eq!(info.path, "audio/music/Ravenloft/Castle/theme.ogg");
-        assert!(delete_empty_folder(&dir, Category::Music, "Ravenloft").is_err(), "has a file");
+        assert!(delete_empty_folder(&dir, Shelf::Music, "Ravenloft").is_err(), "has a file");
 
         let moved = move_audio_file(&dir, &info, Category::Music, "").unwrap();
         assert_eq!(moved.path, "audio/music/theme.ogg");
-        delete_empty_folder(&dir, Category::Music, "Ravenloft").unwrap();
+        delete_empty_folder(&dir, Shelf::Music, "Ravenloft").unwrap();
         assert!(list_folders(&dir).music.is_empty());
     }
 
@@ -667,12 +702,16 @@ mod tests {
     fn dropped_files_are_saved_with_unique_names_and_checked() {
         let root = TempDir::new();
         let dir = create_project(&root.0, "P", ProjectDefaults::default()).unwrap();
-        let a = save_dropped_file(&dir, Category::Effects, "Doors", "creak.ogg", b"one").unwrap();
-        let b = save_dropped_file(&dir, Category::Effects, "Doors", "creak.ogg", b"two").unwrap();
+        let a = save_dropped_file(&dir, Shelf::Effects, "Doors", "creak.ogg", b"one").unwrap();
+        let b = save_dropped_file(&dir, Shelf::Effects, "Doors", "creak.ogg", b"two").unwrap();
         assert_eq!(a.path, "audio/effects/Doors/creak.ogg");
         assert_eq!(b.path, "audio/effects/Doors/creak (2).ogg");
-        assert!(save_dropped_file(&dir, Category::Effects, "", "notes.txt", b"x").is_err());
-        assert!(save_dropped_file(&dir, Category::Effects, "", "../../evil.mp3", b"x").unwrap().path.starts_with("audio/effects/"));
+        assert!(save_dropped_file(&dir, Shelf::Effects, "", "notes.txt", b"x").is_err());
+        assert!(save_dropped_file(&dir, Shelf::Effects, "", "../../evil.mp3", b"x").unwrap().path.starts_with("audio/effects/"));
+        // Videos go to video/, and only videos are accepted there.
+        assert_eq!(save_dropped_file(&dir, Shelf::Video, "Castle", "gate.webm", b"v").unwrap().path, "video/Castle/gate.webm");
+        assert!(save_dropped_file(&dir, Shelf::Video, "", "rain.ogg", b"x").is_err());
+        assert!(save_dropped_file(&dir, Shelf::Music, "", "gate.webm", b"x").is_err());
     }
 
     #[test]

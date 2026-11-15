@@ -16,7 +16,7 @@ import {
   soundById,
   ui,
 } from "./store.svelte";
-import type { Category } from "./types";
+import type { Category, Shelf } from "./types";
 
 export const AUDIO_EXTENSIONS = ["mp3", "ogg", "oga", "flac", "wav", "m4a", "aac"];
 const COMILITO_FILTER = [{ name: "Comilito project", extensions: ["comilito"] }];
@@ -278,7 +278,7 @@ export async function moveSounds(soundIds: string[], category: Category, folder:
 
 /** Moves a Library folder (with everything in it) into `parent` ("" = the top of its
  *  category). The folder keeps its name; Rust refuses a clash or a move into itself. */
-export async function moveFolder(category: Category, folder: string, parent: string) {
+export async function moveFolder(category: Shelf, folder: string, parent: string) {
   const name = folder.split("/").pop()!;
   const to = parent ? `${parent}/${name}` : name;
   if (to === folder) return;
@@ -292,13 +292,19 @@ export async function moveFolder(category: Category, folder: string, parent: str
 
 /** Where `folder` can move to: the top of its category and every folder that isn't the folder
  *  itself, inside it, or already its parent. */
-export function moveTargets(category: Category, folder: string): string[] {
+export function moveTargets(category: Shelf, folder: string): string[] {
   const parent = folder.split("/").slice(0, -1).join("/");
-  const folders = ui.snapshot?.folders[category] ?? [];
+  const folders = foldersOf(category);
   return ["", ...folders].filter((f) => f !== parent && f !== folder && !f.startsWith(`${folder}/`));
 }
 
-export async function newFolder(category: Category, parent: string | null = null) {
+/** The Library folders of a shelf (an audio category, or the videos). */
+export function foldersOf(shelf: Shelf): string[] {
+  if (!ui.snapshot) return [];
+  return shelf === "video" ? ui.snapshot.videoFolders : ui.snapshot.folders[shelf];
+}
+
+export async function newFolder(category: Shelf, parent: string | null = null) {
   const name = await askText("New folder", "Name");
   if (!name) return;
   await run(api.createFolder(category, parent ? `${parent}/${name}` : name));

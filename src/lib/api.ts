@@ -26,6 +26,8 @@ import type {
   Theme,
   ToolsStatus,
   WaveformView,
+  Shelf,
+  Video,
 } from "./types";
 
 export const api = {
@@ -86,7 +88,7 @@ export const api = {
   /** A file dropped from the file manager: its bytes go as the raw request body (no JSON,
    *  so large files aren't turned into huge number arrays); the rest goes in headers, which
    *  must be plain ASCII, hence the URL-encoding. Returns the new sound's id. */
-  importDroppedFile: (category: Category, folder: string, name: string, bytes: ArrayBuffer) =>
+  importDroppedFile: (category: Shelf, folder: string, name: string, bytes: ArrayBuffer) =>
     invoke<string>("import_dropped_file", new Uint8Array(bytes), {
       headers: {
         "x-name": encodeURIComponent(name),
@@ -124,14 +126,22 @@ export const api = {
   revealSound: (id: string) => invoke<void>("reveal_sound", { id }),
 
   // Library folders
-  createFolder: (category: Category, folder: string) =>
+  createFolder: (category: Shelf, folder: string) =>
     invoke<void>("create_folder", { category, folder }),
-  renameFolder: (category: Category, from: string, to: string) =>
+  renameFolder: (category: Shelf, from: string, to: string) =>
     invoke<void>("rename_folder", { category, from, to }),
-  deleteFolder: (category: Category, folder: string) =>
+  deleteFolder: (category: Shelf, folder: string) =>
     invoke<void>("delete_folder", { category, folder }),
-  openAudioFolder: (category: Category | null, folder: string | null) =>
+  openAudioFolder: (category: Shelf | null, folder: string | null) =>
     invoke<void>("open_audio_folder", { category, folder }),
+
+  // Videos (decision 0035)
+  addVideos: (paths: string[], folder: string | null = null) => invoke<string[]>("add_videos", { folder, paths }),
+  updateVideos: (videos: Video[]) => invoke<void>("update_videos", { videos }),
+  removeVideo: (id: string, permanently: boolean) => invoke<void>("remove_video", { id, permanently }),
+  moveVideos: (ids: string[], folder: string) => invoke<void>("move_videos", { ids, folder }),
+  revealVideo: (id: string) => invoke<void>("reveal_video", { id }),
+  relinkVideo: (id: string, path: string) => invoke<void>("relink_video", { id, path }),
 
   // Scenes
   createScene: (name: string, group: string | null) =>

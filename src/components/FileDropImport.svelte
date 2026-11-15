@@ -1,5 +1,6 @@
 <script lang="ts">
-  // Dropping audio files from the file manager onto the window imports copies of them, after
+  // Dropping audio files (or videos, decision 0035) from the file manager onto the window
+  // imports copies of them, after
   // asking where they should go. Dropped on a Library folder or category (anything marked with
   // `data-drop-category` / `data-drop-folder`), that's where they go; anywhere else, to the
   // folder the Library is showing. The native drop handler is off (decision 0014), so
@@ -9,30 +10,32 @@
   //   - Windows and macOS: the native handler is off (decision 0014) and the browser's drop
   //     event gives File objects with the contents but no path; each is sent to Rust as raw
   //     bytes (`api.importDroppedFile`).
-  import { FileAudio, Upload } from "@lucide/svelte";
+  import { FileAudio, FileVideo, Upload } from "@lucide/svelte";
   import { getCurrentWebview } from "@tauri-apps/api/webview";
   import { onMount } from "svelte";
   import { api } from "../lib/api";
   import { askText, formatBytes, notify, project, run, ui } from "../lib/store.svelte";
-  import { CATEGORIES, type Category } from "../lib/types";
+  import { CATEGORIES, type Shelf } from "../lib/types";
+  import { isVideoName, VIDEO_EXTENSIONS, videoEnabled } from "../lib/video";
   import Modal from "./Modal.svelte";
 
   // Keep in step with AUDIO_EXTENSIONS in storage.rs.
   const AUDIO = ["mp3", "ogg", "oga", "flac", "wav", "m4a", "aac"];
   const isAudio = (name: string) => AUDIO.includes(name.split(".").pop()?.toLowerCase() ?? "");
+  const isVideo = (name: string) => videoEnabled() && isVideoName(name);
 
   /** A dropped file: either its path (Linux) or its contents. */
   type Dropped = { name: string; size: number | null; path?: string; file?: File };
 
   const fromPath = (path: string): Dropped => ({ name: path.split(/[\\/]/).pop() ?? path, size: null, path });
 
-  type Target = { category: Category; folder: string };
+  type Target = { category: Shelf; folder: string };
 
   /** The Library folder or category under a point of the window (CSS pixels), if any. */
   function targetAt(x: number, y: number): Target | null {
     const el = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-drop-category]");
     if (!el) return null;
-    return { category: el.dataset.dropCategory as Category, folder: el.dataset.dropFolder ?? "" };
+    return { category: el.dataset.dropCategory as Shelf, folder: el.dataset.dropFolder ?? "" };
   }
 
   /** Lights up the folder under the pointer while files are dragged (see `ui.fileDropTarget`). */
@@ -48,12 +51,13 @@
    *  Dividing by the scale put the point too high on scaled displays. */
   const css = (p: { x: number; y: number }) => [p.x, p.y] as const;
 
+  const SHELVES = $derived<{ id: Shelf; label: string }[]>([...CATEGORIES, ...(videoEnabled() ? [{ id: "video" as const, label: "Video" }] : [])]);
   /** True while files from outside are dragged over the window (shows the overlay). */
   let hovering = $state(false);
   /** Where the files would go if dropped now (null: the folder the Library is showing). */
   let target = $state<Target | null>(null);
   const targetLabel = $derived(
-    target ? [CATEGORIES.find((c) => c.id === target!.category)?.label, ...target.folder.split("/").filter(Boolean)].join(" › ") : "",
+    target ? [SHELVES.find((c) => c.id === target!.category)?.label, ...target.folder.split("/").filter(Boolean)].join(" › ") : "",
   );
 
   // Hovering ends (dropped, left the window): nothing is lit up any more.
@@ -65,10 +69,15 @@
   });
   let files = $state<Dropped[]>([]);
   let skipped = $state<string[]>([]);
-  let category = $state<Category>("music");
+  let category = $state<Shelf>("music");
   let folder = $state("");
   let importing = $state<number | null>(null);
-  const folders = $derived(ui.snapshot?.folders[category] ?? []);
+  const folders = $derived(category === "video" ? (ui.snapshot?.videoFolders ?? []) : (ui.snapshot?.folders[category] ?? []));
+  // Audio and videos dropped together: the audio goes where chosen, the videos to the Video
+  // shelf (its top level, unless Video is the shelf chosen).
+  const videos = $derived(files.filter((f) => isVideo(f.name)));
+  const audio = $derived(files.filter((f) => !isVideo(f.name)));
+  const mixed = $derived(videos.length > 0 && audio.length > 0);
 
   /** Only drags of files from outside the app count; our own drags (sounds, scenes) set `ui.drag`.
    *  WebKitGTK lists dropped files as "text/uri-list" rather than "Files". */
@@ -127,10 +136,12 @@
     });
     function receive(all: Dropped[], at: Target | null) {
       if (!all.length) return;
-      files = all.filter((f) => isAudio(f.name));
-      skipped = all.filter((f) => !isAudio(f.name)).map((f) => f.name);
+      const usable = (name: string) => isAudio(name) || isVideo(name);
+      files = all.filter((f) => usable(f.name));
+      skipped = all.filter((f) => !usable(f.name)).map((f) => f.name);
       if (!files.length) {
-        notify(`Comilito can't play ${skipped.length === 1 ? `“${skipped[0]}”` : "those files"}. It plays ${AUDIO.join(", ")}.`);
+        const kinds = videoEnabled() ? [...AUDIO, ...VIDEO_EXTENSIONS] : AUDIO;
+        notify(`Comilito can't use ${skipped.length === 1 ? `“${skipped[0]}”` : "those files"}. It takes ${kinds.join(", ")}.`);
         skipped = [];
         return;
       }
@@ -142,6 +153,10 @@
         category = ui.library.category ?? "music";
         folder = ui.library.category && ui.library.folder ? ui.library.folder : "";
       }
+      // Only videos: they can only go to the Video shelf. Only audio: never to it.
+      const onlyVideos = files.every((f) => isVideo(f.name));
+      if (onlyVideos && category !== "video") [category, folder] = ["video", ""];
+      if (!onlyVideos && category === "video") [category, folder] = ["music", ""];
     }
     window.addEventListener("dragover", over);
     window.addEventListener("dragleave", leave);
@@ -168,25 +183,37 @@
 
   async function confirm() {
     const added: string[] = [];
-    // Files with a path are copied by Rust in one go (problems arrive as notices).
-    const paths = files.flatMap((f) => (f.path ? [f.path] : []));
-    if (paths.length) {
-      importing = 0;
-      added.push(...((await run(api.addSounds(category, paths, folder))) ?? []));
-    }
+    const videoFolder = category === "video" ? folder : "";
+    // Files with a path are copied by Rust in one go per kind (problems arrive as notices).
+    const audioPaths = audio.flatMap((f) => (f.path ? [f.path] : []));
+    const videoPaths = videos.flatMap((f) => (f.path ? [f.path] : []));
+    importing = 0;
+    if (audioPaths.length && category !== "video") added.push(...((await run(api.addSounds(category, audioPaths, folder))) ?? []));
+    if (videoPaths.length) added.push(...((await run(api.addVideos(videoPaths, videoFolder))) ?? []));
     // The others are sent one by one, as their contents.
     const contents = files.filter((f) => f.file);
+    const done = audioPaths.length + videoPaths.length;
     for (let i = 0; i < contents.length; i++) {
-      importing = paths.length + i;
+      importing = done + i;
       const file = contents[i].file!;
-      const id = await run(file.arrayBuffer().then((bytes) => api.importDroppedFile(category, folder, file.name, bytes)));
+      const [shelf, into] = isVideo(file.name) ? (["video", videoFolder] as const) : ([category, folder] as const);
+      const id = await run(file.arrayBuffer().then((bytes) => api.importDroppedFile(shelf, into, file.name, bytes)));
       if (id) added.push(id);
     }
     importing = null;
     if (added.length) {
-      notify(added.length === 1 ? `Imported “${files[0].name}”.` : `Imported ${added.length} sounds.`);
-      // Show them in the library.
-      ui.library = { ...ui.library, smart: "all", category, folder, search: "", selected: added, cropping: false };
+      notify(added.length === 1 ? `Imported “${files[0].name}”.` : `Imported ${added.length} files.`);
+      // Show them in the library (the videos, if only videos were dropped).
+      const showVideos = videos.length > 0 && audio.length === 0;
+      ui.library = {
+        ...ui.library,
+        smart: "all",
+        category: showVideos ? "video" : category,
+        folder: showVideos ? videoFolder : folder,
+        search: "",
+        selected: added,
+        cropping: false,
+      };
       ui.view = "library";
     }
     close();
@@ -211,24 +238,28 @@
 {/if}
 
 {#if files.length}
-  <Modal title={files.length === 1 ? "Import a sound" : `Import ${files.length} sounds`} onclose={close}>
+  <Modal title={files.length === 1 ? (videos.length ? "Import a video" : "Import a sound") : `Import ${files.length} files`} onclose={close}>
     <div class="body">
       <p class="muted">Copies go into the project folder; the original files stay where they are.</p>
       <ul class="list">
         {#each files as f, i (i)}
           <li class:done={importing !== null && i < importing} class:now={importing === i}>
-            <FileAudio size={14} /><span class="name">{f.name}</span>{#if f.size !== null}<span class="muted">{formatBytes(f.size)}</span>{/if}
+            {#if isVideo(f.name)}<FileVideo size={14} />{:else}<FileAudio size={14} />{/if}<span class="name">{f.name}</span>{#if f.size !== null}<span class="muted">{formatBytes(f.size)}</span>{/if}
           </li>
         {/each}
       </ul>
       {#if skipped.length}
-        <p class="muted small">Skipped (not audio Comilito can play): {skipped.join(", ")}</p>
+        <p class="muted small">Skipped (not audio or video Comilito can use): {skipped.join(", ")}</p>
+      {/if}
+      {#if mixed}
+        <p class="muted small">The videos go to the Video shelf; the sounds to the category below.</p>
       {/if}
       <div class="save-to">
         <label class="field">
           <span class="caps">Category</span>
           <select bind:value={category} onchange={() => (folder = "")} disabled={importing !== null}>
-            {#each CATEGORIES as c (c.id)}<option value={c.id}>{c.label}</option>{/each}
+            <!-- Only videos can go to Video; sounds only to the audio categories. -->
+            {#each SHELVES.filter((c) => (audio.length ? c.id !== "video" : c.id === "video")) as c (c.id)}<option value={c.id}>{c.label}</option>{/each}
           </select>
         </label>
         <label class="field grow">

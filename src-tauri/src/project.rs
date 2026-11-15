@@ -54,6 +54,43 @@ impl Category {
     }
 }
 
+/// A part of the Library with its own folder on disk: the three audio categories, and videos
+/// (decision 0035). Library folders, adding files and opening the folder work the same way
+/// for each. In JSON it's the category name, or "video", so the frontend can pass a category
+/// wherever a shelf is expected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Shelf {
+    Music,
+    Ambience,
+    Effects,
+    Video,
+}
+
+impl Shelf {
+    /// The shelf's folder inside the project, with `/`: "audio/music" or "video".
+    pub fn root(self) -> &'static str {
+        match self {
+            Shelf::Music => "audio/music",
+            Shelf::Ambience => "audio/ambience",
+            Shelf::Effects => "audio/effects",
+            Shelf::Video => "video",
+        }
+    }
+}
+
+// `From` is Rust's standard conversion trait (like an implicit conversion operator in C#).
+// Implementing it also gives `category.into()` for free wherever a `Shelf` is wanted.
+impl From<Category> for Shelf {
+    fn from(category: Category) -> Self {
+        match category {
+            Category::Music => Shelf::Music,
+            Category::Ambience => Shelf::Ambience,
+            Category::Effects => Shelf::Effects,
+        }
+    }
+}
+
 /// The whole contents of `comilito.json`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -559,6 +596,14 @@ impl Project {
         self.sounds.iter_mut().find(|s| s.id == id)
     }
 
+    pub fn video(&self, id: &str) -> Option<&Video> {
+        self.videos.iter().find(|v| v.id == id)
+    }
+
+    pub fn video_mut(&mut self, id: &str) -> Option<&mut Video> {
+        self.videos.iter_mut().find(|v| v.id == id)
+    }
+
     pub fn scene(&self, id: &str) -> Option<&Scene> {
         self.scenes.iter().find(|s| s.id == id)
     }
@@ -731,6 +776,8 @@ impl Project {
             self.sounds.iter().map(|s| s.id.clone()).collect();
         let scene_ids: std::collections::HashSet<String> =
             self.scenes.iter().map(|s| s.id.clone()).collect();
+        let video_ids: std::collections::HashSet<String> =
+            self.videos.iter().map(|v| v.id.clone()).collect();
 
         for scene in &mut self.scenes {
             if let Some(music) = &mut scene.music {
@@ -738,6 +785,10 @@ impl Project {
             }
             scene.ambience.retain(|l| sound_ids.contains(&l.sound));
             scene.effects.retain(|id| sound_ids.contains(id));
+            if let Some(video) = &mut scene.video {
+                video.videos.retain(|id| video_ids.contains(id));
+            }
+            scene.video_effects.retain(|id| video_ids.contains(id));
         }
         self.stack.retain(|e| scene_ids.contains(&e.scene));
         for preset in &mut self.stack_presets {

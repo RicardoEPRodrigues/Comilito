@@ -15,6 +15,7 @@
   import CropEditor from "./CropEditor.svelte";
   import LibraryTree from "./LibraryTree.svelte";
   import SoundEditor from "./SoundEditor.svelte";
+  import VideoLibrary from "./VideoLibrary.svelte";
 
   const snapshot = $derived(ui.snapshot!);
   const project = $derived(snapshot.project!);
@@ -27,7 +28,8 @@
   const list = $derived.by(() => {
     const found = findSounds(project, snapshot.missing, {
       filter: (lib.category ? "all" : lib.smart) as Filter,
-      category: lib.category,
+      // The Video shelf has its own list (VideoLibrary); sounds are never filtered by it.
+      category: lib.category === "video" ? null : lib.category,
       folder: lib.category ? lib.folder : null,
       deep: true,
       search: lib.search,
@@ -103,6 +105,9 @@
 
 <LibraryTree />
 
+{#if lib.category === "video"}
+  <VideoLibrary />
+{:else}
 <section class="list">
   <div class="head">
     <div class="titles">
@@ -203,6 +208,7 @@
     </div>
   {/if}
 </section>
+{/if}
 
 <style>
   .list {
