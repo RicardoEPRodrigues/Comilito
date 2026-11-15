@@ -94,6 +94,14 @@ fn name_from(path: &Path) -> String {
 
 // ---- Commands -------------------------------------------------------------------------------
 
+/// Whether the webviews must stream videos into a MediaSource themselves (decision 0037):
+/// true on Linux, where WebKitGTK won't play `<video src="asset://…">` (and stalls on
+/// `http://` media too). Elsewhere a plain `src` works.
+#[tauri::command]
+pub fn video_streaming() -> bool {
+    cfg!(target_os = "linux")
+}
+
 /// Copies video files into `video/<folder>/` and adds them to the library. Returns their ids.
 #[tauri::command]
 pub fn add_videos(

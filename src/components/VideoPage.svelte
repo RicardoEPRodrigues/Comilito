@@ -7,7 +7,8 @@
   import { api } from "../lib/api";
   import { askText, formatBytes, formatDuration, run, ui } from "../lib/store.svelte";
   import type { Video } from "../lib/types";
-  import { describeVideo, folderOfVideo, relinkVideo, removeVideo, scenesUsingVideo, videoById, videoSrc } from "../lib/video";
+  import { describeVideo, folderOfVideo, relinkVideo, removeVideo, scenesUsingVideo, videoById } from "../lib/video";
+  import { videoSource } from "../lib/videoStream";
 
   let { id }: { id: string } = $props();
 
@@ -15,7 +16,6 @@
   const missing = $derived(ui.snapshot!.missing.includes(id));
   const folders = $derived(ui.snapshot!.videoFolders);
   const usedIn = $derived(scenesUsingVideo(id));
-  const src = $derived(video && !missing ? videoSrc(video) : null);
   const conversion = $derived(ui.conversions.find((c) => c.id === id));
   let newTag = $state("");
 
@@ -56,10 +56,10 @@
     </div>
 
     <div class="player">
-      {#if src}
+      {#if !missing}
         <!-- Muted: a video's sound is never played (decision 0035). -->
         <!-- svelte-ignore a11y_media_has_caption -->
-        <video {src} controls muted preload="metadata"></video>
+        <video use:videoSource={{ video }} controls muted></video>
       {:else}
         <div class="no-preview muted">
           <TriangleAlert size={20} />

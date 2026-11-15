@@ -71,6 +71,13 @@ whole feature can be turned off in Preferences › Video.
 - Closing the main window closes the video window (the app only exits when every window is
   closed).
 
+## Loading videos into the webview
+
+`src/lib/videoStream.ts` (`loadVideo`, and the `videoSource` action for the Library). On
+Linux, WebKitGTK won't play `<video src="asset://…">`, so the file is streamed into a
+MediaSource with `fetch` range requests over the asset protocol ([0037](decisions/0037-streaming-videos-on-linux.md));
+only WebM can be streamed that way. On Windows and macOS a plain `src` is used.
+
 ## Build plan
 
 Each step is committed and can be tried on its own.

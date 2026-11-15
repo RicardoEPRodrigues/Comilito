@@ -5,7 +5,8 @@
   import { FilePlus, FolderOpen, Star, TriangleAlert } from "@lucide/svelte";
   import { api } from "../lib/api";
   import { formatBytes, formatDuration, run, ui } from "../lib/store.svelte";
-  import { addVideoFiles, findVideos, folderOfVideo, videoSrc } from "../lib/video";
+  import { addVideoFiles, findVideos, folderOfVideo } from "../lib/video";
+  import { videoSource } from "../lib/videoStream";
   import VideoPage from "./VideoPage.svelte";
 
   const lib = ui.library;
@@ -54,7 +55,6 @@
   </div>
   <div class="rows" role="listbox">
     {#each list as v (v.id)}
-      {@const src = missing.has(v.id) ? null : videoSrc(v)}
       <div
         class="row"
         class:selected={selectedId === v.id}
@@ -68,9 +68,9 @@
         ondragend={() => (ui.drag = null)}
       >
         <div class="thumb">
-          {#if src}
+          {#if !missing.has(v.id)}
             <!-- A frame a few seconds in, as a thumbnail; only the metadata and that frame load. -->
-            <video src="{src}#t=3" muted preload="metadata" tabindex="-1"></video>
+            <video use:videoSource={{ video: v, at: 3, preview: true }} muted tabindex="-1"></video>
           {:else}
             <TriangleAlert size={14} />
           {/if}

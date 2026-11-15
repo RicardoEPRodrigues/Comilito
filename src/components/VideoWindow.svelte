@@ -16,7 +16,8 @@
   import { api } from "../lib/api";
   import { formatDuration, ui } from "../lib/store.svelte";
   import type { Preferences, Screen, Snapshot, VideoTarget } from "../lib/types";
-  import { videoById, videoSrc } from "../lib/video";
+  import { videoById } from "../lib/video";
+  import { loadVideo, type Playback } from "../lib/videoStream";
 
   const win = getCurrentWebviewWindow();
 
@@ -35,6 +36,11 @@
   let layerShown = $state([false, false]);
   let fxShown = $state(false);
   let fxPlaying = $state<string | null>(null);
+  /** What each layer (and the effect layer) has loaded, to free it when it's replaced. */
+  const loads: (Playback | null)[] = [null, null];
+  let fxLoad: Playback | null = null;
+  /** Bumped by every show(), so a slow load that a newer one overtook doesn't take over. */
+  let showToken = 0;
 
   /** Where each video stopped (ms), shared with Rust. */
   let positions: Record<string, number> = {};
@@ -83,38 +89,52 @@
     api.saveVideoPosition(id, positions[id]).catch(() => {});
   }
 
-  /** Fades in `videoId` (from `fromMs`) on the hidden layer, then hides the other one. */
+  /** Frees a layer once it has faded out (unless it's showing again by then). */
+  function release(layer: number) {
+    setTimeout(() => {
+      if (layerShown[layer]) return;
+      layerEls[layer]?.pause();
+      loads[layer]?.destroy();
+      loads[layer] = null;
+      layerVideo[layer] = null;
+    }, fadeMs + 50);
+  }
+
+  /** Loads `videoId` (at `fromMs`) on the hidden layer and fades it in once it's ready, then
+   *  fades the other one out. */
   function show(videoId: string, fromMs: number) {
     const video = videoById(videoId);
-    const src = video ? videoSrc(video) : null;
-    if (!src) return;
+    if (!video) return;
     rememberPosition();
     const next = 1 - active;
     const el = layerEls[next];
     if (!el) return;
+    const token = ++showToken;
+    loads[next]?.destroy();
     layerVideo[next] = videoId;
-    el.src = src;
-    el.onloadedmetadata = () => {
-      // A position past the end (the file changed) starts over.
-      el.currentTime = fromMs / 1000 < el.duration - 1 ? fromMs / 1000 : 0;
-      if (!paused && !fxShown) el.play().catch(() => {});
-      const old = active;
-      active = next;
-      layerShown[next] = true;
-      layerShown[old] = false;
-      // Pause the old one once it has faded out.
-      setTimeout(() => {
-        if (active !== old) layerEls[old]?.pause();
-      }, fadeMs + 50);
-    };
+    const load = loadVideo(el, video, fromMs / 1000);
+    loads[next] = load;
+    load.ready
+      .then(() => {
+        if (token !== showToken) return;
+        if (!paused && !fxShown) el.play().catch(() => {});
+        const old = active;
+        active = next;
+        layerShown[next] = true;
+        layerShown[old] = false;
+        release(old);
+      })
+      .catch((e) => console.warn("video:", videoId, e));
     current = { sceneId: current?.sceneId ?? "", videoId };
     playedMs = 0;
   }
 
   function blank() {
     rememberPosition();
+    showToken++;
     layerShown = [false, false];
-    setTimeout(() => layerEls.forEach((el) => el?.pause()), fadeMs + 50);
+    release(0);
+    release(1);
     current = null;
   }
 
@@ -173,16 +193,26 @@
       if (id === fxPlaying || !el) return;
       fxPlaying = id;
       const video = id ? videoById(id) : undefined;
-      const src = video ? videoSrc(video) : null;
-      if (!src) {
+      if (!video) {
         fxShown = false;
-        setTimeout(() => el.pause(), fadeMs + 50);
+        setTimeout(() => {
+          if (fxShown) return;
+          el.pause();
+          fxLoad?.destroy();
+          fxLoad = null;
+        }, fadeMs + 50);
         return;
       }
-      el.src = src;
-      el.currentTime = 0;
-      el.play().catch(() => {});
-      fxShown = true;
+      fxLoad?.destroy();
+      const load = loadVideo(el, video, 0);
+      fxLoad = load;
+      load.ready
+        .then(() => {
+          if (fxPlaying !== id) return;
+          el.play().catch(() => {});
+          fxShown = true;
+        })
+        .catch((e) => console.warn("video effect:", id, e));
     });
   });
   $effect(() => {
@@ -238,6 +268,8 @@
   onDestroy(() => {
     clearInterval(clock);
     rememberPosition();
+    loads.forEach((l) => l?.destroy());
+    fxLoad?.destroy();
     emit("video-status", { videoId: null, sceneId: null, positionMs: 0, switchInMs: null, effect: null }).catch(() => {});
   });
 
@@ -273,12 +305,15 @@
       listen<Snapshot>("state-changed", (e) => (ui.snapshot = e.payload)),
       listen<Preferences>("preferences-changed", (e) => (prefs = e.payload)),
     ];
-    Promise.all([api.getState(), api.getPreferences(), api.videoPositions(), api.listScreens()]).then(([s, p, pos, sc]) => {
-      positions = pos;
-      prefs = p;
-      screens = sc;
-      ui.snapshot = s;
-    });
+    Promise.all([api.getState(), api.getPreferences(), api.videoPositions(), api.listScreens(), api.videoStreaming()]).then(
+      ([s, p, pos, sc, streaming]) => {
+        positions = pos;
+        prefs = p;
+        screens = sc;
+        ui.videoStreaming = streaming;
+        ui.snapshot = s;
+      },
+    );
     wake();
     return () => unlisten.forEach((u) => u.then((f) => f()));
   });

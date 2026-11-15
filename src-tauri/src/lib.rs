@@ -188,6 +188,7 @@ pub fn run() {
             video::reveal_video,
             video::relink_video,
             video::add_video_to_scene,
+            video::video_streaming,
             video_convert::convert_videos,
             video_convert::cancel_conversion,
             video_convert::clear_conversions,

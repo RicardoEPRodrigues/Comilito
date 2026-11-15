@@ -1,7 +1,6 @@
 // Videos in the Library (decision 0035): finding them, adding and removing files, and the
 // URL the webview plays them from. Kept apart from the sound code, like src-tauri/src/video.rs.
 
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api } from "./api";
 import { ask, project, run, ui } from "./store.svelte";
@@ -27,14 +26,7 @@ export function folderOfVideo(video: Video): string {
   return parts.length <= 2 ? "" : parts.slice(1, -1).join("/");
 }
 
-/** The URL the webview loads a video from: the asset protocol, limited by Rust to the open
- *  project's folder (`video::allow_media`). */
-export function videoSrc(video: Video): string | null {
-  const dir = ui.snapshot?.projectDir;
-  if (!dir) return null;
-  const sep = dir.includes("\\") ? "\\" : "/";
-  return convertFileSrc(`${dir}${sep}${video.file.path.split("/").join(sep)}`);
-}
+// Loading a video into a <video> element is in videoStream.ts (decision 0037).
 
 /** Scenes that show a video, in their playlist or as a video effect. */
 export function scenesUsingVideo(id: string): Scene[] {

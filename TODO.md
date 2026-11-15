@@ -30,6 +30,8 @@
       it opens (its own screen picker moves it straight away).
     - The Library's "Missing files" list shows sounds only; missing videos are marked in the
       Video shelf.
+    - On Linux, resuming far into a long video reads the file from the start up to that point
+      (decision 0037); parsing the WebM's Cues would let it jump straight there.
 
 ## Bugs
 
@@ -60,11 +62,12 @@
 
 ### Other checks
 
-- The whole video feature (decision 0035, `video` branch) was checked by type-checks, unit
-  tests and real ffmpeg/yt-dlp runs only, never in the running app (no display here). Worth
-  trying: adding an MP4 and converting it; a scene with two videos and "switch every 1 min";
-  coming back to a scene (resume); a video effect; Space and Esc; the video window on a second
-  screen and fullscreen; downloading a part of a YouTube video as video; exporting with videos.
+- Video (decision 0035, `video` branch), tested in the running app with WebDriver on Linux: a
+  converted WebM plays in the video window (playlist, looping, Space, Esc, resuming after Esc), a
+  video effect plays, the Library's preview seeks and plays, thumbnails load. Not tried yet: a
+  scene with two videos and "switch every 1 min" (switching and crossfades); shuffle; the video
+  window on a second screen and fullscreen; dragging the window by its top bar; downloading a
+  part of a YouTube video as video; exporting with videos.
 - Moving the projects folder across disks (the slow, copying case) was only tested by unit
   tests; on the virtual display both folders were on one disk, so the move was an instant rename.
   Worth trying once with a big project and a USB drive to see the progress dialog.

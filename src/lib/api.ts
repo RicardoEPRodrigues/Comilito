@@ -145,6 +145,7 @@ export const api = {
   revealVideo: (id: string) => invoke<void>("reveal_video", { id }),
   relinkVideo: (id: string, path: string) => invoke<void>("relink_video", { id, path }),
   addVideoToScene: (sceneId: string, videoId: string) => invoke<void>("add_video_to_scene", { sceneId, videoId }),
+  videoStreaming: () => invoke<boolean>("video_streaming"),
   convertVideos: (ids: string[], keepOriginals: boolean) => invoke<void>("convert_videos", { ids, keepOriginals }),
   cancelConversion: (id: string) => invoke<void>("cancel_conversion", { id }),
   clearConversions: () => invoke<void>("clear_conversions"),

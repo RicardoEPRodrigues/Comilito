@@ -30,7 +30,8 @@
   import type { Component } from "svelte";
   import { api } from "../lib/api";
   import { addSoundFiles, foldersOf } from "../lib/actions";
-  import { addVideoFiles, findVideos, folderOfVideo, videoEnabled, videoSrc } from "../lib/video";
+  import { addVideoFiles, findVideos, folderOfVideo, videoEnabled } from "../lib/video";
+  import { videoSource } from "../lib/videoStream";
   import { findSounds, topTags, type Filter } from "../lib/library";
   import { fold, pop } from "../lib/motion";
   import { folderOf, remember, run, showView, ui } from "../lib/store.svelte";
@@ -349,7 +350,6 @@
           </div>
           <div class="col-body">
             {#snippet videoRow(v: Video)}
-              {@const src = snapshot.missing.includes(v.id) ? null : videoSrc(v)}
               <div
                 class="video-row"
                 role="listitem"
@@ -359,7 +359,7 @@
                 ondragend={() => (ui.drag = null)}
                 ondblclick={() => openVideo(v.id)}
               >
-                <span class="vthumb">{#if src}<video src="{src}#t=3" muted preload="metadata" tabindex="-1"></video>{/if}</span>
+                <span class="vthumb">{#if !snapshot.missing.includes(v.id)}<video use:videoSource={{ video: v, at: 3, preview: true }} muted tabindex="-1"></video>{/if}</span>
                 <span class="vname">{v.name}</span>
               </div>
             {/snippet}
