@@ -49,7 +49,7 @@ Each step is committed and can be tried on its own.
    files, the Library's Video category and a video's page.
 3. [x] Measuring videos with ffprobe, the conversion queue, and the Convert dialog (on import,
    on drop and for files found in the folder).
-4. [ ] The scene editor's Video section and video effects, and the drawer's Video column.
+4. [x] The scene editor's Video section and video effects, and the drawer's Video column.
 5. [ ] The video window: a second window that plays the top scene's videos, follows Space and
    Esc, has the header button and the bottom bar's now-playing.
 6. [ ] Playlists: shuffle, switching every N minutes, resuming, crossfades.

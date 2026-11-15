@@ -3,12 +3,14 @@
   // inherited value greyed out with a link icon, and a reset button when it's overridden.
   //
   // `kind` picks the input: "percent" (0–1 shown as 0–100%), "seconds" (stored as ms),
-  // or "toggle" (on/off).
+  // "minutes" (whole minutes, stored as they are), or "toggle" (on/off).
   import { Link, RotateCcw } from "@lucide/svelte";
 
   interface Props {
     label: string;
-    kind: "percent" | "seconds" | "toggle";
+    kind: "percent" | "seconds" | "minutes" | "toggle";
+    /** For toggles: what "on" and "off" are called (default On / Off). */
+    labels?: [string, string];
     /** The override, or undefined to inherit. Numbers for percent/seconds, boolean for toggle. */
     value: number | boolean | undefined;
     inherited: number | boolean;
@@ -16,7 +18,7 @@
     /** For bulk editing: several sounds with different values. */
     mixed?: boolean;
   }
-  let { label, kind, value, inherited, onchange, mixed = false }: Props = $props();
+  let { label, kind, value, inherited, onchange, mixed = false, labels = ["On", "Off"] }: Props = $props();
 
   const overridden = $derived(value !== undefined);
   const shown = $derived(value ?? inherited);
@@ -51,10 +53,26 @@
         aria-label={label}
       />
       <span class="value">s</span>
+    {:else if kind === "minutes"}
+      <input
+        class="num"
+        type="number"
+        min="0"
+        max="240"
+        step="1"
+        value={mixed ? "" : (shown as number)}
+        placeholder={mixed ? "mixed" : ""}
+        onchange={(e) => {
+          const m = e.currentTarget.valueAsNumber;
+          if (!Number.isNaN(m)) onchange(Math.round(Math.max(0, m)));
+        }}
+        aria-label={label}
+      />
+      <span class="value">min</span>
     {:else}
       <label class="switch">
         <input type="checkbox" checked={shown as boolean} onchange={(e) => onchange(e.currentTarget.checked)} aria-label={label} />
-        <span class="value">{mixed ? "mixed" : shown ? "On" : "Off"}</span>
+        <span class="value">{mixed ? "mixed" : shown ? labels[0] : labels[1]}</span>
       </label>
     {/if}
     {#if overridden}

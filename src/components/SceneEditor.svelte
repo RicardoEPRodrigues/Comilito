@@ -1,8 +1,8 @@
 <script lang="ts">
   // Edits a scene in place in the centre panel (decision 0017): music playlist, ambience
-  // layers, effects pad and settings. Works on a local draft; Save (in the context bar) sends
+  // layers, videos and video effects (decision 0035), effects pad and settings. Works on a local draft; Save (in the context bar) sends
   // the whole scene to Rust. Sounds can be dragged in from the Library drawer.
-  import { ArrowDown, ArrowUp, ArrowUpToLine, AudioLines, Music, Plus, X, Zap } from "@lucide/svelte";
+  import { ArrowDown, ArrowUp, ArrowUpToLine, AudioLines, Film, Music, Plus, X, Zap } from "@lucide/svelte";
   import { api } from "../lib/api";
   import { onDestroy } from "svelte";
   import { addSceneOnTop, stopPreviewOnLeave } from "../lib/actions";
@@ -12,6 +12,8 @@
   import Capital from "./Capital.svelte";
   import OverrideField from "./OverrideField.svelte";
   import Watermark from "./Watermark.svelte";
+  import { videoById, videoEnabled } from "../lib/video";
+  import { formatDuration } from "../lib/store.svelte";
 
   let { id }: { id: string } = $props();
   // Sounds previewed from this editor stop when it closes.
@@ -87,6 +89,39 @@
     return p.sounds.filter((s) => s.category === category).sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  // ---- Videos (decision 0035) ----
+  const videoDefaults = $derived(p.defaults.video ?? { shuffle: false, switchMinutes: 5, resume: true });
+  const allVideos = $derived([...(p.videos ?? [])].sort((a, b) => a.name.localeCompare(b.name)));
+  function videoName(videoId: string) {
+    return videoById(videoId)?.name ?? "?";
+  }
+  function videoLength(videoId: string) {
+    const ms = videoById(videoId)?.info?.durationMs;
+    return ms ? formatDuration(ms) : "";
+  }
+  function addVideo(videoId: string) {
+    if (!videoById(videoId)) return;
+    if (!draft.video) draft.video = { videos: [] };
+    if (!draft.video.videos.includes(videoId)) draft.video.videos.push(videoId);
+    // A scene with videos of its own has nothing below to hide.
+    draft.hidesVideo = undefined;
+  }
+  function removeVideo(i: number) {
+    draft.video!.videos.splice(i, 1);
+    if (draft.video!.videos.length === 0) draft.video = undefined;
+  }
+  function moveVideo(i: number, delta: number) {
+    const list = draft.video!.videos;
+    const j = i + delta;
+    if (j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  function addVideoEffect(videoId: string) {
+    if (!videoById(videoId)) return;
+    const list = (draft.videoEffects ??= []);
+    if (!list.includes(videoId)) list.push(videoId);
+  }
+
   // ---- Music ----
   function removeTrack(i: number) {
     draft.music!.tracks.splice(i, 1);
@@ -138,7 +173,7 @@
   role="region"
   aria-label="Scene editor"
   ondragover={(e) => {
-    if (ui.drag?.kind !== "sound") return;
+    if (ui.drag?.kind !== "sound" && ui.drag?.kind !== "video") return;
     e.preventDefault();
     if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
     dropOver = true;
@@ -149,9 +184,11 @@
     if (e.clientX <= r.left || e.clientX >= r.right || e.clientY <= r.top || e.clientY >= r.bottom) dropOver = false;
   }}
   ondrop={(e) => {
-    if (ui.drag?.kind !== "sound") return;
+    const drag = ui.drag;
+    if (drag?.kind !== "sound" && drag?.kind !== "video") return;
     e.preventDefault();
-    addSound(ui.drag.id);
+    if (drag.kind === "video") addVideo(drag.id);
+    else addSound(drag.id);
     ui.drag = null;
     dropOver = false;
   }}
@@ -229,6 +266,66 @@
     </label>
   </section>
 
+  {#if videoEnabled()}
+    <section>
+      <div class="section-head"><span class="caps">Video</span><span class="hint">Plays in the video window while this is the top-most scene with videos</span></div>
+      {#each draft.video?.videos ?? [] as videoId, i (i)}
+        <div class="row">
+          <Film size={15} />
+          <span class="grow">{videoName(videoId)}</span>
+          <span class="muted small">{videoLength(videoId)}</span>
+          <button class="icon" onclick={() => moveVideo(i, -1)} disabled={i === 0} title="Move up"><ArrowUp size={14} /></button>
+          <button class="icon" onclick={() => moveVideo(i, 1)} disabled={i === (draft.video?.videos.length ?? 0) - 1} title="Move down"><ArrowDown size={14} /></button>
+          <button class="icon" onclick={() => removeVideo(i)} title="Remove"><X size={15} /></button>
+        </div>
+      {/each}
+      <div class="under">
+        <select
+          class="picker"
+          onchange={(e) => {
+            addVideo(e.currentTarget.value);
+            e.currentTarget.value = "";
+          }}
+        >
+          <option value="">+ Add video</option>
+          {#each allVideos as v (v.id)}<option value={v.id}>{v.name}</option>{/each}
+        </select>
+        <span class="muted small">{allVideos.length ? "or drag videos here from the Library" : "Add videos in the Library's Video shelf first"}</span>
+      </div>
+      {#if draft.video}
+        <div class="video-settings">
+          <OverrideField
+            label="Shuffle"
+            kind="toggle"
+            value={draft.video.shuffle}
+            inherited={videoDefaults.shuffle}
+            onchange={(v) => (draft.video!.shuffle = v as boolean | undefined)}
+          />
+          <OverrideField
+            label="Switch videos every"
+            kind="minutes"
+            value={draft.video.switchMinutes}
+            inherited={videoDefaults.switchMinutes}
+            onchange={(v) => (draft.video!.switchMinutes = v as number | undefined)}
+          />
+          <OverrideField
+            label="Coming back to a video"
+            kind="toggle"
+            labels={["Resume", "Start over"]}
+            value={draft.video.resume}
+            inherited={videoDefaults.resume}
+            onchange={(v) => (draft.video!.resume = v as boolean | undefined)}
+          />
+        </div>
+        <span class="muted small">With one video, it simply loops. 0 minutes plays each video to its end.</span>
+      {:else}
+        <label class="switch">
+          <input type="checkbox" checked={draft.hidesVideo ?? false} onchange={(e) => (draft.hidesVideo = e.currentTarget.checked || undefined)} />
+          <span class="small">Hide the video of the scenes below (a black screen)</span>
+        </label>
+      {/if}
+    </section>
+  {/if}
   <section>
     <div class="section-head"><span class="caps">Effects pad</span><span class="hint">Shown on the right while this scene is in the tapestry</span></div>
     <div class="chips">
@@ -238,6 +335,26 @@
       {@render picker("effects", "Add effect")}
     </div>
   </section>
+  {#if videoEnabled()}
+    <section>
+      <div class="section-head"><span class="caps">Video effects</span><span class="hint">Shown under the effects pad; playing one replaces the video until it ends</span></div>
+      <div class="chips">
+        {#each draft.videoEffects ?? [] as videoId, i (videoId)}
+          <span class="chip"><Film size={12} />{videoName(videoId)}<button class="icon x" onclick={() => draft.videoEffects!.splice(i, 1)} title="Remove"><X size={12} /></button></span>
+        {/each}
+        <select
+          class="picker"
+          onchange={(e) => {
+            addVideoEffect(e.currentTarget.value);
+            e.currentTarget.value = "";
+          }}
+        >
+          <option value="">+ Add video effect</option>
+          {#each allVideos as v (v.id)}<option value={v.id}>{v.name}</option>{/each}
+        </select>
+      </div>
+    </section>
+  {/if}
 
   <section>
     <div class="section-head"><span class="caps">Settings</span><span class="hint">Grey values follow the project defaults</span></div>
@@ -384,6 +501,11 @@
   }
   .x {
     padding: 0.05rem;
+  }
+  .video-settings {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.8rem;
   }
   .settings {
     display: grid;

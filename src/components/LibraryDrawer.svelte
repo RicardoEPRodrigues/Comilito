@@ -10,7 +10,10 @@
     ChevronRight,
     ChevronUp,
     ChevronsDownUp,
+    ChevronsLeft,
+    ChevronsRight,
     ChevronsUpDown,
+    Film,
     FilePlus,
     Folder,
     FolderOpen,
@@ -26,11 +29,12 @@
   } from "@lucide/svelte";
   import type { Component } from "svelte";
   import { api } from "../lib/api";
-  import { addSoundFiles } from "../lib/actions";
+  import { addSoundFiles, foldersOf } from "../lib/actions";
+  import { addVideoFiles, findVideos, folderOfVideo, videoEnabled, videoSrc } from "../lib/video";
   import { findSounds, topTags, type Filter } from "../lib/library";
   import { fold, pop } from "../lib/motion";
   import { folderOf, remember, run, showView, ui } from "../lib/store.svelte";
-  import { CATEGORIES, type Category, type Sound } from "../lib/types";
+  import { CATEGORIES, type Category, type Shelf, type Sound, type Video } from "../lib/types";
   import SoundRow from "./SoundRow.svelte";
 
   const snapshot = $derived(ui.snapshot!);
@@ -50,6 +54,64 @@
   const tags = $derived(topTags(project, 4));
 
   const matches = $derived(findSounds(project, snapshot.missing, { filter, search }));
+
+  // ---- The Video column (decision 0035, design screen 8) ----
+  const showVideos = $derived(videoEnabled());
+  /** Folded into a narrow strip, so the three audio columns get its space. Remembered. */
+  const videoFolded = $derived(ui.collapsed.includes("lib-col:video"));
+  function toggleVideoColumn() {
+    const key = "lib-col:video";
+    ui.collapsed = videoFolded ? ui.collapsed.filter((k) => k !== key) : [...ui.collapsed, key];
+    remember("collapsed", ui.collapsed);
+  }
+  const videoMatches = $derived.by(() => {
+    const scenesOn = new Set(project.stack.filter((e) => e.enabled).map((e) => e.scene));
+    const used = new Set<string>();
+    const inTapestry = new Set<string>();
+    for (const s of project.scenes) {
+      for (const id of [...(s.video?.videos ?? []), ...(s.videoEffects ?? [])]) {
+        used.add(id);
+        if (scenesOn.has(s.id)) inTapestry.add(id);
+      }
+    }
+    const cutoff = Date.now() - 30 * 24 * 3600 * 1000;
+    return findVideos(null, search).filter((v) => {
+      switch (filter) {
+        case "favourites":
+          return !!v.favourite;
+        case "recent":
+          return !!v.lastUsed && Date.parse(v.lastUsed) >= cutoff;
+        case "tapestry":
+          return inTapestry.has(v.id);
+        case "unused":
+          return !used.has(v.id);
+        default:
+          return true;
+      }
+    });
+  });
+  /** The matching videos grouped by folder, like `columns` does for sounds. */
+  const videoGroups = $derived.by(() => {
+    const byFolder = new Map<string, Video[]>();
+    for (const folder of ["", ...snapshot.videoFolders]) byFolder.set(folder, []);
+    for (const v of videoMatches) {
+      const f = folderOfVideo(v);
+      byFolder.set(f, [...(byFolder.get(f) ?? []), v]);
+    }
+    const filtering = filter !== "all" || search.trim() !== "";
+    return [...byFolder.entries()]
+      .map(([folder, videos]) => ({ folder, videos }))
+      .filter((g) => (g.folder === "" ? g.videos.length > 0 : !filtering || g.videos.length > 0));
+  });
+  function videoDragStart(e: DragEvent, id: string) {
+    ui.drag = { kind: "video", id };
+    e.dataTransfer?.setData("text/plain", id);
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = "copyMove";
+  }
+  function openVideo(id: string) {
+    ui.library = { ...ui.library, smart: "all", category: "video", folder: null, search: "", selected: [id], cropping: false };
+    showView("library");
+  }
   const quickResults = $derived(search.trim() ? findSounds(project, snapshot.missing, { filter: "all", search }).slice(0, 8) : []);
 
   function setOpen(open: boolean) {
@@ -103,12 +165,12 @@
       .filter((g) => g.folder === "" ? g.sounds.length > 0 : !filtering || g.sounds.length > 0);
   }
 
-  function folded(category: Category, folder: string) {
+  function folded(category: Shelf, folder: string) {
     return ui.collapsed.includes(`lib:${category}:${folder}`);
   }
 
   /** True when a folder above this one is folded, so this one isn't shown at all. */
-  function insideFolded(category: Category, folder: string) {
+  function insideFolded(category: Shelf, folder: string) {
     const parts = folder.split("/");
     for (let i = 1; i < parts.length; i++) {
       if (folded(category, parts.slice(0, i).join("/"))) return true;
@@ -116,17 +178,17 @@
     return false;
   }
 
-  function toggleFolder(category: Category, folder: string) {
+  function toggleFolder(category: Shelf, folder: string) {
     const key = `lib:${category}:${folder}`;
     ui.collapsed = ui.collapsed.includes(key) ? ui.collapsed.filter((k) => k !== key) : [...ui.collapsed, key];
     remember("collapsed", ui.collapsed);
   }
 
   /** Folds (or unfolds) every folder of one category, or of all three when none is given. */
-  function foldAll(fold: boolean, category?: Category) {
-    const cats = category ? [category] : CATEGORIES.map((c) => c.id);
+  function foldAll(fold: boolean, category?: Shelf) {
+    const cats: Shelf[] = category ? [category] : [...CATEGORIES.map((c) => c.id), "video"];
     const prefixes = cats.map((c) => `lib:${c}:`);
-    const keys = cats.flatMap((c) => snapshot.folders[c].map((f) => `lib:${c}:${f}`));
+    const keys = cats.flatMap((c) => foldersOf(c).map((f) => `lib:${c}:${f}`));
     const others = ui.collapsed.filter((k) => !prefixes.some((p) => k.startsWith(p)));
     ui.collapsed = fold ? [...others, ...keys] : others;
     remember("collapsed", ui.collapsed);
@@ -188,7 +250,7 @@
       {#if ui.drawerOpen}<ChevronDown size={16} />{:else}<ChevronUp size={16} />{/if}
     </button>
     <h2 class="display">Library</h2>
-    <span class="count">{project.sounds.length} sounds</span>
+    <span class="count">{project.sounds.length} sounds{showVideos && project.videos?.length ? ` · ${project.videos.length} videos` : ""}</span>
     {@render searchBox(!ui.drawerOpen)}
     {#if ui.drawerOpen}
       <div class="filters">
@@ -219,7 +281,7 @@
   </div>
 
   {#if ui.drawerOpen}
-    <div class="columns">
+    <div class="columns" class:with-video={showVideos && !videoFolded} class:video-folded={showVideos && videoFolded}>
       {#each CATEGORIES as c (c.id)}
         {@const Icon = ICONS[c.id]}
         {@const groups = columns(c.id)}
@@ -267,6 +329,70 @@
           </div>
         </div>
       {/each}
+      {#if showVideos && videoFolded}
+        <button class="video-strip" title="Show the Video column" onclick={toggleVideoColumn} data-drop-category="video" data-drop-folder="">
+          <ChevronsLeft size={14} /><Film size={14} /><span class="count">{videoMatches.length}</span><span class="vertical caps">Video</span>
+        </button>
+      {:else if showVideos}
+        <div class="column" class:drop={ui.fileDropTarget === "video:"} role="list" data-drop-category="video" data-drop-folder="">
+          <div class="col-head">
+            <Film size={14} />
+            <span class="caps">Video</span>
+            <span class="spacer"></span>
+            <span class="count">{videoMatches.length}</span>
+            {#if snapshot.videoFolders.length > 0}
+              <button class="icon" title="Unfold all video folders" onclick={() => foldAll(false, "video")}><ChevronsUpDown size={14} /></button>
+              <button class="icon" title="Fold all video folders" onclick={() => foldAll(true, "video")}><ChevronsDownUp size={14} /></button>
+            {/if}
+            <button class="icon" title="Add video files…" onclick={() => addVideoFiles()}><FilePlus size={14} /></button>
+            <button class="icon" title="Fold the Video column away" onclick={toggleVideoColumn}><ChevronsRight size={14} /></button>
+          </div>
+          <div class="col-body">
+            {#snippet videoRow(v: Video)}
+              {@const src = snapshot.missing.includes(v.id) ? null : videoSrc(v)}
+              <div
+                class="video-row"
+                role="listitem"
+                draggable="true"
+                title="Drag onto a scene · double-click to open it in the Library"
+                ondragstart={(e) => videoDragStart(e, v.id)}
+                ondragend={() => (ui.drag = null)}
+                ondblclick={() => openVideo(v.id)}
+              >
+                <span class="vthumb">{#if src}<video src="{src}#t=3" muted preload="metadata" tabindex="-1"></video>{/if}</span>
+                <span class="vname">{v.name}</span>
+              </div>
+            {/snippet}
+            {#each videoGroups as g (g.folder)}
+              {#if g.folder === ""}
+                {#each g.videos as v (v.id)}{@render videoRow(v)}{/each}
+              {:else if !insideFolded("video", g.folder)}
+                {@const label = folderLabel(g.folder)}
+                {@const isFolded = folded("video", g.folder)}
+                <div class="group" class:drop={ui.fileDropTarget === `video:${g.folder}`} data-drop-category="video" data-drop-folder={g.folder}>
+                  <button class="folder" style:padding-left="{label.depth * 0.9}rem" onclick={() => toggleFolder("video", g.folder)}>
+                    {#if isFolded}<ChevronRight size={13} />{:else}<ChevronDown size={13} />{/if}
+                    {#if isFolded}<Folder size={13} />{:else}<FolderOpen size={13} />{/if}
+                    <span class="fname">{label.name}</span>
+                    <span class="count">{g.videos.length}</span>
+                  </button>
+                  {#if !isFolded}
+                    <div class="nested" transition:fold style:padding-left="{label.depth * 0.9 + 1.2}rem">
+                      {#each g.videos as v (v.id)}{@render videoRow(v)}{/each}
+                    </div>
+                  {/if}
+                </div>
+              {/if}
+            {/each}
+            {#if videoGroups.length === 0}
+              <p class="empty">
+                {#if search || filter !== "all"}Nothing matches.{:else}No videos yet.
+                  <button class="link" onclick={() => addVideoFiles()}><Plus size={12} />Add files</button>{/if}
+              </p>
+            {/if}
+          </div>
+        </div>
+      {/if}
     </div>
   {/if}
 </section>
@@ -397,6 +523,62 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 1.8rem;
     padding: 0 1.2rem 0.6rem;
+  }
+  .columns.with-video {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.4rem;
+  }
+  .columns.video-folded {
+    grid-template-columns: repeat(3, 1fr) auto;
+  }
+  /* The folded Video column: a narrow strip with "VIDEO" written sideways. */
+  .video-strip {
+    width: 2.1rem;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    padding: 0.4rem 0;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    color: var(--muted);
+  }
+  .video-strip .vertical {
+    writing-mode: vertical-rl;
+    font-size: 0.66rem;
+    color: var(--text);
+  }
+  .video-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.3rem;
+    border-radius: var(--radius);
+    cursor: grab;
+    font-size: 0.85rem;
+  }
+  .video-row:hover {
+    background: color-mix(in srgb, var(--text) 6%, transparent);
+  }
+  .vthumb {
+    width: 2.6rem;
+    height: 1.45rem;
+    flex: none;
+    border-radius: 2px;
+    background: #2a2220;
+    overflow: hidden;
+  }
+  .vthumb video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+  }
+  .vname {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .column {
     display: flex;

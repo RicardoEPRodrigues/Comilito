@@ -1,7 +1,7 @@
 <script lang="ts">
   // The Scenes tab: scene cards in collapsible groups. Drag a scene into the tapestry, or drop
   // a sound from the Library on a scene to add it there. The ⋯ menu (or right-click) has the rest.
-  import { Copy, Ellipsis, FolderInput, FolderMinus, FolderPlus, Pencil, Plus, Replace, TextCursorInput, Trash2, ArrowUpToLine } from "@lucide/svelte";
+  import { Copy, Ellipsis, FolderInput, FolderMinus, FolderPlus, Pencil, Plus, Replace, TextCursorInput, Trash2, ArrowUpToLine, Film } from "@lucide/svelte";
   import { api } from "../lib/api";
   import {
     addSceneOnTop,
@@ -14,6 +14,7 @@
     ungroupScenes,
   } from "../lib/actions";
   import { focusOn, project, run, ui } from "../lib/store.svelte";
+  import { videoEnabled } from "../lib/video";
   import type { Scene } from "../lib/types";
   import { openMenu, type MenuItem } from "./ContextMenu.svelte";
   import GroupHeading from "./GroupHeading.svelte";
@@ -114,7 +115,7 @@
         if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
         return;
       }
-      if (ui.drag?.kind !== "sound") return;
+      if (ui.drag?.kind !== "sound" && ui.drag?.kind !== "video") return;
       e.preventDefault();
       if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
       soundTarget = scene.id;
@@ -126,12 +127,13 @@
         dropInGroup(scene.group);
         return;
       }
-      if (ui.drag?.kind !== "sound") return;
+      const drag = ui.drag;
+      if (drag?.kind !== "sound" && drag?.kind !== "video") return;
       e.preventDefault();
-      const soundId = ui.drag.id;
       soundTarget = null;
       ui.drag = null;
-      run(api.addSoundToScene(scene.id, soundId));
+      // A video joins the scene's video playlist; a sound goes where its category goes.
+      run(drag.kind === "video" ? api.addVideoToScene(scene.id, drag.id) : api.addSoundToScene(scene.id, drag.id));
     }}
     ondblclick={() => addSceneOnTop(scene.id)}
     oncontextmenu={(e) => openMenu(e, menuFor(scene), scene.name)}
@@ -142,6 +144,7 @@
       <span class="name">{scene.name}</span>
       <span class="meta">{meta(scene)}</span>
     </span>
+    {#if scene.video && videoEnabled()}<span class="has-video" title="Has videos"><Film size={13} /></span>{/if}
     {#if scene.hotkey}<kbd>{scene.hotkey}</kbd>{/if}
     <button class="icon" title="Scene options" onclick={(e) => openMenu(e, menuFor(scene), scene.name)}><Ellipsis size={16} /></button>
   </div>
@@ -170,6 +173,11 @@
 </div>
 
 <style>
+  .has-video {
+    color: var(--side-muted);
+    display: inline-flex;
+    flex: none;
+  }
   .list {
     flex: 1;
     overflow: auto;

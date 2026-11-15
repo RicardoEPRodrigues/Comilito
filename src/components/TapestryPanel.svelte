@@ -31,6 +31,7 @@
   import { api } from "../lib/api";
   import { clearTapestry, insertScene, revertToOrigin, saveTapestryAsPreset, updateOriginPreset } from "../lib/actions";
   import { focusOn, percent, presetById, project as currentProject, run, sceneById, soundById, ui } from "../lib/store.svelte";
+  import { videoById } from "../lib/video";
   import { ROLES, roleLabel, type Role, type Scene, type StackEntry } from "../lib/types";
   import Capital from "./Capital.svelte";
   import { openMenu, type MenuItem } from "./ContextMenu.svelte";
@@ -71,7 +72,7 @@
     if (!ui.drag || ui.drag.kind === "presetEntry") return;
     e.preventDefault();
     e.stopPropagation();
-    if (ui.drag.kind === "sound") {
+    if (ui.drag.kind === "sound" || ui.drag.kind === "video") {
       if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
       soundTarget = entry.id;
       dropIndex = null;
@@ -84,7 +85,7 @@
   }
 
   function onPanelDragOver(e: DragEvent) {
-    if (!ui.drag || ui.drag.kind === "sound" || ui.drag.kind === "presetEntry") return;
+    if (!ui.drag || ui.drag.kind === "sound" || ui.drag.kind === "video" || ui.drag.kind === "presetEntry") return;
     e.preventDefault();
     // Over empty space: insert at the top when the stack is empty, else at the bottom.
     if (dropIndex === null) dropIndex = n === 0 ? 0 : 0;
@@ -103,9 +104,9 @@
     ui.drag = null;
     if (!drag) return;
 
-    if (drag.kind === "sound") {
+    if (drag.kind === "sound" || drag.kind === "video") {
       const entry = project.stack.find((en) => en.id === target);
-      if (entry) await run(api.addSoundToScene(entry.scene, drag.id));
+      if (entry) await run(drag.kind === "video" ? api.addVideoToScene(entry.scene, drag.id) : api.addSoundToScene(entry.scene, drag.id));
       return;
     }
     if (drag.kind === "scene") await insertScene(drag.id, index);
@@ -206,7 +207,7 @@
 <section
   bind:this={panel}
   class="tapestry"
-  class:sound-drag={ui.drag?.kind === "sound"}
+  class:sound-drag={ui.drag?.kind === "sound" || ui.drag?.kind === "video"}
   ondragover={onPanelDragOver}
   ondragleave={(e) => {
     // Only clear when really leaving the panel. WebKitGTK gives no relatedTarget, so check
@@ -317,8 +318,9 @@
           <button class="icon" title="Remove from tapestry" onclick={() => run(api.stackRemove(entry.id))}><X size={18} /></button>
         </div>
 
-        {#if soundTarget === entry.id && ui.drag?.kind === "sound"}
-          <div class="drop-hint"><Plus size={14} />Release to add “{soundById(ui.drag.id)?.name}” to {scene?.name}</div>
+        {#if soundTarget === entry.id && (ui.drag?.kind === "sound" || ui.drag?.kind === "video")}
+          {@const dragged = ui.drag.kind === "video" ? videoById(ui.drag.id)?.name : soundById(ui.drag.id)?.name}
+          <div class="drop-hint"><Plus size={14} />Release to add “{dragged}” to {scene?.name}</div>
         {/if}
 
         {#if expanded.has(entry.id) && scene}

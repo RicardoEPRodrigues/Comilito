@@ -236,6 +236,31 @@ pub fn relink_video(id: String, path: PathBuf, app: AppHandle, state: AppStateRe
     Ok(())
 }
 
+/// Adds a video to a scene's playlist (a video dragged onto a scene or a tapestry entry).
+#[tauri::command]
+pub fn add_video_to_scene(scene_id: String, video_id: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    let open = s.open_mut()?;
+    if open.project.video(&video_id).is_none() {
+        return Err("that video no longer exists".into());
+    }
+    let scene = open
+        .project
+        .scenes
+        .iter_mut()
+        .find(|sc| sc.id == scene_id)
+        .ok_or("that scene no longer exists")?;
+    let playlist = scene.video.get_or_insert_with(Default::default);
+    if !playlist.videos.contains(&video_id) {
+        playlist.videos.push(video_id);
+    }
+    // A scene with videos of its own has nothing to hide.
+    scene.hides_video = false;
+    let problems = s.project_changed(Duration::ZERO);
+    emit_state(&app, &s, problems);
+    Ok(())
+}
+
 /// Copies `source` into the project for video `id` (into the folder it was in) and points the
 /// video at it.
 pub fn relink(open: &mut OpenProject, id: &str, source: &Path) -> Result<(), String> {
