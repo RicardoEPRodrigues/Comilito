@@ -5,7 +5,12 @@
 - flatpak version (not now)
 - Create a first time experience.
 - Add ability to have plugins.
-- Add a plug in that associates a video with a scene and the top scene's video plays on a seperate window.
+- Add a plug in that associates a video with a scene and the top scene's video plays on a seperate window. some ideas to complement:
+  - we can have a list similar to the songs where we might want to shuffle.
+  - when playing this list, we might want to move between videos before they reach its end. play 5 minutes of one, then switch every 5 minutes going back to the previous point it was at. All this should be editable in settings.
+  - a button to show the video playback should be added to the main UI.
+  - new section should be added below the effects section (or tab) where we could play a video effect. This video would replace the currently playing video and when it is finished we go back to the playlist.
+- add ability to scale the UI. Font and whole UI.
 
 ## Bugs
 
@@ -33,8 +38,6 @@
 
 ### Other checks
 
-- Dropping files on a Library folder (decision 0034) was only type-checked. Worth trying on a
-  folder in the drawer and in the Library workspace.
 - Moving the projects folder across disks (the slow, copying case) was only tested by unit
   tests; on the virtual display both folders were on one disk, so the move was an instant rename.
   Worth trying once with a big project and a USB drive to see the progress dialog.
