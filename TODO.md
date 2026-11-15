@@ -10,8 +10,6 @@
   - Trimming videos (like cropping sounds).
   - Remembering where each video left off across restarts (it's remembered only while the app
     is open).
-  - Fingerprinting videos (sha256) like audio, so "Find in a folder" can tell same-named
-    videos apart; videos are relinked by name and size only for now.
   - Conversions don't resume after a restart (downloads do); the video stays "may not play"
     with its Convert button.
   - Video plugins, once plugins exist: the video feature has its own folders and data keys, so

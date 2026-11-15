@@ -274,14 +274,13 @@ impl AppState {
         if let Some(open) = &self.open {
             let hashing = open
                 .project
-                .sounds
-                .iter()
-                .filter(|s| s.file.sha256.is_none() && !open.missing.contains(&s.id))
+                .files()
+                .filter(|(id, file)| file.sha256.is_none() && !open.missing.iter().any(|m| m == id))
                 .count();
             if hashing > 0 {
                 work.push(format!(
                     "Fingerprinting {} (used to find moved or missing files). It carries on next time.",
-                    plural(hashing, "sound", "sounds")
+                    plural(hashing, "file", "files")
                 ));
             }
         }
@@ -431,9 +430,8 @@ impl AppState {
                 changed_on_disk: open.changed_on_disk,
                 hashing_remaining: open
                     .project
-                    .sounds
-                    .iter()
-                    .filter(|snd| snd.file.sha256.is_none() && !open.missing.contains(&snd.id))
+                    .files()
+                    .filter(|(id, file)| file.sha256.is_none() && !open.missing.iter().any(|m| m == id))
                     .count(),
                 analyzing_remaining: open
                     .project

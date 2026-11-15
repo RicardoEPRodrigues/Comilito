@@ -336,8 +336,9 @@ enum SlowJob {
         project: Box<project::Project>,
         backups_dir: PathBuf,
     },
+    /// Fingerprint the file of a sound or a video (`id` is either's).
     Hash {
-        sound_id: String,
+        id: String,
         path: PathBuf,
         size: u64,
     },
@@ -455,16 +456,16 @@ fn ticker(app: AppHandle) {
                         sound_id: sound.id.clone(),
                         path: storage::absolute_audio_path(&open.dir, &sound.file),
                     });
-                } else if let Some(sound) = open
+                } else if let Some((id, file)) = open
                     .project
-                    .sounds
-                    .iter()
-                    .find(|snd| snd.file.sha256.is_none() && !open.missing.contains(&snd.id))
+                    .files()
+                    .find(|(id, file)| file.sha256.is_none() && !open.missing.iter().any(|m| m == id))
                 {
+                    // Sounds and videos alike (videos since decision 0039's follow-up).
                     job = Some(SlowJob::Hash {
-                        sound_id: sound.id.clone(),
-                        path: storage::absolute_audio_path(&open.dir, &sound.file),
-                        size: sound.file.size,
+                        id: id.to_string(),
+                        path: storage::absolute_audio_path(&open.dir, file),
+                        size: file.size,
                     });
                 }
             }
@@ -514,27 +515,27 @@ fn ticker(app: AppHandle) {
                     }
                 }
             }
-            Some(SlowJob::Hash { sound_id, path, size }) => {
+            Some(SlowJob::Hash { id, path, size }) => {
                 let result = bundle::sha256_file(&path);
-                // Lock again only to store the result, and only if the sound still refers to
-                // the same file (it may have been removed or relinked meanwhile).
+                // Lock again only to store the result, and only if the sound (or video) still
+                // refers to the same file (it may have been removed or relinked meanwhile).
                 if let Ok(mut s) = state.lock()
                     && let Some(open) = &mut s.open
                 {
                     match result {
                         Ok(hash) => {
-                            if let Some(sound) = open.project.sound_mut(&sound_id)
-                                && sound.file.size == size
-                                && sound.file.sha256.is_none()
+                            if let Some(file) = open.project.file_mut(&id)
+                                && file.size == size
+                                && file.sha256.is_none()
                             {
-                                sound.file.sha256 = Some(hash);
+                                file.sha256 = Some(hash);
                                 open.dirty_since.get_or_insert_with(Instant::now);
                             }
                         }
                         // Unreadable: treat it as missing so we don't retry forever.
                         Err(_) => {
-                            if !open.missing.contains(&sound_id) {
-                                open.missing.push(sound_id);
+                            if !open.missing.contains(&id) {
+                                open.missing.push(id);
                             }
                         }
                     }

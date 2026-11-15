@@ -635,6 +635,23 @@ impl Project {
         self.sounds.iter_mut().find(|s| s.id == id)
     }
 
+    /// The files of every sound and video, with their owner's id. Background jobs that work on
+    /// files (fingerprinting) go through both lists the same way.
+    pub fn files(&self) -> impl Iterator<Item = (&str, &FileInfo)> {
+        self.sounds
+            .iter()
+            .map(|s| (s.id.as_str(), &s.file))
+            .chain(self.videos.iter().map(|v| (v.id.as_str(), &v.file)))
+    }
+
+    /// The file of the sound or video with this id.
+    pub fn file_mut(&mut self, id: &str) -> Option<&mut FileInfo> {
+        if let Some(sound) = self.sounds.iter_mut().find(|s| s.id == id) {
+            return Some(&mut sound.file);
+        }
+        self.videos.iter_mut().find(|v| v.id == id).map(|v| &mut v.file)
+    }
+
     pub fn video(&self, id: &str) -> Option<&Video> {
         self.videos.iter().find(|v| v.id == id)
     }
@@ -1032,6 +1049,27 @@ mod tests {
         p.defaults.normalize.music = false;
         let music = sound_with_loudness(Category::Music, -10.0, 1.0);
         assert_eq!(p.normalization_gain_db(&music), 0.0);
+    }
+
+    #[test]
+    fn files_cover_sounds_and_videos() {
+        let mut p = Project::new("Test", ProjectDefaults::default());
+        p.sounds.push(sound_with_loudness(Category::Music, -10.0, 1.0));
+        let file = FileInfo {
+            path: "video/ambience/gate.webm".into(),
+            size: 5,
+            modified: String::new(),
+            sha256: None,
+            loudness: None,
+        };
+        let video = crate::video::new_video("gate".into(), file, VideoKind::Ambience);
+        let video_id = video.id.clone();
+        p.videos.push(video);
+
+        assert_eq!(p.files().count(), 2);
+        p.file_mut(&video_id).unwrap().sha256 = Some("abc".into());
+        assert_eq!(p.video(&video_id).unwrap().file.sha256.as_deref(), Some("abc"));
+        assert!(p.file_mut("nothing").is_none());
     }
 
     #[test]
