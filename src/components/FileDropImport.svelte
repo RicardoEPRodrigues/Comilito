@@ -42,8 +42,11 @@
     ui.fileDropTarget = t ? `${t.category}:${t.folder}` : null;
   }
 
-  /** Tauri gives physical pixels; the page works in CSS pixels. */
-  const css = (p: { x: number; y: number }) => [p.x / window.devicePixelRatio, p.y / window.devicePixelRatio] as const;
+  /** The page point of a native (Linux) drag event. Tauri calls it a `PhysicalPosition`, but on
+   *  Linux wry passes on GTK's widget coordinates unchanged, and those are logical pixels: the
+   *  same as the page's CSS pixels at any display scale (the app never zooms the webview).
+   *  Dividing by the scale put the point too high on scaled displays. */
+  const css = (p: { x: number; y: number }) => [p.x, p.y] as const;
 
   /** True while files from outside are dragged over the window (shows the overlay). */
   let hovering = $state(false);

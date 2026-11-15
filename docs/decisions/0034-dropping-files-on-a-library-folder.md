@@ -27,11 +27,17 @@ files were dropped. The owner wants files dropped on a folder to go into that fo
   with `document.elementFromPoint`, so components need no file-drop code of their own.
 - While files are dragged, the target is outlined (`ui.fileDropTarget`) and the overlay moves to
   the bottom of the window as "Drop into Ambience › Forest", so the outlined folder stays visible.
-- The pointer comes from the HTML5 drag events on Windows and macOS, and from Tauri's native
-  drag-drop events on Linux. Tauri gives physical pixels; they are divided by
-  `devicePixelRatio` to match the page's CSS pixels.
+- The pointer comes from the HTML5 drag events on Windows and macOS (CSS pixels already), and
+  from Tauri's native drag-drop events on Linux. Those are typed as physical pixels, but on
+  Linux wry passes on GTK's widget coordinates, which are logical pixels: equal to CSS pixels at
+  any display scale, as long as the webview isn't zoomed. They are used as they are. (Dividing
+  them by `devicePixelRatio` put the point too high on a scaled display.) Once native events
+  arrive, the page's own drag events are ignored except to stop the default action: WebKitGTK
+  sends them too, with wrong positions, which made the outline flicker.
 
 ## Consequences
 
 - Any other part of the UI can become a drop target by adding the two attributes.
-- On Linux, scaled displays (where physical and CSS pixels differ) are the case to watch.
+- If the app ever zooms the webview, the Linux position must be divided by that zoom.
+- If a Tauri update starts converting the Linux position to physical pixels, the outline will
+  appear below the pointer on scaled displays.

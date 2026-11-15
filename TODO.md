@@ -34,7 +34,7 @@
 ### Other checks
 
 - Dropping files on a Library folder (decision 0034) was only type-checked. Worth trying on a
-  folder in the drawer and in the Library workspace, and on a scaled (HiDPI) display.
+  folder in the drawer and in the Library workspace.
 - Moving the projects folder across disks (the slow, copying case) was only tested by unit
   tests; on the virtual display both folders were on one disk, so the move was an instant rename.
   Worth trying once with a big project and a USB drive to see the progress dialog.
