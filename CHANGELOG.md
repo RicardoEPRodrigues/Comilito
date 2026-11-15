@@ -58,7 +58,8 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 - **A warning when quitting while busy:** closing Comilito during downloads, fingerprinting, a
   backup or a move of the projects folder asks first, listing what would be interrupted. It can
   be turned off in Preferences › Behaviour.
-- **Fold or unfold all folders** with the two new buttons in the Library drawer's toolbar.
+- **Fold or unfold all folders** with the two new buttons in the Library drawer's toolbar, or those of one
+  category at the top of its column.
 - **Smoother opening and closing:** the Library drawer slides open and shut, menus and dialogs
   ease in, and groups, folders and Tapestry entries unfold instead of jumping. All of it is
   turned off when the desktop asks for reduced motion.

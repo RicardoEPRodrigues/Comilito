@@ -122,10 +122,12 @@
     remember("collapsed", ui.collapsed);
   }
 
-  /** Folds (or unfolds) every folder in all three columns at once. */
-  function foldAll(fold: boolean) {
-    const keys = CATEGORIES.flatMap((c) => snapshot.folders[c.id].map((f) => `lib:${c.id}:${f}`));
-    const others = ui.collapsed.filter((k) => !k.startsWith("lib:"));
+  /** Folds (or unfolds) every folder of one category, or of all three when none is given. */
+  function foldAll(fold: boolean, category?: Category) {
+    const cats = category ? [category] : CATEGORIES.map((c) => c.id);
+    const prefixes = cats.map((c) => `lib:${c}:`);
+    const keys = cats.flatMap((c) => snapshot.folders[c].map((f) => `lib:${c}:${f}`));
+    const others = ui.collapsed.filter((k) => !prefixes.some((p) => k.startsWith(p)));
     ui.collapsed = fold ? [...others, ...keys] : others;
     remember("collapsed", ui.collapsed);
   }
@@ -227,6 +229,10 @@
             <span class="caps">{c.label}</span>
             <span class="spacer"></span>
             <span class="count">{matches.filter((s) => s.category === c.id).length}</span>
+            {#if snapshot.folders[c.id].length > 0}
+              <button class="icon" title={`Unfold all ${c.label.toLowerCase()} folders`} onclick={() => foldAll(false, c.id)}><ChevronsUpDown size={14} /></button>
+              <button class="icon" title={`Fold all ${c.label.toLowerCase()} folders`} onclick={() => foldAll(true, c.id)}><ChevronsDownUp size={14} /></button>
+            {/if}
             <button class="icon" title={`Add ${c.label.toLowerCase()} files…`} onclick={() => addSoundFiles(c.id)}><FilePlus size={14} /></button>
           </div>
           <div class="col-body">
