@@ -510,6 +510,75 @@ mod tests {
         assert!(create_project(&root.0, "  ", ProjectDefaults::default()).is_err());
     }
 
+    /// Decision 0035: the video fields are optional, so projects from before them load, and
+    /// a project without videos is written exactly as before.
+    #[test]
+    fn projects_without_video_fields_load_and_stay_unchanged() {
+        let old = r#"{"formatVersion":2,"name":"Old","masterVolume":1,
+            "categories":{"music":{"volume":0.8},"ambience":{"volume":0.6},"effects":{"volume":1}},
+            "scenes":[{"id":"scn-1","name":"Forest","music":null,"ambience":[],"effects":[]}],
+            "defaults":{"duckLevel":0.3,"transitionMs":2500,"soundVolume":1,
+              "categories":{"music":{"loop":true,"fadeInMs":0,"fadeOutMs":0},
+                            "ambience":{"loop":true,"fadeInMs":0,"fadeOutMs":0},
+                            "effects":{"loop":false,"fadeInMs":0,"fadeOutMs":0}}},
+            "backups":{"intervalMinutes":30,"keep":1,"includeAudio":false}}"#;
+        let project = parse_project(old).unwrap();
+        assert!(project.videos.is_empty());
+        assert!(project.scenes[0].video.is_none());
+        assert_eq!(project.defaults.video, crate::project::VideoDefaults::default());
+        assert!(!project.backups.include_video);
+
+        let json = serde_json::to_string(&project).unwrap();
+        for field in ["\"videos\"", "hidesVideo", "videoEffects", "\"video\":{\"videos"] {
+            assert!(!json.contains(field), "{field} written for a project without videos");
+        }
+    }
+
+    #[test]
+    fn videos_and_scene_playlists_round_trip() {
+        let mut project = Project::new("P", ProjectDefaults::default());
+        project.videos.push(crate::project::Video {
+            id: "vid-1".into(),
+            name: "Castle gate".into(),
+            file: FileInfo {
+                path: "video/castle.webm".into(),
+                size: 10,
+                modified: "2026-11-15T10:00:00Z".into(),
+                sha256: None,
+                loudness: None,
+            },
+            info: Some(crate::project::VideoInfo {
+                container: "matroska,webm".into(),
+                codec: "vp9".into(),
+                width: 1920,
+                height: 1080,
+                duration_ms: 760_000,
+                plays_everywhere: true,
+            }),
+            tags: vec!["castle".into()],
+            favourite: false,
+            source: None,
+            last_used: None,
+        });
+        let mut scene: crate::project::Scene =
+            serde_json::from_str(r#"{"id":"scn-1","name":"Castle","music":null}"#).unwrap();
+        scene.video = Some(crate::project::VideoPlaylist {
+            videos: vec!["vid-1".into()],
+            switch_minutes: Some(3),
+            ..Default::default()
+        });
+        scene.video_effects = vec!["vid-1".into()];
+        project.scenes.push(scene);
+
+        let back = parse_project(&serde_json::to_string(&project).unwrap()).unwrap();
+        assert_eq!(back.videos[0].info.as_ref().unwrap().codec, "vp9");
+        let playlist = back.scenes[0].video.as_ref().unwrap();
+        assert_eq!(playlist.videos, ["vid-1"]);
+        assert_eq!(playlist.switch_minutes, Some(3));
+        assert_eq!(playlist.shuffle, None, "unset overrides stay unset");
+        assert_eq!(back.scenes[0].video_effects, ["vid-1"]);
+    }
+
     #[test]
     fn refuses_newer_format_versions() {
         let err = parse_project(r#"{"formatVersion": 99}"#).unwrap_err();

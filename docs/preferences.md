@@ -74,6 +74,22 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 | Closing a window with unsaved changes (✕ or Esc) | ask (other choices: save, discard). The window's Cancel button always discards. |
 | Warn when quitting during downloads, fingerprinting or a backup (also while moving the projects folder) | on ([0033](decisions/0033-resuming-downloads-and-quit-warning.md)) |
 
+### Video ([0035](decisions/0035-video.md))
+
+| Setting | Default | Level |
+|---|---|---|
+| Use videos (the whole feature) | on | this computer |
+| Screen for the video window | the main screen | this computer |
+| Open the video window in fullscreen | off | this computer |
+| Picture | fill the window (crop the edges); or show the whole picture | this computer |
+| Crossfade between videos | 1 s | this computer |
+| Video resolution when downloading | up to 1080p | this computer |
+| Videos that may not play | ask (other choices: always convert, never convert) | this computer |
+| Switch videos every | 5 min (0 = play each to its end) | default for new projects |
+| Coming back to a video | resume where it left off | default for new projects |
+| Shuffle videos | off | default for new projects |
+| Include videos in backups | off | default for new projects |
+
 ### Shortcuts
 
 | Setting | Default |
@@ -121,6 +137,15 @@ App `preferences.json` (`src-tauri/src/prefs.rs`), with its defaults:
     "watermark": true,
     "rules": true,
     "blackletter": true
+  },
+  "video": {
+    "enabled": true,
+    "screen": null,
+    "fullscreen": false,
+    "fit": "cover",
+    "crossfadeMs": 1000,
+    "downloadHeight": 1080,
+    "convert": "ask"
   },
   "newProjectDefaults": { "...": "masterVolume, categories, defaults and backups, as in a project" }
 }

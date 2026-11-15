@@ -141,6 +141,9 @@ mod tests {
         blocks_music: false,
         ducks_all: false,
         volumes: None,
+        video: None,
+        hides_video: false,
+        video_effects: Vec::new(),
         }
     }
 

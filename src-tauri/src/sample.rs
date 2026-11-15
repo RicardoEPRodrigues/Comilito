@@ -56,6 +56,9 @@ pub fn fill_sample_project(dir: &Path, sample_dir: &Path, project: &mut Project)
         blocks_music: false,
         ducks_all: false,
         volumes: None,
+        video: None,
+        hides_video: false,
+        video_effects: Vec::new(),
     };
 
     // Music only, at the bottom of the stack.

@@ -11,10 +11,11 @@ Each project is a self-contained folder under `~/Documents/Comilito/` (the OS Do
 ~/Documents/Comilito/
 └── Curse of Strahd/
     ├── comilito.json
-    └── audio/
-        ├── music/
-        ├── ambience/
-        └── effects/
+    ├── audio/
+    │   ├── music/
+    │   ├── ambience/
+    │   └── effects/
+    └── video/        (only once videos are added, decision 0035)
 ```
 
 - Adding a sound **copies** the file into the project's `audio/<category>/` folder.
@@ -162,3 +163,35 @@ Removing a sound asks whether to move its audio to the system trash (default) or
   The quit warning from decision 0005 isn't implemented yet: quitting mid-hash loses nothing.
 - Export doesn't wait for hashes: relinking matches by file name and size first, and only needs
   the hash to choose between several same-sized files with the same name.
+
+### Videos (added 2026-11-15, still version 2)
+
+Videos ([0035](decisions/0035-video.md)) only add optional fields, so older files load
+unchanged, and a project without videos is written exactly as before (apart from
+`defaults.video`, since defaults are always written in full).
+
+- `videos`: written only when there are some. Each is like a sound without the audio settings:
+
+  ```json
+  {
+    "id": "vid-…",
+    "name": "Castle gate at dusk",
+    "file": { "path": "video/ravenloft/castle-gate.webm", "size": 412000000, "modified": "…" },
+    "info": { "container": "matroska,webm", "codec": "vp9", "width": 1920, "height": 1080,
+              "durationMs": 760000, "playsEverywhere": true },
+    "tags": ["castle"], "favourite": true, "source": { "...": "as for sounds" }, "lastUsed": "…"
+  }
+  ```
+
+  `info` is measured in the background with ffprobe and is absent until then.
+  `playsEverywhere` is true for WebM with VP8, VP9 or AV1; other videos are offered for
+  conversion.
+- On a scene, all optional:
+  - `video`: `{ "videos": ["vid-…"], "shuffle": false, "switchMinutes": 5, "resume": true }`.
+    The three settings are overrides of `defaults.video`; `switchMinutes: 0` plays each video
+    to its end. Without `video`, the scene leaves the video of the scenes below showing.
+  - `hidesVideo`: `true` to hide the video of the scenes below (only meaningful without `video`).
+  - `videoEffects`: video ids for the video effects pad.
+- `defaults.video`: `{ "shuffle": false, "switchMinutes": 5, "resume": true }`.
+- `backups.includeVideo`: `false` by default; videos are big.
+

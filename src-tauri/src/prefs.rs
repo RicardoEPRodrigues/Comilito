@@ -55,7 +55,45 @@ pub struct Preferences {
     #[serde(default)]
     pub appearance: Appearance,
     #[serde(default)]
+    pub video: VideoPrefs,
+    #[serde(default)]
     pub new_project_defaults: NewProjectDefaults,
+}
+
+/// Video on this computer (decision 0035). The project's own video settings (playlists,
+/// switching) live in the project; these are about the screen and the files.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct VideoPrefs {
+    /// The on/off switch for the whole feature. Off hides everything video; projects keep
+    /// their video data.
+    pub enabled: bool,
+    /// The screen the video window opens on (its name, as the OS gives it); `None` or a
+    /// screen that isn't connected: the main screen.
+    pub screen: Option<String>,
+    pub fullscreen: bool,
+    /// "cover" fills the window, cropping the edges; "contain" shows the whole picture.
+    pub fit: String,
+    pub crossfade_ms: u32,
+    /// Downloads are limited to this height in pixels (720, 1080, 1440); 0 means the best
+    /// the site has.
+    pub download_height: u32,
+    /// Videos that may not play: "ask", "always" (convert) or "never".
+    pub convert: String,
+}
+
+impl Default for VideoPrefs {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            screen: None,
+            fullscreen: false,
+            fit: "cover".into(),
+            crossfade_ms: 1000,
+            download_height: 1080,
+            convert: ask(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -157,6 +195,7 @@ impl Default for Preferences {
             behaviour: Behaviour::default(),
             shortcuts: Shortcuts::default(),
             appearance: Appearance::default(),
+            video: VideoPrefs::default(),
             new_project_defaults: NewProjectDefaults::default(),
         }
     }
@@ -280,6 +319,8 @@ mod tests {
         assert_eq!(prefs.behaviour.duplicate_in_stack, "move");
         assert_eq!(prefs.behaviour.unsaved_changes, "ask");
         assert!(prefs.behaviour.warn_on_quit);
+        assert!(prefs.video.enabled, "video is on unless turned off");
+        assert_eq!(prefs.video.download_height, 1080);
         assert_eq!(prefs.shortcuts.remove_top_scene, "Backspace");
         assert_eq!(prefs.playback.output_device, None, "the system default");
     }

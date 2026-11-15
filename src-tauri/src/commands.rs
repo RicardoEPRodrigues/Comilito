@@ -1207,6 +1207,9 @@ pub fn create_scene(
         blocks_music: false,
         ducks_all: false,
         volumes: None,
+        video: None,
+        hides_video: false,
+        video_effects: Vec::new(),
     });
     s.project_changed(Duration::ZERO);
     emit_state(&app, &s, Vec::new());

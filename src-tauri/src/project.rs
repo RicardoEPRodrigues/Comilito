@@ -64,6 +64,10 @@ pub struct Project {
     pub categories: PerCategory<CategoryMix>,
     #[serde(default)]
     pub sounds: Vec<Sound>,
+    /// Video files in the library (decision 0035). Written only when there are some, so
+    /// projects without videos look the same as before.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub videos: Vec<Video>,
     #[serde(default)]
     pub scenes: Vec<Scene>,
     /// Ordered bottom to top.
@@ -150,6 +154,43 @@ pub struct Sound {
     /// for the Library's "Recent" list.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_used: Option<String>,
+}
+
+/// A video file in the library (decision 0035). Like a `Sound`, without the audio settings:
+/// a video's own sound is never played.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Video {
+    pub id: String,
+    pub name: String,
+    /// `path` is under `video/`. `loudness` is never set for videos.
+    pub file: FileInfo,
+    /// Measured in the background with ffprobe. `None` until then.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub info: Option<VideoInfo>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub favourite: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<Source>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_used: Option<String>,
+}
+
+/// What ffprobe found in a video file.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VideoInfo {
+    /// ffprobe's names, e.g. "matroska,webm" and "vp9".
+    pub container: String,
+    pub codec: String,
+    pub width: u32,
+    pub height: u32,
+    pub duration_ms: u64,
+    /// Whether every webview can play it without extra codecs (WebM with VP8, VP9 or AV1).
+    /// The others are offered for conversion.
+    pub plays_everywhere: bool,
 }
 
 /// Provenance of a downloaded sound, so it can be opened or fetched again.
@@ -282,6 +323,31 @@ pub struct Scene {
     /// (decision 0028). `None`: the project's category volumes are used.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub volumes: Option<PerCategory<f32>>,
+    /// The videos shown while this is the top-most enabled scene with videos (decision 0035).
+    /// `None` leaves the video of the scenes below showing (unless `hides_video` is set).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub video: Option<VideoPlaylist>,
+    /// For a scene without videos: hide the video of the scenes below (a black screen).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub hides_video: bool,
+    /// Video ids shown on the video effects pad while this scene is in the tapestry.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub video_effects: Vec<String>,
+}
+
+/// A scene's videos. The settings are overrides; `None` follows `defaults.video`.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VideoPlaylist {
+    pub videos: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shuffle: Option<bool>,
+    /// Play each video this many minutes before switching to the next; 0 plays it to its end.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub switch_minutes: Option<u32>,
+    /// Coming back to a video: continue where it stopped (true) or start it over.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resume: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -356,6 +422,27 @@ pub struct ProjectDefaults {
     /// Added after the first projects were made, so it needs a default when missing.
     #[serde(default)]
     pub normalize: Normalization,
+    /// What scene playlists inherit (decision 0035). Missing in older projects.
+    #[serde(default)]
+    pub video: VideoDefaults,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VideoDefaults {
+    pub shuffle: bool,
+    pub switch_minutes: u32,
+    pub resume: bool,
+}
+
+impl Default for VideoDefaults {
+    fn default() -> Self {
+        Self {
+            shuffle: false,
+            switch_minutes: 5,
+            resume: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -376,6 +463,9 @@ pub struct BackupSettings {
     pub interval_minutes: u32,
     pub keep: u32,
     pub include_audio: bool,
+    /// Videos are big, so they're asked about separately from audio (decision 0035).
+    #[serde(default)]
+    pub include_video: bool,
 }
 
 // `impl Default` is how a type says what its "empty" value is. `#[serde(default)]` on a
@@ -386,6 +476,7 @@ impl Default for BackupSettings {
             interval_minutes: 30,
             keep: 1,
             include_audio: false,
+            include_video: false,
         }
     }
 }
@@ -418,6 +509,7 @@ impl Default for ProjectDefaults {
                 },
             },
             normalize: Normalization::default(),
+            video: VideoDefaults::default(),
         }
     }
 }
@@ -446,6 +538,7 @@ impl Project {
                 effects: CategoryMix { volume: 1.0 },
             },
             sounds: Vec::new(),
+            videos: Vec::new(),
             scenes: Vec::new(),
             stack: Vec::new(),
             stack_presets: Vec::new(),
@@ -885,6 +978,9 @@ mod tests {
         blocks_music: false,
         ducks_all: false,
         volumes: None,
+        video: None,
+        hides_video: false,
+        video_effects: Vec::new(),
         });
         project.stack.push(StackEntry {
             id: "stk-1".into(),

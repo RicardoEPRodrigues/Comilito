@@ -78,6 +78,59 @@ export interface Sound {
   lastUsed?: string;
 }
 
+/** A video file in the library (decision 0035). Its sound is never played. */
+/** Video on this computer (Preferences › Video). */
+export interface VideoPrefs {
+  enabled: boolean;
+  /** Screen name, or null for the main screen. */
+  screen: string | null;
+  fullscreen: boolean;
+  fit: "cover" | "contain";
+  crossfadeMs: number;
+  /** 720, 1080, 1440, or 0 for the best available. */
+  downloadHeight: number;
+  convert: "ask" | "always" | "never";
+}
+
+export interface Video {
+  id: string;
+  name: string;
+  /** `path` is under `video/`. */
+  file: FileInfo;
+  /** Measured in the background with ffprobe; missing until then. */
+  info?: VideoInfo;
+  tags?: string[];
+  favourite?: boolean;
+  source?: Source;
+  lastUsed?: string;
+}
+
+export interface VideoInfo {
+  container: string;
+  codec: string;
+  width: number;
+  height: number;
+  durationMs: number;
+  /** WebM with VP8, VP9 or AV1: plays in every webview. Others are offered for conversion. */
+  playsEverywhere: boolean;
+}
+
+/** A scene's videos. The settings are overrides; missing follows `defaults.video`. */
+export interface VideoPlaylist {
+  videos: string[];
+  shuffle?: boolean;
+  /** Minutes before switching to the next video; 0 plays each to its end. */
+  switchMinutes?: number;
+  /** Coming back to a video: continue where it stopped, or start over. */
+  resume?: boolean;
+}
+
+export interface VideoDefaults {
+  shuffle: boolean;
+  switchMinutes: number;
+  resume: boolean;
+}
+
 export interface Playlist {
   tracks: string[];
   shuffle?: boolean;
@@ -106,6 +159,12 @@ export interface Scene {
   transitionMs?: number;
   /** Category volumes while this is the top-most enabled scene; missing: the project's. */
   volumes?: PerCategory<number>;
+  /** Missing: the video of the scenes below keeps showing (unless `hidesVideo`). */
+  video?: VideoPlaylist;
+  /** For a scene without videos: hide the video below (a black screen). */
+  hidesVideo?: boolean;
+  /** Video ids on the video effects pad. */
+  videoEffects?: string[];
 }
 
 export interface StackEntry {
@@ -139,12 +198,15 @@ export interface ProjectDefaults {
   soundVolume: number;
   categories: PerCategory<SoundDefaults>;
   normalize: Normalization;
+  /** Missing in projects from before videos (decision 0035). */
+  video?: VideoDefaults;
 }
 
 export interface BackupSettings {
   intervalMinutes: number;
   keep: number;
   includeAudio: boolean;
+  includeVideo?: boolean;
 }
 
 export interface Project {
@@ -153,6 +215,8 @@ export interface Project {
   masterVolume: number;
   categories: PerCategory<{ volume: number }>;
   sounds: Sound[];
+  /** Missing in projects without videos. */
+  videos?: Video[];
   scenes: Scene[];
   /** Bottom to top. */
   stack: StackEntry[];
@@ -245,6 +309,7 @@ export interface Preferences {
   /** `KeyboardEvent.key` values; "" means the shortcut is off. */
   shortcuts: { removeTopScene: string };
   appearance: Appearance;
+  video: VideoPrefs;
   newProjectDefaults: {
     masterVolume: number;
     categories: PerCategory<{ volume: number }>;
