@@ -103,6 +103,10 @@ only WebM can be streamed that way. Seeks and starts in the middle use the WebM'
 buffered and resets the parser (`abort`), after which WebKitGTK needs the file's header again, so
 it's appended before the new cluster. On Windows and macOS a plain `src` is used.
 
+On Linux, Comilito keeps GStreamer from picking NVIDIA's hardware video decoders
+(`GST_PLUGIN_FEATURE_RANK`, set at startup): they freeze after jumps
+([0047](decisions/0047-no-nvidia-video-decoding.md)). The AppImage doesn't carry them anyway.
+
 ## Trimming
 
 A video's page has *Trim…*: choose the part to keep (typed, or taken from the preview's

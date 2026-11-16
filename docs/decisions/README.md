@@ -53,6 +53,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0044](0044-restarting-the-interface.md) | Restart the interface by reloading the webviews | Accepted | 2026-11-16 |
 | [0045](0045-video-window-screen-on-wayland.md) | Put the video window on its screen through fullscreen on Wayland | Accepted | 2026-11-16 |
 | [0046](0046-packaging-linux-in-a-container.md) | Package Linux builds as an AppImage, in an Ubuntu 22.04 container | Accepted | 2026-11-16 |
+| [0047](0047-no-nvidia-video-decoding.md) | Decode videos without NVIDIA's hardware decoders on Linux | Accepted | 2026-11-16 |
 
 ## Template
 

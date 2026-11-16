@@ -124,6 +124,9 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 - Videos often failed to load on Linux ("Media failed to decode") when starting partway in:
   the Library's thumbnails stayed empty and the video window showed nothing, while the video's
   own page still played it from the start. Seeking within long videos could fail the same way.
+- On Linux computers with an NVIDIA graphics card, a video resumed partway in (switching scenes
+  and back, thumbnails) could freeze on its first frame or stay black for several seconds before
+  starting over. Comilito now decodes videos without NVIDIA's hardware decoder.
 - Choosing a screen for the video window didn't move it on Wayland. Fullscreen now goes to the
   chosen screen; a window that isn't fullscreen can't be moved by apps there, so the window says
   to drag it (or press F). Screens without a proper name get "Screen 1", "Screen 2"... and the
