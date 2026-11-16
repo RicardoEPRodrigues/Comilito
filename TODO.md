@@ -6,9 +6,11 @@
 - Create a first time experience.
 - add ability to scale the UI. Font and whole UI.
 - Add ability to have plugins.
-  - Once plugins exist, video could become one: it has its own folders, modules and data keys
-    (docs/video.md).
 - Support projects outside of the projects folder.
+- Mini player: a very small version where the window remais always on top and just shows the stack and the scenes/presets.
+- if not enought width is available the bottom bar squishes its elements. we should adapt the UI to play nicely on mobile.
+- Add button to duplicate audio or video.
+- Add option and keyboard shortcut to restart the UI. There may be unforseen bugs that might require a restart and we can try to ease that process.
 
 ## Bugs
 
@@ -42,6 +44,9 @@
 
 - Video (decision 0035): not tried yet in the running app: the video window on a second screen
   and in fullscreen, and exporting a project with its videos.
+- AppImage videos (decision 0041): the built AppImage's GStreamer and plugins were checked with
+  GStreamer's own tools (WebM decodes), not yet in the running AppImage. Open a project with
+  videos in it and watch the video window; WebKit's stderr names any element still missing.
 - Moving the projects folder across disks (the slow, copying case) was only tested by unit
   tests; on the virtual display both folders were on one disk, so the move was an instant rename.
   Worth trying once with a big project and a USB drive to see the progress dialog.
