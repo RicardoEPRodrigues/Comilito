@@ -196,6 +196,14 @@
           </div>
         </div>
       </div>
+      {#if kindOf(video) === "ambience"}
+        <!-- Most videos aren't made to loop, so jumping from the end to the start would show
+             as a cut; the video window crossfades those (VideoWindow.svelte). -->
+        <label class="switch loop">
+          <input type="checkbox" checked={video.seamlessLoop ?? false} onchange={(e) => save({ seamlessLoop: e.currentTarget.checked || undefined })} />
+          <span>Loops seamlessly (its end runs straight into its start). Off: it crossfades back to the start.</span>
+        </label>
+      {/if}
     </section>
 
     <section>
@@ -367,6 +375,10 @@
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
+  }
+  .loop {
+    margin-top: 0.8rem;
+    font-size: 0.85rem;
   }
   .grid {
     display: grid;

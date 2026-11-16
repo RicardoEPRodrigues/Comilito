@@ -46,6 +46,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0037](0037-streaming-videos-on-linux.md) | Streaming videos into a MediaSource on Linux | Accepted | 2026-11-15 |
 | [0038](0038-video-keeps-playing-on-pause.md) | The video keeps playing while the sound is paused | Accepted | 2026-11-15 |
 | [0039](0039-ambience-videos-and-video-effects.md) | Ambience videos and video effects are kept apart, with Library tabs | Accepted | 2026-11-15 |
+| [0040](0040-crossfading-video-loops.md) | Videos crossfade back to their start unless marked as seamless loops | Accepted | 2026-11-15 |
 
 ## Template
 

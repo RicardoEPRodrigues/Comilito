@@ -588,6 +588,7 @@ mod tests {
             }),
             tags: vec!["castle".into()],
             favourite: false,
+            seamless_loop: true,
             source: None,
             last_used: None,
         });
@@ -603,6 +604,7 @@ mod tests {
 
         let back = parse_project(&serde_json::to_string(&project).unwrap()).unwrap();
         assert_eq!(back.videos[0].info.as_ref().unwrap().codec, "vp9");
+        assert!(back.videos[0].seamless_loop);
         let playlist = back.scenes[0].video.as_ref().unwrap();
         assert_eq!(playlist.videos, ["vid-1"]);
         assert_eq!(playlist.switch_minutes, Some(3));

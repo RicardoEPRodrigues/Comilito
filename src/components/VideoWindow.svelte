@@ -41,6 +41,9 @@
   let fxLoad: Playback | null = null;
   /** Bumped by every show(), so a slow load that a newer one overtook doesn't take over. */
   let showToken = 0;
+  /** The layer a fading loop is leaving (see loopWithFade), or -1. While it's still the active
+   *  layer, the loop's fade is on its way and mustn't be started again. */
+  let loopingFrom = -1;
 
   /** Where each video stopped (ms), shared with Rust. */
   let positions: Record<string, number> = {};
@@ -126,7 +129,14 @@
         layerShown[old] = false;
         release(old);
       })
-      .catch((e) => console.warn("video:", videoId, e));
+      .catch((e) => {
+        console.warn("video:", videoId, e);
+        // A fading loop that couldn't load: loop the old layer the plain way instead.
+        if (token === showToken && loopingFrom === active) {
+          loopingFrom = -1;
+          if (layerEls[active]?.ended) restartActive();
+        }
+      });
     current = { sceneId: current?.sceneId ?? "", videoId };
     playedMs = 0;
   }
@@ -235,14 +245,38 @@
     if (fxPlaying) api.videoEffectEnded(fxPlaying).catch(() => {});
   }
 
+  /** How long before its end a lone video starts fading into its start again: the fade, plus
+   *  a little for the other layer to load it. */
+  const loopLeadMs = $derived(fadeMs + 500);
+
+  /** A lone video loops with a crossfade unless it's marked as looping seamlessly, and it's long
+   *  enough that the fade doesn't eat most of it. */
+  function fadesWhenLooping(el: HTMLVideoElement, videoId: string): boolean {
+    return !videoById(videoId)?.seamlessLoop && el.duration * 1000 > 2 * loopLeadMs;
+  }
+
+  /** Starts the video again on the other layer and crossfades into it, so the jump from its end
+   *  to its start doesn't show as a hard cut. */
+  function loopWithFade(videoId: string) {
+    if (loopingFrom === active) return;
+    loopingFrom = active;
+    show(videoId, 0);
+  }
+
+  function restartActive() {
+    const el = layerEls[active];
+    el.currentTime = 0;
+    el.play().catch(() => {});
+  }
+
   function playlistEnded() {
     const t = target;
     if (!t) return;
     if (t.videos.length === 1) {
-      // One video simply loops.
-      const el = layerEls[active];
-      el.currentTime = 0;
-      el.play().catch(() => {});
+      // One video loops. A fading loop normally started before the end (in the clock); if it's
+      // still loading, the last frame stays until it's ready.
+      if (current && fadesWhenLooping(layerEls[active], current.videoId)) loopWithFade(current.videoId);
+      else restartActive();
       return;
     }
     advance(t, true);
@@ -261,6 +295,9 @@
     if (playing) playedMs += dt;
     const switchMs = t && t.switchMinutes > 0 && t.videos.length > 1 ? t.switchMinutes * 60_000 : null;
     if (t && switchMs !== null && playedMs >= switchMs) advance(t, false);
+    if (playing && t.videos.length === 1 && fadesWhenLooping(el, current!.videoId)) {
+      if ((el.duration - el.currentTime) * 1000 < loopLeadMs) loopWithFade(current!.videoId);
+    }
     if (now - lastSave > 5000) {
       lastSave = now;
       if (playing) rememberPosition();

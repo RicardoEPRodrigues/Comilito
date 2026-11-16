@@ -182,9 +182,14 @@ unchanged, and a project without videos is written exactly as before (apart from
     "file": { "path": "video/ambience/ravenloft/castle-gate.webm", "size": 412000000, "modified": "…" },
     "info": { "container": "matroska,webm", "codec": "vp9", "width": 1920, "height": 1080,
               "durationMs": 760000, "playsEverywhere": true },
-    "tags": ["castle"], "favourite": true, "source": { "...": "as for sounds" }, "lastUsed": "…"
+    "tags": ["castle"], "favourite": true, "seamlessLoop": true,
+    "source": { "...": "as for sounds" }, "lastUsed": "…"
   }
   ```
+
+  `seamlessLoop`: `true` when the video's end runs straight into its start, so the video window
+  loops it without a fade (omitted when false). Otherwise it crossfades into the start again,
+  so the jump doesn't show as a hard cut.
 
   `kind` is `"ambience"` (for scenes' playlists) or `"effect"` (for video effects); missing means
   ambience ([0039](decisions/0039-ambience-videos-and-video-effects.md)). The file is under

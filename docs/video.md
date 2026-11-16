@@ -2,8 +2,9 @@
 
 > Status: implemented (on the `video` branch until merged). Decisions
 > [0035](decisions/0035-video.md), [0037](decisions/0037-streaming-videos-on-linux.md),
-> [0038](decisions/0038-video-keeps-playing-on-pause.md) and
-> [0039](decisions/0039-ambience-videos-and-video-effects.md); design in `pencil/video-player.pen`.
+> [0038](decisions/0038-video-keeps-playing-on-pause.md),
+> [0039](decisions/0039-ambience-videos-and-video-effects.md) and
+> [0040](decisions/0040-crossfading-video-loops.md); design in `pencil/video-player.pen`.
 
 Scenes can have videos. The top-most enabled scene with videos plays them in a window of its
 own, meant for a TV or projector the players see. A video's own sound is never played. The
@@ -19,6 +20,10 @@ whole feature can be turned off in Preferences › Video.
   minutes, then the next; *Coming back to a video* resumes where it stopped or starts it over.
   `0` minutes plays each video to its end (the default is 10 minutes). These follow the
   project's defaults unless the scene sets its own.
+- **Looping:** a playlist of one video loops it. Unless the video is marked *Loops seamlessly*
+  (on its page in the Library), the window starts it again on its second layer a moment before
+  the end and crossfades into it, so the jump back doesn't show as a cut. Seamless videos (and
+  ones too short for the fade) jump straight back.
 - **Video effects:** each scene can list videos for the video effects pad, under the sound
   effects. Playing one replaces the video until it ends; then the playlist comes back where it
   was.

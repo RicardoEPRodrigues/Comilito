@@ -248,6 +248,10 @@ pub struct Video {
     pub tags: Vec<String>,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub favourite: bool,
+    /// The end runs straight into the start, so the video window jumps back without a fade.
+    /// Most videos don't (a cut would show), so missing means false: it crossfades instead.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub seamless_loop: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<Source>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

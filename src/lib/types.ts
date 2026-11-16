@@ -105,6 +105,8 @@ export interface Video {
   info?: VideoInfo;
   tags?: string[];
   favourite?: boolean;
+  /** Its end runs straight into its start: loop without a fade. Missing: crossfade. */
+  seamlessLoop?: boolean;
   source?: Source;
   lastUsed?: string;
 }

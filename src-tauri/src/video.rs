@@ -94,6 +94,7 @@ pub fn new_video(name: String, file: FileInfo, kind: VideoKind) -> Video {
         info: None,
         tags: Vec::new(),
         favourite: false,
+        seamless_loop: false,
         source: None,
         last_used: None,
     }
@@ -221,6 +222,7 @@ pub fn update_videos(videos: Vec<Video>, app: AppHandle, state: AppStateRef) -> 
             video.name = name.to_string();
         }
         video.favourite = edited.favourite;
+        video.seamless_loop = edited.seamless_loop;
         let mut tags: Vec<String> = edited
             .tags
             .iter()
