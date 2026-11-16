@@ -788,7 +788,8 @@ impl Project {
             .unwrap_or(false)
     }
 
-    /// Takes a sound out of one scene (its playlist, layers and effects pad).
+    /// Takes a sound or a video out of one scene (its playlists, layers and effects pads).
+    /// Sound and video ids never clash (`snd-…` and `vid-…`), so one id means one thing.
     pub fn remove_sound_from_scene(&mut self, scene_id: &str, sound_id: &str) {
         if let Some(scene) = self.scenes.iter_mut().find(|s| s.id == scene_id) {
             if let Some(music) = &mut scene.music {
@@ -800,6 +801,14 @@ impl Project {
             }
             scene.ambience.retain(|l| l.sound != sound_id);
             scene.effects.retain(|e| e != sound_id);
+            if let Some(video) = &mut scene.video {
+                video.videos.retain(|v| v != sound_id);
+                // Like music: an emptied playlist lets the video of the scenes below show again.
+                if video.videos.is_empty() {
+                    scene.video = None;
+                }
+            }
+            scene.video_effects.retain(|v| v != sound_id);
         }
     }
 
@@ -916,6 +925,23 @@ pub fn new_id(prefix: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn removing_a_video_from_a_scene_empties_its_playlist_and_pad() {
+        let mut project = Project::new("P", ProjectDefaults::default());
+        let mut scene: Scene = serde_json::from_str(r#"{"id":"scn-1","name":"Castle","music":null}"#).unwrap();
+        scene.video = Some(VideoPlaylist { videos: vec!["vid-1".into(), "vid-2".into()], ..Default::default() });
+        scene.video_effects = vec!["vid-1".into()];
+        project.scenes.push(scene);
+
+        project.remove_sound_from_scene("scn-1", "vid-1");
+        assert_eq!(project.scenes[0].video.as_ref().unwrap().videos, ["vid-2"]);
+        assert!(project.scenes[0].video_effects.is_empty());
+
+        // Like a music playlist, an emptied one goes, so the video below shows again.
+        project.remove_sound_from_scene("scn-1", "vid-2");
+        assert!(project.scenes[0].video.is_none());
+    }
 
     #[test]
     fn reads_the_documented_example_and_fills_in_missing_fields() {

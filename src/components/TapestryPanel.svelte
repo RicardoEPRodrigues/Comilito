@@ -157,6 +157,10 @@
     else if (scene.blocksMusic) parts.push("Silences the music below");
     if (scene.ambience.length) parts.push(`${scene.ambience.length} ambience layer${scene.ambience.length === 1 ? "" : "s"}`);
     if (scene.effects.length) parts.push(`${scene.effects.length} effect${scene.effects.length === 1 ? "" : "s"}`);
+    if (videoEnabled()) {
+      const videos = (scene.video?.videos.length ?? 0) + (scene.videoEffects?.length ?? 0);
+      if (videos) parts.push(`${videos} video${videos === 1 ? "" : "s"}`);
+    }
     const duck = scene.duckLevel ?? project.defaults.duckLevel;
     // A scene only ducks the roles it has layers for, unless it ducks everything.
     const ducks = scene.ducksAll || scene.ambience.length > 0;
@@ -197,7 +201,7 @@
   }
 </script>
 
-<!-- In an expanded entry, a ✕ that takes a sound out of the scene (it stays in the library). -->
+<!-- In an expanded entry, a ✕ that takes a sound or video out of the scene (it stays in the library). -->
 {#snippet removeButton(sceneId: string, soundId: string)}
   <button class="icon small" title="Remove from this scene" onclick={() => run(api.removeSoundFromScene(sceneId, soundId))}>
     <X size={13} />
@@ -391,7 +395,28 @@
                 {@render removeButton(scene.id, effectId)}
               </div>
             {/each}
-            {#if !scene.music?.tracks.length && scene.ambience.length === 0 && scene.effects.length === 0}
+            {#if videoEnabled()}
+              {#each scene.video?.videos ?? [] as videoId (videoId)}
+                {@const playing = snapshot.mix.video?.entryId === entry.id && ui.videoStatus?.videoId === videoId}
+                <div class="sound" class:playing>
+                  <Film size={14} />
+                  <span class="sname">{videoById(videoId)?.name ?? "?"}</span>
+                  <span class="role"></span>
+                  <span class="bar-space">{playing ? "showing" : ""}</span>
+                  {@render removeButton(scene.id, videoId)}
+                </div>
+              {/each}
+              {#each scene.videoEffects ?? [] as videoId (videoId)}
+                <div class="sound">
+                  <Zap size={14} />
+                  <span class="sname">{videoById(videoId)?.name ?? "?"}</span>
+                  <span class="role"></span>
+                  <span class="bar-space">on the video effects pad</span>
+                  {@render removeButton(scene.id, videoId)}
+                </div>
+              {/each}
+            {/if}
+            {#if !scene.music?.tracks.length && scene.ambience.length === 0 && scene.effects.length === 0 && !scene.video?.videos.length && !scene.videoEffects?.length}
               <span class="muted">This scene has no sounds yet. Drag some here from the Library.</span>
             {/if}
             <button class="edit" onclick={() => focusOn({ kind: "scene", id: scene.id })}><Pencil size={13} />Edit scene</button>
