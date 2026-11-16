@@ -77,7 +77,6 @@ Removing Comilito itself depends on how you installed it:
 
 - **AppImage:** delete the `.AppImage` file. If AppImageLauncher (or a similar tool) added it to
   your app menu, remove it from there too, or delete its entry in `~/.local/share/applications/`.
-- **.deb package:** `sudo apt remove comilito`.
 - **Windows installer:** Settings › Apps › Comilito › Uninstall.
 
 That leaves your **projects** and Comilito's own **data** on the computer, on purpose: projects
@@ -118,6 +117,7 @@ Prerequisites:
 
   `libasound2-dev` (ALSA) is for audio output. `patchelf` is for building the AppImage, which
   carries the GStreamer plugins WebKit plays videos with.
+- Docker (optional), for building AppImages that run on older distros; see [Packaging](#packaging).
 
 Run:
 
@@ -131,8 +131,24 @@ Other commands:
 | Command | What it does |
 |---------|--------------|
 | `npm run check` | Type-check the Svelte/TypeScript code |
-| `npm run tauri build` | Build a release binary and installers into `src-tauri/target/release/`. On Linux the AppImage gets only the GStreamer plugins videos need; see [decision 0041](docs/decisions/0041-gstreamer-in-the-appimage.md) |
+| `npm run package` | Build the release packages. On Linux, an AppImage in `src-tauri/target/release/bundle/appimage/`, built in an Ubuntu 22.04 container when Docker is running (see below) |
 | `cargo test --manifest-path src-tauri/Cargo.toml` | Run the Rust tests |
+
+### Packaging
+
+Use `npm run package` rather than `npm run tauri build` for anything you'll give to others.
+
+On Linux it makes an **AppImage** (Flatpak is planned; there's no `.deb` or `.rpm`). An app built
+on Linux only runs where glibc is at least as new as on the computer that built it, and glibc
+can't be bundled. So when [Docker](https://docs.docker.com/engine/install/) is running, the build
+happens in an Ubuntu 22.04 container and the AppImage runs on Ubuntu 22.04 and newer, whatever
+your own computer runs. The first run takes a while (it sets up the container and compiles
+everything); later runs are much quicker. Without Docker it builds on your computer and warns
+which glibc the AppImage needs. `npm run package -- --docker` or `-- --local` picks one.
+
+The AppImage carries only the GStreamer plugins videos need; see
+[decision 0041](docs/decisions/0041-gstreamer-in-the-appimage.md). Why the container:
+[decision 0046](docs/decisions/0046-packaging-linux-in-a-container.md).
 
 ## Acknowledgements
 

@@ -32,8 +32,6 @@ use audio::AudioEngine;
 use state::{AppState, SAVE_DELAY, emit_state};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent, path::BaseDirectory};
 
-// On Android this function becomes the app's entry point; on desktop main.rs calls it.
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 /// Inside the AppImage, gives GStreamer (which WebKit plays video with) a registry file of its
 /// own. GStreamer caches the list of plugins it found in one file per user, shared by every
 /// program. The AppImage's GStreamer only sees the plugins bundled with it (and the AppImage's
@@ -60,10 +58,35 @@ fn private_gstreamer_registry() {
     unsafe { std::env::set_var("GST_REGISTRY_1_0", dir.join("gstreamer-registry.bin")) };
 }
 
+/// Keeps WebKit from playing videos with NVIDIA's hardware decoders (GStreamer's nvcodec
+/// plugin, decision 0047). When they're installed, GStreamer ranks them as high as the usual
+/// software decoders, and WebKit picks them; but after a jump to the middle of a video (resuming
+/// it, a thumbnail, a seek) they often freeze on the first frame, or never show one. The
+/// software decoders (libvpx, aom) don't, and are fast enough for our videos.
+///
+/// `GST_PLUGIN_FEATURE_RANK` lists `element:rank` pairs; rank 0 means "never pick it on your
+/// own". Child processes (WebKit's web process) inherit it. Any value the user set is kept
+/// after ours, so it wins where both name the same element.
+#[cfg(target_os = "linux")]
+fn no_nvidia_video_decoders() {
+    const OURS: &str = "nvvp8dec:0,nvvp8sldec:0,nvvp9dec:0,nvvp9sldec:0,nvav1dec:0,nvav1sldec:0";
+    let value = match std::env::var("GST_PLUGIN_FEATURE_RANK") {
+        Ok(theirs) if !theirs.is_empty() => format!("{OURS},{theirs}"),
+        _ => OURS.to_string(),
+    };
+    // See private_gstreamer_registry for why this is `unsafe` and why it's fine here.
+    unsafe { std::env::set_var("GST_PLUGIN_FEATURE_RANK", value) };
+}
+
+// On Android this function becomes the app's entry point; on desktop main.rs calls it.
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // First, while this is the only thread (see the function for why that matters).
+    // First, while this is the only thread (see the functions for why that matters).
     #[cfg(target_os = "linux")]
-    private_gstreamer_registry();
+    {
+        private_gstreamer_registry();
+        no_nvidia_video_decoders();
+    }
     // Before anything else, so a crash during startup leaves a trace (see logging.rs).
     #[cfg(target_os = "linux")]
     logging::capture_stderr("com.comilito.app");

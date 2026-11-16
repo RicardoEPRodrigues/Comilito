@@ -124,6 +124,10 @@ class Stream implements Playback {
   private reposition: number | null = null;
   /** The file's seek index, if it has one: lets seeks jump straight to the right place. */
   private index: WebmIndex | null = null;
+  /** The file's header (everything before the first cluster), kept to append again after
+   *  `abort()`: WebKitGTK forgets it there and fails the next cluster ("Media failed to
+   *  decode") unless the header comes first. Only read when there's a seek index. */
+  private header: Uint8Array<ArrayBuffer> | null = null;
   /** Bytes appended so far, to notice a video that never gets its metadata. */
   private appended = 0;
   private fail: (e: Error) => void = () => {};
@@ -156,8 +160,10 @@ class Stream implements Playback {
     if (this.dead) return;
     // Starting in the middle: the header first (MediaSource needs it before any video), then
     // straight to the cluster holding the start, instead of reading everything before it.
-    if (this.index && this.fromSec > 0) {
-      sb.appendBuffer(await this.readRange(0, this.index.initEnd - 1));
+    if (this.index) this.header = await this.readRange(0, this.index.initEnd - 1);
+    if (this.dead) return;
+    if (this.header && this.index && this.fromSec > 0) {
+      sb.appendBuffer(this.header);
       await idle(sb);
       this.offset = offsetFor(this.index, this.fromSec);
     }
@@ -212,6 +218,11 @@ class Stream implements Playback {
           if (this.ms.readyState === "open") sb.abort();
           if (this.el.buffered.length) sb.remove(0, Infinity);
           await idle(sb);
+          // A jump to 0 reads the header anyway; anywhere else needs it appended first.
+          if (to > 0 && this.header) {
+            sb.appendBuffer(this.header);
+            await idle(sb);
+          }
           this.offset = to;
           continue;
         }
