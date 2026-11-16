@@ -3,7 +3,7 @@
 
 import { open } from "@tauri-apps/plugin-dialog";
 import { api } from "./api";
-import { ask, project, run, ui } from "./store.svelte";
+import { ask, notify, project, run, ui } from "./store.svelte";
 import type { Scene, Shelf, Video, VideoKind } from "./types";
 
 /** The two video shelves (decision 0039), in the order the Library shows them. */
@@ -100,6 +100,14 @@ export async function moveVideos(ids: string[], kind: VideoKind, folder: string)
 }
 
 /** Removes a video, asking whether to trash or delete its file. */
+/** Duplicates a video like a sound (decision 0043) and shows the copy's page in the Library. */
+export async function duplicateVideo(id: string) {
+  const copyId = await run(api.duplicateVideo(id));
+  if (!copyId) return;
+  notify(`Duplicated “${videoById(id)?.name ?? "the video"}”.`);
+  ui.library.selected = [copyId];
+}
+
 export async function removeVideo(id: string): Promise<boolean> {
   const video = videoById(id);
   if (!video) return false;

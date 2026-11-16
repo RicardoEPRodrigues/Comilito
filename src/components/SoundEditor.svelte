@@ -3,6 +3,7 @@
   // overrides, loudness, file, source, where it's used. Name/levels/tags are kept in a draft
   // until Save (in the context bar); category and folder changes move the file right away.
   import {
+    Copy,
     ExternalLink,
     FileMusic,
     FolderOpen,
@@ -20,7 +21,7 @@
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { onDestroy, onMount } from "svelte";
   import { api } from "../lib/api";
-  import { moveSounds, relinkOne, removeSound, stopPreviewOnLeave } from "../lib/actions";
+  import { duplicateSound, moveSounds, relinkOne, removeSound, stopPreviewOnLeave } from "../lib/actions";
   import { formatDb, normalizationGainDb } from "../lib/loudness";
   import { askText, focusOn, folderOf, formatBytes, formatDuration, run, scenesUsing, soundById, ui } from "../lib/store.svelte";
   import { CATEGORIES, type Category, type Sound } from "../lib/types";
@@ -328,6 +329,8 @@
         <span class="muted">No scene uses this sound yet.</span>
       {/each}
       <span class="grow"></span>
+      <!-- Copies the saved sound; leaving for the copy asks about unsaved changes here. -->
+      <button disabled={missing} title="A copy of the file with the same settings, in no scene" onclick={() => duplicateSound(id, true)}><Copy size={13} />Duplicate</button>
       <button class="danger" onclick={() => removeSound(id)}><Trash2 size={13} />Remove from project…</button>
     </div>
   </section>

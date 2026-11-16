@@ -285,6 +285,33 @@ pub fn move_into_shelf(dir: &Path, info: &FileInfo, shelf: Shelf, folder: &str) 
     Ok(moved)
 }
 
+/// Copies a library file beside itself as "<name> (copy).<ext>" ("<name> (copy) (2).<ext>"… if taken) and
+/// returns the copy's `FileInfo`, keeping what was measured about the content (hash,
+/// loudness): it's the same. The copy is written under a hidden name first and renamed when
+/// complete, so the folder scan (which skips hidden files) never adds a half-copied file as a
+/// new sound or video of its own.
+pub fn copy_beside(dir: &Path, info: &FileInfo) -> Result<FileInfo, String> {
+    let source = absolute_audio_path(dir, info);
+    let folder = source.parent().ok_or("the file has no folder")?;
+    let stem = source.file_stem().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    let ext = source.extension().map(|e| format!(".{}", e.to_string_lossy())).unwrap_or_default();
+    let tmp = folder.join(format!(".{stem}.copy-tmp{ext}"));
+    if let Err(e) = fs::copy(&source, &tmp) {
+        let _ = fs::remove_file(&tmp);
+        return Err(format!("could not copy {}: {e}", source.display()));
+    }
+    let target = unique_path(folder, Path::new(&format!("{stem} (copy){ext}")));
+    if let Err(e) = fs::rename(&tmp, &target) {
+        let _ = fs::remove_file(&tmp);
+        return Err(format!("could not save the copy: {e}"));
+    }
+    let relative = target.strip_prefix(dir).map_err(|e| e.to_string())?;
+    let mut copy = file_info(dir, relative)?;
+    copy.sha256 = info.sha256.clone();
+    copy.loudness = info.loudness;
+    Ok(copy)
+}
+
 /// Size and modification time of a file inside the project. `sha256` is filled in later
 /// by the background hasher.
 pub fn file_info(dir: &Path, relative: &Path) -> Result<FileInfo, String> {
@@ -578,6 +605,25 @@ mod tests {
         assert!(!is_in_root(&outside, &root.0));
         // Spelled differently, still the same folder.
         assert!(is_in_root(&inside, &root.0.join(".")));
+    }
+
+    #[test]
+    fn copies_a_file_beside_itself_keeping_its_hash() {
+        let root = TempDir::new();
+        let dir = create_project(&root.0, "P", ProjectDefaults::default()).unwrap();
+        fs::write(dir.join("audio/effects/door.ogg"), b"creak").unwrap();
+        let mut info = file_info(&dir, Path::new("audio/effects/door.ogg")).unwrap();
+        info.sha256 = Some("abc".into());
+
+        let first = copy_beside(&dir, &info).unwrap();
+        let second = copy_beside(&dir, &info).unwrap();
+        assert_eq!(first.path, "audio/effects/door (copy).ogg");
+        assert_eq!(second.path, "audio/effects/door (copy) (2).ogg");
+        assert_eq!(first.sha256.as_deref(), Some("abc"));
+        assert_eq!(fs::read(dir.join(&first.path)).unwrap(), b"creak");
+        // No hidden working file left behind.
+        let hidden = fs::read_dir(dir.join("audio/effects")).unwrap().flatten().any(|e| e.file_name().to_string_lossy().starts_with('.'));
+        assert!(!hidden);
     }
 
     #[test]

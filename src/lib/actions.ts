@@ -8,6 +8,8 @@ import {
   askText,
   confirmAction,
   focusOn,
+  notify,
+  openSoundInLibrary,
   presetById,
   project,
   run,
@@ -215,6 +217,15 @@ export async function addSoundFiles(category: Category, folder: string | null = 
   // `open` returns null when cancelled, otherwise an array of paths (because multiple: true).
   if (!picked || picked.length === 0) return;
   await run(api.addSounds(category, picked, folder));
+}
+
+/** Duplicates a sound: a copy of its file, with the same settings, next to it in the library
+ *  (decision 0043). With `open`, the copy then opens in the Library (from its editor). */
+export async function duplicateSound(soundId: string, open = false) {
+  const copyId = await run(api.duplicateSound(soundId));
+  if (!copyId) return;
+  notify(`Duplicated “${soundById(soundId)?.name ?? "the sound"}”.`);
+  if (open) await openSoundInLibrary(copyId);
 }
 
 /** Removes a sound, asking whether to trash or delete its file (decision 0007). */

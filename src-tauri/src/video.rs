@@ -237,6 +237,42 @@ pub fn update_videos(videos: Vec<Video>, app: AppHandle, state: AppStateRef) -> 
     Ok(())
 }
 
+/// Duplicates a video like `commands::duplicate_sound`: the file is copied beside the original
+/// as "<name> (copy)", the copy keeps its settings (kind, tags, seamless loop, what ffprobe
+/// found) but is in no scene (decision 0043). Returns the copy's id.
+#[tauri::command(async)]
+pub fn duplicate_video(id: String, app: AppHandle, state: AppStateRef) -> Result<String, String> {
+    let (dir, video) = {
+        let s = lock(&state)?;
+        let open = s.open_ref()?;
+        let video = open.project.video(&id).ok_or("that video no longer exists")?.clone();
+        if open.missing.contains(&id) {
+            return Err(format!("“{}” can't be duplicated: its file is missing", video.name));
+        }
+        (open.dir.clone(), video)
+    };
+    // Outside the lock: a video can be gigabytes.
+    let file = storage::copy_beside(&dir, &video.file)?;
+
+    let mut s = lock(&state)?;
+    let open = s.open_mut()?;
+    if open.dir != dir {
+        let _ = std::fs::remove_file(storage::absolute_audio_path(&dir, &file));
+        return Err("the project was closed while the video was being copied".into());
+    }
+    let mut copy = video.clone();
+    copy.id = crate::project::new_id("vid");
+    copy.name = format!("{} (copy)", video.name);
+    copy.file = file;
+    copy.last_used = None;
+    let copy_id = copy.id.clone();
+    let index = open.project.videos.iter().position(|v| v.id == id).map_or(open.project.videos.len(), |i| i + 1);
+    open.project.videos.insert(index, copy);
+    let problems = s.project_changed(Duration::ZERO);
+    emit_state(&app, &s, problems);
+    Ok(copy_id)
+}
+
 /// Removes a video from the library and every scene, and moves its file to the trash (or
 /// deletes it for good).
 #[tauri::command]

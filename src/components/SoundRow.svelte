@@ -1,9 +1,9 @@
 <script lang="ts">
   // One sound in the Library drawer or quick search: drag it onto a scene, the tapestry or the
   // scene editor; ▶ previews it; ★ marks it a favourite; double-click opens it in the Library.
-  import { FolderOpen, Pencil, Play, Square, Star, Trash2, TriangleAlert } from "@lucide/svelte";
+  import { Copy, FolderOpen, Pencil, Play, Square, Star, Trash2, TriangleAlert } from "@lucide/svelte";
   import { api } from "../lib/api";
-  import { removeSound } from "../lib/actions";
+  import { duplicateSound, removeSound } from "../lib/actions";
   import { soundDragStart } from "../lib/library";
   import { durationOf, formatDuration, openSoundInLibrary, run, ui } from "../lib/store.svelte";
   import type { Sound } from "../lib/types";
@@ -21,6 +21,7 @@
   const menu = (): MenuItem[] => [
     { label: previewing ? "Stop preview" : "Preview", icon: Play, action: () => run(api.previewSound(sound.id)) },
     { label: "Edit in the Library", icon: Pencil, action: () => openSoundInLibrary(sound.id) },
+    { label: "Duplicate", icon: Copy, disabled: missing, action: () => duplicateSound(sound.id) },
     { label: sound.favourite ? "Remove from favourites" : "Add to favourites", icon: Star, action: toggleFavourite },
     { label: "Show in file manager", icon: FolderOpen, disabled: missing, action: () => run(api.revealSound(sound.id)) },
     "separator",

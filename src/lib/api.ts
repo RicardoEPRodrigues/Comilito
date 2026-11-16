@@ -103,6 +103,7 @@ export const api = {
   updateSounds: (sounds: Sound[]) => invoke<void>("update_sounds", { sounds }),
   removeSound: (id: string, permanently: boolean) =>
     invoke<void>("remove_sound", { id, permanently }),
+  duplicateSound: (id: string) => invoke<string>("duplicate_sound", { id }),
   previewSound: (id: string) => invoke<void>("preview_sound", { id }),
   previewRange: (id: string, startMs: number, endMs: number, seam: boolean) =>
     invoke<void>("preview_range", { id, startMs: Math.round(startMs), endMs: Math.round(endMs), seam }),
@@ -145,6 +146,7 @@ export const api = {
   removeVideo: (id: string, permanently: boolean) => invoke<void>("remove_video", { id, permanently }),
   moveVideos: (ids: string[], kind: VideoKind, folder: string) => invoke<void>("move_videos", { ids, kind, folder }),
   revealVideo: (id: string) => invoke<void>("reveal_video", { id }),
+  duplicateVideo: (id: string) => invoke<string>("duplicate_video", { id }),
   relinkVideo: (id: string, path: string) => invoke<void>("relink_video", { id, path }),
   addVideoToScene: (sceneId: string, videoId: string) => invoke<void>("add_video_to_scene", { sceneId, videoId }),
   videoStreaming: () => invoke<boolean>("video_streaming"),

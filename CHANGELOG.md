@@ -86,6 +86,9 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
   menu) opens a project wherever it is, on another drive or a synced folder, without copying
   it. It's listed on the home screen from then on, with the folder it's in; *Remove from list*
   forgets it without touching its files.
+- **Duplicate a sound or a video** in the Library: *Duplicate* in a sound's right-click menu,
+  on its page, and on a video's page. The copy gets its own file ("… (copy)") with the same
+  settings, ready to be changed without touching the original, and isn't in any scene.
 
 ### Changed
 

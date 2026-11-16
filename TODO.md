@@ -8,7 +8,6 @@
 - Add ability to have plugins.
 - Mini player: a very small version where the window remais always on top and just shows the stack and the scenes/presets.
 - if not enought width is available the bottom bar squishes its elements. we should adapt the UI to play nicely on mobile.
-- Add button to duplicate audio or video in the library.
 - Add option and keyboard shortcut to restart the UI. There may be unforseen bugs that might require a restart and we can try to ease that process.
 
 ## Bugs

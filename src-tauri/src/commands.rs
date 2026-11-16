@@ -689,6 +689,45 @@ pub fn update_sounds(sounds: Vec<Sound>, app: AppHandle, state: AppStateRef) -> 
     Ok(())
 }
 
+/// Duplicates a sound: its file is copied beside the original as "<name> (copy)" and the copy
+/// joins the library right after it, with the same settings, but in no scene (decision 0043).
+/// Returns the copy's id.
+///
+/// `async` and the copy made without holding the state lock: a big file takes a while, and the
+/// app (including playback commands) would stall meanwhile.
+#[tauri::command(async)]
+pub fn duplicate_sound(id: String, app: AppHandle, state: AppStateRef) -> Result<String, String> {
+    let (dir, sound) = {
+        let s = lock(&state)?;
+        let open = s.open_ref()?;
+        let sound = open.project.sound(&id).ok_or("that sound no longer exists")?.clone();
+        if open.missing.contains(&id) {
+            return Err(format!("“{}” can't be duplicated: its file is missing", sound.name));
+        }
+        (open.dir.clone(), sound)
+    };
+    let file = storage::copy_beside(&dir, &sound.file)?;
+
+    let mut s = lock(&state)?;
+    let open = s.open_mut()?;
+    if open.dir != dir {
+        // Another project was opened during the copy: don't leave a stray file in this one.
+        let _ = std::fs::remove_file(storage::absolute_audio_path(&dir, &file));
+        return Err("the project was closed while the sound was being copied".into());
+    }
+    let mut copy = sound.clone();
+    copy.id = new_id("snd");
+    copy.name = format!("{} (copy)", sound.name);
+    copy.file = file;
+    copy.last_used = None;
+    let copy_id = copy.id.clone();
+    let index = open.project.sounds.iter().position(|x| x.id == id).map_or(open.project.sounds.len(), |i| i + 1);
+    open.project.sounds.insert(index, copy);
+    let problems = s.project_changed(Duration::ZERO);
+    emit_state(&app, &s, problems);
+    Ok(copy_id)
+}
+
 /// Removes a sound from the library and every scene, and moves its file to the system
 /// trash (or deletes it for good when `permanently` is true). See decision 0007.
 #[tauri::command]

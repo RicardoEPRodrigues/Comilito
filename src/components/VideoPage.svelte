@@ -2,12 +2,12 @@
   // One video in the Library workspace (decision 0035, design screen 6): a muted preview, name,
   // folder, tags, format, where it's used, its file and source. Unlike the sound editor there
   // is no draft: each change is saved straight away, since there are no levels to try out.
-  import { CircleCheck, ExternalLink, FileVideo, FolderOpen, FolderSearch, Play, RefreshCw, Scissors, Scroll, Star, Trash2, TriangleAlert, X } from "@lucide/svelte";
+  import { CircleCheck, Copy, ExternalLink, FileVideo, FolderOpen, FolderSearch, Play, RefreshCw, Scissors, Scroll, Star, Trash2, TriangleAlert, X } from "@lucide/svelte";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { api } from "../lib/api";
   import { askText, formatBytes, formatDuration, run, ui } from "../lib/store.svelte";
   import type { Video, VideoKind } from "../lib/types";
-  import { describeVideo, folderOfVideo, kindOf, moveVideos, relinkVideo, removeVideo, scenesUsingVideo, shelfOfKind, videoById } from "../lib/video";
+  import { describeVideo, duplicateVideo, folderOfVideo, kindOf, moveVideos, relinkVideo, removeVideo, scenesUsingVideo, shelfOfKind, videoById } from "../lib/video";
   import { videoSource } from "../lib/videoStream";
   import TimeInput from "./TimeInput.svelte";
 
@@ -103,6 +103,7 @@
       <button class="icon" title={video.favourite ? "Remove from favourites" : "Add to favourites"} onclick={() => save({ favourite: !video.favourite })}>
         <Star size={18} class={video.favourite ? "fav on" : "fav"} fill={video.favourite ? "currentColor" : "none"} />
       </button>
+      <button class="icon" title="Duplicate: a copy of the file with the same settings, in no scene" disabled={missing || busy} onclick={() => duplicateVideo(id)}><Copy size={17} /></button>
       <button class="icon" title="Remove from the project…" onclick={() => removeVideo(id)}><Trash2 size={17} /></button>
     </div>
 
