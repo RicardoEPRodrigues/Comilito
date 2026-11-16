@@ -1,6 +1,6 @@
 # Video
 
-> Status: implemented (on the `video` branch until merged). Decisions
+> Status: implemented. Decisions
 > [0035](decisions/0035-video.md), [0037](decisions/0037-streaming-videos-on-linux.md),
 > [0038](decisions/0038-video-keeps-playing-on-pause.md),
 > [0039](decisions/0039-ambience-videos-and-video-effects.md) and
