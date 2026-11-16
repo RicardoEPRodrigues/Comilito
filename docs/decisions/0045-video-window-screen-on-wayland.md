@@ -24,7 +24,11 @@ fullscreen happened on that same screen. Wayland also names a laptop's own scree
 ## Decision
 
 - Fullscreen always goes to the chosen screen: on Linux through GTK on the main thread,
-  elsewhere by moving the window there first as before. Turning fullscreen on with F or the
+  elsewhere by moving the window there first as before. On Linux, leaving fullscreen goes
+  through GTK too: Tauri only knows the window is fullscreen when it made it so itself, and
+  would otherwise refuse to leave. A window that's already fullscreen leaves fullscreen and asks
+  for the new screen a moment (0.3 s) later, since COSMIC keeps a fullscreen window where it is
+  when asked for another screen directly. Each request is logged. Turning fullscreen on with F or the
   button uses the chosen screen too, not just the one the window happens to be on.
 - A window that isn't fullscreen is still moved with `set_position` where that works (X11,
   Windows, macOS). On Wayland `set_video_screen` reports that it couldn't move it, and the

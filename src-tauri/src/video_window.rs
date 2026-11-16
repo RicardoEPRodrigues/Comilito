@@ -81,9 +81,7 @@ pub fn place(app: &AppHandle, screen: Option<&str>, fullscreen: bool) -> bool {
         fullscreen_on(app, &window, index);
         return true;
     }
-    if window.is_fullscreen().unwrap_or(false) {
-        let _ = window.set_fullscreen(false);
-    }
+    leave_fullscreen(app, &window);
     if on_wayland() {
         return false;
     }
@@ -94,23 +92,64 @@ pub fn place(app: &AppHandle, screen: Option<&str>, fullscreen: bool) -> bool {
     true
 }
 
-/// Fullscreen on screen number `index`. On Linux through GTK, which asks the compositor for
-/// that screen (the one way to choose a screen on Wayland, and it works on X11 too). GTK must
-/// be called from the main thread, so it's queued there.
+// On Linux, fullscreen goes through GTK itself, in and out. Tauri keeps its own "is it
+// fullscreen?" flag, set only when Tauri makes the window fullscreen, so after GTK's call it
+// would still say no, and leaving fullscreen through Tauri would do nothing. GTK must be called
+// from the main thread, so each call is queued there.
+
+/// Fullscreen on screen number `index` (GDK's monitor number), through GTK: it asks the
+/// compositor for that screen, the one way to choose a screen on Wayland (and it works on X11).
+/// A window that's already fullscreen leaves fullscreen first and asks again a moment later:
+/// some compositors keep a fullscreen window where it is when asked for another screen.
 #[cfg(target_os = "linux")]
 fn fullscreen_on(app: &AppHandle, window: &tauri::WebviewWindow, index: usize) {
-    use gtk::prelude::GtkWindowExt;
+    use gtk::prelude::{GtkWindowExt, WidgetExt};
+    let name = screens(app).into_iter().nth(index).map(|(s, _)| s.name).unwrap_or_default();
     let window = window.clone();
     let _ = app.run_on_main_thread(move || {
-        if let Ok(gtk_window) = window.gtk_window() {
-            let screen = GtkWindowExt::screen(&gtk_window);
-            if let Some(screen) = screen {
+        let gtk_window = window.gtk_window().ok();
+        let screen = gtk_window.as_ref().and_then(GtkWindowExt::screen);
+        let (Some(gtk_window), Some(screen)) = (gtk_window, screen) else {
+            crate::logging::warn("Video window: GTK isn't available; fullscreen on the current screen");
+            let _ = window.set_fullscreen(true);
+            return;
+        };
+        let already = WidgetExt::window(&gtk_window)
+            .is_some_and(|w| w.state().contains(gtk::gdk::WindowState::FULLSCREEN));
+        crate::logging::info(&format!(
+            "Video window: fullscreen on screen {} ({name}){}",
+            index + 1,
+            if already { ", leaving fullscreen first" } else { "" }
+        ));
+        if already {
+            gtk_window.unfullscreen();
+            gtk::glib::timeout_add_local_once(std::time::Duration::from_millis(300), move || {
                 gtk_window.fullscreen_on_monitor(&screen, index as i32);
-                return;
-            }
+            });
+        } else {
+            gtk_window.fullscreen_on_monitor(&screen, index as i32);
         }
-        let _ = window.set_fullscreen(true);
     });
+}
+
+/// Leaves fullscreen, through GTK (see above), whatever Tauri thinks.
+#[cfg(target_os = "linux")]
+fn leave_fullscreen(app: &AppHandle, window: &tauri::WebviewWindow) {
+    use gtk::prelude::GtkWindowExt;
+    let window = window.clone();
+    let _ = app.run_on_main_thread(move || match window.gtk_window() {
+        Ok(gtk_window) => gtk_window.unfullscreen(),
+        Err(_) => {
+            let _ = window.set_fullscreen(false);
+        }
+    });
+}
+
+#[cfg(not(target_os = "linux"))]
+fn leave_fullscreen(_app: &AppHandle, window: &tauri::WebviewWindow) {
+    if window.is_fullscreen().unwrap_or(false) {
+        let _ = window.set_fullscreen(false);
+    }
 }
 
 /// Elsewhere: leave fullscreen, move onto the screen, fullscreen there.
