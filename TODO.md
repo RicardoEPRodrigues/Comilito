@@ -48,8 +48,7 @@
   folder, and pruning to one project's "keep" count can delete the other's backups. Keying the
   folder by something unique to the project (an id in `comilito.json`) would fix it; that's a
   save-format change.
-- Video (decision 0035): not tried yet in the running app: the video window on a second screen
-  and in fullscreen, and exporting a project with its videos.
+- Video (decision 0035): exporting a project with its videos.
 - Moving the projects folder across disks (the slow, copying case) was only tested by unit
   tests; on the virtual display both folders were on one disk, so the move was an instant rename.
   Worth trying once with a big project and a USB drive to see the progress dialog.
