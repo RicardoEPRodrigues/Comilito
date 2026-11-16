@@ -104,6 +104,7 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 
 ### Fixed
 
+- In the Library drawer, the scrollbar could cover the number of items next to a folder.
 - A scene's details in the Tapestry now list its videos and video effects too, with a ✕ to
   take one out of the scene.
 - Right-clicking most of the window opened the webview's own menu, with *Reload* and other

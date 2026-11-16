@@ -645,6 +645,9 @@
     flex: 1;
     overflow: auto;
     padding-top: 0.25rem;
+    /* WebKitGTK draws overlay scrollbars on top of the content, which hid the folder counts
+       at the right edge; keep that strip clear. */
+    padding-right: 0.7rem;
   }
   .folder {
     width: 100%;
