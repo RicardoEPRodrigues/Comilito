@@ -17,10 +17,11 @@ whole feature can be turned off in Preferences › Video.
   video of the scenes below* switch is on. Esc (stop all) blanks the window. Space pauses the
   sound but the video keeps playing, unless that's turned off in Preferences › Video.
 - **Playlist:** in order or shuffled. *Switch videos every N minutes* plays a video for N
-  minutes, then the next; *Coming back to a video* resumes where it stopped or starts it over.
-  `0` minutes plays each video to its end (the default is 10 minutes). These follow the
+  minutes, then the next; a video shorter than that loops until its N minutes are up (unless
+  they end about when the video does). *Coming back to a video* resumes where it stopped or
+  starts it over. `0` minutes plays each video to its end (the default is 10 minutes). These follow the
   project's defaults unless the scene sets its own.
-- **Looping:** a playlist of one video loops it. Unless the video is marked *Loops seamlessly*
+- **Looping:** a playlist of one video loops it, and so does a video shorter than its turn (above). Unless the video is marked *Loops seamlessly*
   (on its page in the Library), the window starts it again on its second layer a moment before
   the end and crossfades into it, so the jump back doesn't show as a cut. Seamless videos (and
   ones too short for the fade) jump straight back.

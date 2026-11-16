@@ -294,7 +294,27 @@
   function loopWithFade(videoId: string) {
     if (loopingFrom === active) return;
     loopingFrom = active;
+    // show() starts a new turn; a loop is the same turn going on, so its time is kept.
+    const played = playedMs;
     show(videoId, 0);
+    playedMs = played;
+  }
+
+  /** How long each video's turn lasts (ms) when the playlist switches every N minutes, else null. */
+  function switchMsOf(t: VideoTarget): number | null {
+    return t.switchMinutes > 0 && t.videos.length > 1 ? t.switchMinutes * 60_000 : null;
+  }
+
+  /** Whether the showing video starts over when it reaches its end, rather than moving on: a
+   *  lone video always does; in a playlist that switches every N minutes, a video shorter than
+   *  that loops until its turn is over. (Not if the turn ends about when the video does: the
+   *  switch would cut into the loop right away.) */
+  function loopsAtEnd(t: VideoTarget, el: HTMLVideoElement): boolean {
+    if (t.videos.length === 1) return true;
+    const switchMs = switchMsOf(t);
+    if (switchMs === null) return false;
+    const leftMs = Math.max(0, (el.duration - el.currentTime) * 1000) || 0;
+    return playedMs + leftMs + loopLeadMs < switchMs;
   }
 
   function restartActive() {
@@ -306,8 +326,8 @@
   function playlistEnded() {
     const t = target;
     if (!t) return;
-    if (t.videos.length === 1) {
-      // One video loops. A fading loop normally started before the end (in the clock); if it's
+    if (loopsAtEnd(t, layerEls[active])) {
+      // One video loops (or one shorter than its turn). A fading loop normally started before the end (in the clock); if it's
       // still loading, the last frame stays until it's ready.
       if (current && fadesWhenLooping(layerEls[active], current.videoId)) loopWithFade(current.videoId);
       else restartActive();
@@ -380,9 +400,9 @@
     const playing = !!t && !!current && !paused && !fxShown && !!el && !el.paused;
     if (playing) playedMs += dt;
     positionMs = el && current ? el.currentTime * 1000 : 0;
-    const switchMs = t && t.switchMinutes > 0 && t.videos.length > 1 ? t.switchMinutes * 60_000 : null;
+    const switchMs = t ? switchMsOf(t) : null;
     if (t && switchMs !== null && playedMs >= switchMs) advance(t, false);
-    if (playing && t.videos.length === 1 && fadesWhenLooping(el, current!.videoId)) {
+    if (playing && fadesWhenLooping(el, current!.videoId) && loopsAtEnd(t, el)) {
       if ((el.duration - el.currentTime) * 1000 < loopLeadMs) loopWithFade(current!.videoId);
     }
     watch(now, el);
@@ -481,7 +501,8 @@
   let turn = $state(0);
   const turnTimer = setInterval(() => {
     const t = target;
-    turn = t && t.switchMinutes > 0 && t.videos.length > 1 ? Math.min(1, playedMs / (t.switchMinutes * 60_000)) : 0;
+    const switchMs = t ? switchMsOf(t) : null;
+    turn = switchMs !== null ? Math.min(1, playedMs / switchMs) : 0;
   }, 1000);
   onDestroy(() => clearInterval(turnTimer));
 </script>

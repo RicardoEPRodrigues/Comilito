@@ -121,6 +121,8 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Fixed
 
+- With *Switch videos every N minutes* on, a video shorter than N minutes moved on to the next
+  one when it ended; it now loops until its N minutes are up.
 - With the Library drawer closed, results of its quick search couldn't be dragged onto a scene
   or the tapestry: the pop-up closed as soon as a result was pressed.
 - Videos often failed to load on Linux ("Media failed to decode") when starting partway in:
