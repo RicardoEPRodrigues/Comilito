@@ -336,12 +336,16 @@
     api.setVideoFullscreen(!fullscreen).catch(() => {});
   }
 
+  // Space works as in the main window. Esc leaves fullscreen first, like everywhere else;
+  // otherwise it stops everything, as in the main window.
   function onKeydown(e: KeyboardEvent) {
     if (e.key === " ") {
       e.preventDefault();
       api.togglePlay().catch(() => {});
-    } else if (e.key === "Escape" && fullscreen) {
-      toggleFullscreen();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      if (fullscreen) toggleFullscreen();
+      else api.stopAll().catch(() => {});
     } else if (e.key === "f" || e.key === "F") {
       toggleFullscreen();
     }

@@ -108,6 +108,8 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 
 ### Fixed
 
+- Esc in the video window now stops everything, as in the main window, when the window isn't
+  fullscreen (in fullscreen it still leaves fullscreen first).
 - *See error log* and *Open logs folder* next to *See logs* (Preferences › Projects & tools,
   and About), for the error output GTK and WebKit print, crashes included.
 - The AppImage froze when opening a project with videos: it carried GStreamer without its

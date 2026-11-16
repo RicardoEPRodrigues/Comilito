@@ -70,8 +70,9 @@ whole feature can be turned off in Preferences › Video.
 - A second Tauri window, labelled `video`, without a title bar; `main.ts` mounts
   `VideoWindow.svelte` in it instead of the app. Its top bar (shown while the pointer moves)
   is the drag handle; double-click or F toggles fullscreen; it has a screen picker and a close
-  button. The screen and fullscreen are remembered in the preferences, and the window-state
-  plugin remembers its size and place.
+  button. Space works there as in the main window; Esc leaves fullscreen, or, when the window
+  isn't fullscreen, stops everything as in the main window. The screen and fullscreen are
+  remembered in the preferences, and the window-state plugin remembers its size and place.
 - Rust decides what should show: `TargetMix::video` (the playlist with its settings filled in),
   the transport and the playing video effect, all in the snapshot. The window decides the rest:
   the play order (shuffled per pass, never the same video twice in a row), switching after N
