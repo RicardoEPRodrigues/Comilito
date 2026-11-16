@@ -285,6 +285,9 @@
   // ---- The clock: switching, saving positions, telling the main window ----
   let lastStatus = 0;
   let lastSave = 0;
+  /** Where the showing video is (ms), for the top bar. The element's `currentTime` isn't
+   *  reactive (Svelte can't see a DOM property change), so the clock copies it here. */
+  let positionMs = $state(0);
   const clock = setInterval(() => {
     const now = performance.now();
     const dt = now - lastTick;
@@ -293,6 +296,7 @@
     const el = layerEls[active];
     const playing = !!t && !!current && !paused && !fxShown && !!el && !el.paused;
     if (playing) playedMs += dt;
+    positionMs = el && current ? el.currentTime * 1000 : 0;
     const switchMs = t && t.switchMinutes > 0 && t.videos.length > 1 ? t.switchMinutes * 60_000 : null;
     if (t && switchMs !== null && playedMs >= switchMs) advance(t, false);
     if (playing && t.videos.length === 1 && fadesWhenLooping(el, current!.videoId)) {
@@ -411,7 +415,7 @@
     <div class="now" data-tauri-drag-region>
       <strong data-tauri-drag-region>{fxShown ? "Video effect" : sceneName || "Comilito video"}</strong>
       <span data-tauri-drag-region>
-        {#if fxShown}{videoById(fxPlaying ?? "")?.name ?? ""}{:else if nowName}{nowName}{#if layerEls[active]} · {formatDuration((layerEls[active]?.currentTime ?? 0) * 1000)}{/if}{/if}
+        {#if fxShown}{videoById(fxPlaying ?? "")?.name ?? ""}{:else if nowName}{nowName}{#if layerEls[active]} · {formatDuration(positionMs)}{/if}{/if}
       </span>
     </div>
     {#if screens.length > 1}

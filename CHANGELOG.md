@@ -108,6 +108,7 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 
 ### Fixed
 
+- The video's playing time in the video window's top bar didn't move.
 - Esc in the video window now stops everything, as in the main window, when the window isn't
   fullscreen (in fullscreen it still leaves fullscreen first).
 - *See error log* and *Open logs folder* next to *See logs* (Preferences › Projects & tools,
