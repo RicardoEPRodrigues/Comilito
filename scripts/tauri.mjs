@@ -16,10 +16,13 @@ import { join } from "node:path";
 
 // Without these no video plays: the pipeline's basics, WebM, VP8/VP9, OpenGL and an audio sink
 // (WebKit insists on one even though our videos are muted).
+// An array lists alternatives: the first one installed is used.
 const REQUIRED = [
   // GStreamer core and plugins-base
   "coreelements", "app", "playback", "typefindfunctions", "pbtypes",
-  "videoconvertscale", "videorate", "audioconvert", "audioresample", "volume",
+  // GStreamer 1.22 merged videoconvert and videoscale into videoconvertscale; Ubuntu 22.04
+  // (what `npm run package` builds on, decision 0046) has 1.20, with the two separate ones.
+  ["videoconvertscale", ["videoconvert", "videoscale"]], "videorate", "audioconvert", "audioresample", "volume",
   // gstreamer1.0-gl
   "opengl",
   // plugins-good
@@ -84,12 +87,22 @@ function choosePlugins() {
   const src = [`/usr/lib/${multiarch}-linux-gnu/gstreamer-1.0`, "/usr/lib/gstreamer-1.0"].find(existsSync);
   if (!src) fail("GStreamer's plugin folder wasn't found (is gstreamer1.0-plugins-base installed?)");
 
-  const missing = REQUIRED.filter((p) => !existsSync(join(src, `libgst${p}.so`)));
+  const has = (p) => existsSync(join(src, `libgst${p}.so`));
+  // Each alternative is one plugin name or a group of names that are only usable together.
+  const installed = (alt) => (Array.isArray(alt) ? alt.every(has) : has(alt));
+  const chosen = [];
+  const missing = [];
+  for (const entry of REQUIRED) {
+    const alts = Array.isArray(entry) ? entry : [entry];
+    const found = alts.find(installed);
+    if (found) chosen.push(...[found].flat());
+    else missing.push(alts.map((a) => [a].flat().join("+")).join(" or "));
+  }
   if (missing.length) {
     fail(`these GStreamer plugins aren't installed (in ${src}): ${missing.join(", ")}`);
   }
   const dir = mkdtempSync(join(tmpdir(), "comilito-gst-"));
-  for (const p of [...REQUIRED, ...OPTIONAL]) {
+  for (const p of [...chosen, ...OPTIONAL]) {
     const file = join(src, `libgst${p}.so`);
     if (existsSync(file)) copyFileSync(file, join(dir, `libgst${p}.so`));
     else console.warn(`note: optional GStreamer plugin '${p}' isn't installed; leaving it out`);
