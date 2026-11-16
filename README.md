@@ -113,10 +113,11 @@ Prerequisites:
 
   ```sh
   sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
-    libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libasound2-dev
+    libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libasound2-dev patchelf
   ```
 
-  `libasound2-dev` (ALSA) is for audio output.
+  `libasound2-dev` (ALSA) is for audio output. `patchelf` is for building the AppImage, which
+  carries the GStreamer plugins WebKit plays videos with.
 
 Run:
 
@@ -130,7 +131,7 @@ Other commands:
 | Command | What it does |
 |---------|--------------|
 | `npm run check` | Type-check the Svelte/TypeScript code |
-| `npm run tauri build` | Build a release binary and installers into `src-tauri/target/release/` |
+| `npm run tauri build` | Build a release binary and installers into `src-tauri/target/release/`. On Linux the AppImage gets only the GStreamer plugins videos need; see [decision 0041](docs/decisions/0041-gstreamer-in-the-appimage.md) |
 | `cargo test --manifest-path src-tauri/Cargo.toml` | Run the Rust tests |
 
 ## Acknowledgements

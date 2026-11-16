@@ -25,6 +25,10 @@ const CHUNK = 1024 * 1024;
 /** Seconds to keep buffered ahead of the playhead, and behind it before dropping. */
 const AHEAD = 90;
 const BEHIND = 20;
+/** Bytes to append before giving up on a video that never shows its metadata. The header and
+ *  first cluster of a WebM are well under this; when WebKit can't read the video at all (its
+ *  GStreamer plugins are missing), it would otherwise read the whole file, chunk by chunk. */
+const NO_METADATA_LIMIT = 32 * 1024 * 1024;
 
 export interface Playback {
   /** Resolves once the video can show its first frame (at the start position). */
@@ -114,6 +118,9 @@ class Stream implements Playback {
   private reposition: number | null = null;
   /** The file's seek index, if it has one: lets seeks jump straight to the right place. */
   private index: WebmIndex | null = null;
+  /** Bytes appended so far, to notice a video that never gets its metadata. */
+  private appended = 0;
+  private fail: (e: Error) => void = () => {};
 
   constructor(
     private el: HTMLVideoElement,
@@ -123,7 +130,8 @@ class Stream implements Playback {
     private preview: boolean,
   ) {
     this.objectUrl = URL.createObjectURL(this.ms);
-    this.ready = whenLoaded(el, fromSec);
+    const failed = new Promise<never>((_, reject) => (this.fail = reject));
+    this.ready = Promise.race([whenLoaded(el, fromSec), failed]);
     this.ms.addEventListener("sourceopen", () => this.open(), { once: true });
     el.addEventListener("timeupdate", this.pump);
     el.addEventListener("seeking", this.onSeeking);
@@ -221,6 +229,12 @@ class Stream implements Playback {
         }
         await idle(sb);
         this.offset = end + 1;
+        this.appended += chunk.byteLength;
+        if (this.el.readyState < 1 && this.appended > NO_METADATA_LIMIT) {
+          this.dead = true;
+          this.fail(new Error("the video can't be read here (are WebKit's GStreamer plugins installed?)"));
+          return;
+        }
       }
       if (!this.dead && this.offset >= this.size && this.ms.readyState === "open") {
         await idle(sb);

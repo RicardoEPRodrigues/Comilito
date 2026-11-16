@@ -34,7 +34,36 @@ use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent, path::BaseDirect
 
 // On Android this function becomes the app's entry point; on desktop main.rs calls it.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+/// Inside the AppImage, gives GStreamer (which WebKit plays video with) a registry file of its
+/// own. GStreamer caches the list of plugins it found in one file per user, shared by every
+/// program. The AppImage's GStreamer only sees the plugins bundled with it (and the AppImage's
+/// folder changes on every launch), so with the shared file each launch would replace the
+/// system's list, and the next GStreamer program would have to scan everything again.
+/// Child processes (WebKit's web process) inherit the variable.
+#[cfg(target_os = "linux")]
+fn private_gstreamer_registry() {
+    // `APPIMAGE` is set by the AppImage runtime; a user's own setting wins.
+    if std::env::var_os("APPIMAGE").is_none() || std::env::var_os("GST_REGISTRY_1_0").is_some() {
+        return;
+    }
+    let cache = std::env::var_os("XDG_CACHE_HOME")
+        .map(std::path::PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|home| std::path::PathBuf::from(home).join(".cache")));
+    let Some(cache) = cache else { return };
+    let dir = cache.join("com.comilito.app");
+    if std::fs::create_dir_all(&dir).is_err() {
+        return;
+    }
+    // `set_var` is `unsafe` since Rust 2024: changing the environment while another thread
+    // reads it is undefined behaviour in C's libc. This runs first thing in `run`, before
+    // Tauri, GTK or our logging start any threads, so nothing else can be reading it.
+    unsafe { std::env::set_var("GST_REGISTRY_1_0", dir.join("gstreamer-registry.bin")) };
+}
+
 pub fn run() {
+    // First, while this is the only thread (see the function for why that matters).
+    #[cfg(target_os = "linux")]
+    private_gstreamer_registry();
     // Before anything else, so a crash during startup leaves a trace (see logging.rs).
     #[cfg(target_os = "linux")]
     logging::capture_stderr("com.comilito.app");

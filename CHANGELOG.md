@@ -108,6 +108,10 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 
 ### Fixed
 
+- The AppImage froze when opening a project with videos: it carried GStreamer without its
+  plugins, so WebKit couldn't play any video. It now bundles the plugins needed for WebM, and
+  keeps its own GStreamer plugin cache instead of overwriting the one other programs share.
+  A video that can't be read no longer gets read whole in the background.
 - After opening a finished video download (or a video from the drawer's search, or dropped
   files), clicking folders in the Library did nothing until Comilito was restarted.
 - In the Library drawer, the scrollbar could cover the number of items next to a folder.

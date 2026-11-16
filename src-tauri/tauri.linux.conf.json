@@ -12,5 +12,12 @@
         "dragDropEnabled": true
       }
     ]
+  },
+  "bundle": {
+    "linux": {
+      "appimage": {
+        "bundleMediaFramework": true
+      }
+    }
   }
 }
