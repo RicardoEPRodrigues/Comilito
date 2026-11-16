@@ -99,8 +99,9 @@ whole feature can be turned off in Preferences › Video.
 Linux, WebKitGTK won't play `<video src="asset://…">`, so the file is streamed into a
 MediaSource with `fetch` range requests over the asset protocol ([0037](decisions/0037-streaming-videos-on-linux.md));
 only WebM can be streamed that way. Seeks and starts in the middle use the WebM's seek index
-(`src/lib/webmIndex.ts`), which conversions put at the front of the file. On Windows and macOS a
-plain `src` is used.
+(`src/lib/webmIndex.ts`), which conversions put at the front of the file. A jump drops what's
+buffered and resets the parser (`abort`), after which WebKitGTK needs the file's header again, so
+it's appended before the new cluster. On Windows and macOS a plain `src` is used.
 
 ## Trimming
 

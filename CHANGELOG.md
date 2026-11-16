@@ -121,6 +121,9 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Fixed
 
+- Videos often failed to load on Linux ("Media failed to decode") when starting partway in:
+  the Library's thumbnails stayed empty and the video window showed nothing, while the video's
+  own page still played it from the start. Seeking within long videos could fail the same way.
 - Choosing a screen for the video window didn't move it on Wayland. Fullscreen now goes to the
   chosen screen; a window that isn't fullscreen can't be moved by apps there, so the window says
   to drag it (or press F). Screens without a proper name get "Screen 1", "Screen 2"... and the
