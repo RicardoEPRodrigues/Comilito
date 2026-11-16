@@ -350,6 +350,10 @@
       e.preventDefault();
       if (fullscreen) toggleFullscreen();
       else api.stopAll().catch(() => {});
+    } else if (e.key === prefs?.shortcuts.restartInterface && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      // Here it restarts only this window; the main window's shortcut restarts both.
+      e.preventDefault();
+      location.reload();
     } else if (e.key === "f" || e.key === "F") {
       toggleFullscreen();
     }
@@ -360,6 +364,8 @@
     const unlisten = [
       listen<Snapshot>("state-changed", (e) => (ui.snapshot = e.payload)),
       listen<Preferences>("preferences-changed", (e) => (prefs = e.payload)),
+      // The main window's "Restart the interface" (decision 0044) restarts this one too.
+      listen("restart-interface", () => location.reload()),
     ];
     Promise.all([api.getState(), api.getPreferences(), api.videoPositions(), api.listScreens(), api.videoStreaming()]).then(
       ([s, p, pos, sc, streaming]) => {

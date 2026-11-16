@@ -4,9 +4,9 @@
   import { onMount } from "svelte";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { api } from "../lib/api";
-  import { FileText } from "@lucide/svelte";
+  import { FileText, RotateCcw } from "@lucide/svelte";
   import icon from "../../src-tauri/icons/128x128@2x.png";
-  import { openLogs, run } from "../lib/store.svelte";
+  import { openLogs, restartInterface, run } from "../lib/store.svelte";
   import Modal from "./Modal.svelte";
 
   let { onclose }: { onclose: () => void } = $props();
@@ -39,6 +39,7 @@
     <p class="logs">
       <button onclick={() => openLogs("events")}><FileText size={13} />See logs</button>
       <button onclick={() => openLogs("errors")}><FileText size={13} />See error log</button>
+      <button title="Reloads the windows; the project stays open and the sound keeps playing" onclick={restartInterface}><RotateCcw size={13} />Restart the interface</button>
     </p>
     <p>A soundboard and mixer for Dungeons &amp; Dragons Dungeon Masters.</p>
     <p>
@@ -135,6 +136,7 @@
   .intro .logs {
     display: flex;
     justify-content: center;
+    flex-wrap: wrap;
     gap: 0.5rem;
   }
   h3 {

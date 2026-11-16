@@ -8,7 +8,7 @@
 // whole with every `state-changed` event. Everything else here is purely UI state
 // (which view is shown, what's being edited or dragged...).
 
-import { listen } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import { api } from "./api";
 import type {
   Appearance,
@@ -237,6 +237,19 @@ export async function leaveFocus(): Promise<boolean> {
   ui.focus = null;
   ui.library.cropping = false;
   return true;
+}
+
+/**
+ * "Restart the interface" (decision 0044): reloads this window and the video window, which
+ * rebuild themselves from Rust's state like at start. Nothing in Rust restarts: the project
+ * stays open, sound keeps playing, downloads and conversions carry on. Unsaved changes in an
+ * editor are asked about first; anything else only on screen (the Library's selection, an open
+ * dialog) is lost.
+ */
+export async function restartInterface() {
+  if (ui.guard && !(await ui.guard())) return;
+  await emit("restart-interface").catch(() => {});
+  location.reload();
 }
 
 /** Opens something in the centre panel, after leaving whatever was open. */

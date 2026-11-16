@@ -50,6 +50,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0041](0041-gstreamer-in-the-appimage.md) | Bundle a chosen set of GStreamer plugins in the AppImage | Accepted | 2026-11-15 |
 | [0042](0042-projects-outside-the-projects-folder.md) | Open projects from outside the projects folder, in place | Accepted | 2026-11-16 |
 | [0043](0043-duplicating-sounds-and-videos.md) | Duplicating a sound or video copies its file | Accepted | 2026-11-16 |
+| [0044](0044-restarting-the-interface.md) | Restart the interface by reloading the webviews | Accepted | 2026-11-16 |
 
 ## Template
 

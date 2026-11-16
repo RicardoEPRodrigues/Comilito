@@ -2,11 +2,11 @@
   // App preferences (this computer, docs/preferences.md): levels for new projects, playback,
   // projects folder and download tools, behaviour, and appearance. Never changes existing
   // projects. Appearance changes preview live and are undone if you cancel.
-  import { Film, FolderOpen, MousePointerClick, Palette, Play, RefreshCw, SlidersHorizontal } from "@lucide/svelte";
+  import { Film, FolderOpen, MousePointerClick, Palette, Play, RefreshCw, RotateCcw, SlidersHorizontal } from "@lucide/svelte";
   import { open } from "@tauri-apps/plugin-dialog";
   import type { Component } from "svelte";
   import { api } from "../lib/api";
-  import { ask, confirmAction, formatBytes, moveProjects, notify, openLogs, refreshTools, run, ui } from "../lib/store.svelte";
+  import { ask, confirmAction, formatBytes, moveProjects, notify, openLogs, refreshTools, restartInterface, run, ui } from "../lib/store.svelte";
   import type { OutputDevice, Preferences, Screen } from "../lib/types";
   import { CATEGORIES } from "../lib/types";
   import { closeEditor, fingerprint } from "../lib/unsaved";
@@ -301,11 +301,21 @@
             {/if}
           </section>
           <section>
-            <div class="section-head"><span class="caps">Logs</span><span class="hint">For troubleshooting</span></div>
+            <div class="section-head"><span class="caps">Troubleshooting</span><span class="hint">Logs, and a fresh start for the interface</span></div>
             <div class="row">
               <button title="Errors and background events (downloads, backups, tools)" onclick={() => openLogs("events")}>See logs</button>
               <button title="What Comilito and its libraries printed, crashes included (Linux, when not started from a terminal)" onclick={() => openLogs("errors")}>See error log</button>
               <button title="The folder with all the log files" onclick={() => openLogs("folder")}><FolderOpen size={13} />Open logs folder</button>
+            </div>
+            <div class="row">
+              <!-- A restart would drop this window's unsaved changes, so it waits for Save. -->
+              <button
+                disabled={dirty}
+                title={dirty
+                  ? "Save or cancel your changes here first"
+                  : "Reloads the windows, as if Comilito had just started. The project stays open and the sound keeps playing."}
+                onclick={restartInterface}><RotateCcw size={13} />Restart the interface</button>
+              <span class="muted small">{draft.shortcuts.restartInterface ? `Shortcut: ${draft.shortcuts.restartInterface}` : ""}</span>
             </div>
           </section>
           <section>
@@ -358,6 +368,10 @@
             <div class="row">
               <span>Remove the top scene from the tapestry</span>
               <KeyInput value={draft.shortcuts.removeTopScene} onchange={(k) => (draft!.shortcuts.removeTopScene = k)} />
+            </div>
+            <div class="row">
+              <span>Restart the interface (if something gets stuck)</span>
+              <KeyInput value={draft.shortcuts.restartInterface} onchange={(k) => (draft!.shortcuts.restartInterface = k)} />
             </div>
             <p class="muted small">Space (pause), Esc (stop all) and / (search) are fixed. A scene hotkey on the same key is ignored.</p>
           </section>

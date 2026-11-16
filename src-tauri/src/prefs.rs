@@ -170,12 +170,15 @@ fn yes() -> bool {
 pub struct Shortcuts {
     /// Removes the top-most scene from the tapestry.
     pub remove_top_scene: String,
+    /// Reloads the interface (both windows), for when it gets stuck (decision 0044).
+    pub restart_interface: String,
 }
 
 impl Default for Shortcuts {
     fn default() -> Self {
         Self {
             remove_top_scene: "Backspace".into(),
+            restart_interface: "F5".into(),
         }
     }
 }

@@ -96,6 +96,7 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 | Setting | Default |
 |---|---|
 | Remove the top scene from the tapestry | Backspace (any key except Space, Esc and /; or none) |
+| Restart the interface (decision 0044) | F5. Works with a dialog open, and in a text field when the key doesn't type anything. In the video window it restarts only that window |
 
 ### Appearance
 
@@ -127,7 +128,7 @@ App `preferences.json` (`src-tauri/src/prefs.rs`), with its defaults:
     "replaceUnsavedTapestry": "ask",
     "warnOnQuit": true
   },
-  "shortcuts": { "removeTopScene": "Backspace" },
+  "shortcuts": { "removeTopScene": "Backspace", "restartInterface": "F5" },
   "appearance": {
     "mode": "system",
     "theme": "codex",

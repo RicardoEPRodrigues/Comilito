@@ -359,7 +359,7 @@ export interface Preferences {
     warnOnQuit: boolean;
   };
   /** `KeyboardEvent.key` values; "" means the shortcut is off. */
-  shortcuts: { removeTopScene: string };
+  shortcuts: { removeTopScene: string; restartInterface: string };
   appearance: Appearance;
   video: VideoPrefs;
   newProjectDefaults: {

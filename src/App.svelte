@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { api } from "./lib/api";
-  import { init, leaveFocus, notify, project, run, ui } from "./lib/store.svelte";
+  import { init, leaveFocus, notify, project, restartInterface, run, ui } from "./lib/store.svelte";
   import { activeTheme, applyTheme, loadThemeFiles } from "./lib/themes";
   import ProjectPicker from "./components/ProjectPicker.svelte";
   import Workspace from "./components/Workspace.svelte";
@@ -68,11 +68,19 @@
 
   /** Global shortcuts: Space, Esc, /, the configurable ones and scene hotkeys (docs/scenes.md "Controls"). */
   function onKeydown(e: KeyboardEvent) {
+    const target = e.target as HTMLElement;
+    const typing = !!target.closest("input, textarea, select, [contenteditable]");
+    // Restarting the interface is the way out when something is stuck, so it comes first and
+    // works with a dialog open, or in a field when the key doesn't type anything (F5).
+    if (isShortcut(e, ui.prefs?.shortcuts.restartInterface) && (e.key.length > 1 || !typing)) {
+      e.preventDefault();
+      restartInterface();
+      return;
+    }
     // Already handled by a dialog or menu.
     if (e.defaultPrevented) return;
     // Never steal keys while typing in a field.
-    const target = e.target as HTMLElement;
-    if (target.closest("input, textarea, select, [contenteditable]")) return;
+    if (typing) return;
     // While a dialog or settings window is open, keys belong to it.
     if (ui.question || ui.editing) return;
     const p = project();
