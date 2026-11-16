@@ -17,8 +17,8 @@ whole feature can be turned off in Preferences › Video.
   sound but the video keeps playing, unless that's turned off in Preferences › Video.
 - **Playlist:** in order or shuffled. *Switch videos every N minutes* plays a video for N
   minutes, then the next; *Coming back to a video* resumes where it stopped or starts it over.
-  `0` minutes plays each video to its end. These follow the project's defaults unless the scene
-  sets its own.
+  `0` minutes plays each video to its end (the default is 10 minutes). These follow the
+  project's defaults unless the scene sets its own.
 - **Video effects:** each scene can list videos for the video effects pad, under the sound
   effects. Playing one replaces the video until it ends; then the playlist comes back where it
   was.

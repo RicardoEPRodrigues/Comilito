@@ -90,7 +90,7 @@
   }
 
   // ---- Videos (decision 0035) ----
-  const videoDefaults = $derived(p.defaults.video ?? { shuffle: false, switchMinutes: 5, resume: true });
+  const videoDefaults = $derived(p.defaults.video ?? { shuffle: false, switchMinutes: 10, resume: true });
   // Each slot takes its own kind (decision 0039).
   const sortedVideos = $derived([...(p.videos ?? [])].sort((a, b) => a.name.localeCompare(b.name)));
   const ambienceVideos = $derived(sortedVideos.filter((v) => kindOf(v) === "ambience"));

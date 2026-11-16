@@ -250,7 +250,7 @@ mod tests {
         let mix = target_mix(&p);
         let video = mix.video.unwrap();
         assert_eq!((video.scene_id.as_str(), video.videos.as_slice()), ("music", &["dusk".to_string()][..]));
-        assert_eq!((video.switch_minutes, video.resume, video.shuffle), (5, true, false));
+        assert_eq!((video.switch_minutes, video.resume, video.shuffle), (10, true, false));
         assert_eq!(mix.video_effects, ["flash"]);
 
         // Combat on top has its own, with its own switch interval.

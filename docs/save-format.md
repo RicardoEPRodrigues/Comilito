@@ -195,11 +195,11 @@ unchanged, and a project without videos is written exactly as before (apart from
   `playsEverywhere` is true for WebM with VP8, VP9 or AV1; other videos are offered for
   conversion.
 - On a scene, all optional:
-  - `video`: `{ "videos": ["vid-…"], "shuffle": false, "switchMinutes": 5, "resume": true }`.
+  - `video`: `{ "videos": ["vid-…"], "shuffle": false, "switchMinutes": 10, "resume": true }`.
     The three settings are overrides of `defaults.video`; `switchMinutes: 0` plays each video
     to its end. Without `video`, the scene leaves the video of the scenes below showing.
   - `hidesVideo`: `true` to hide the video of the scenes below (only meaningful without `video`).
   - `videoEffects`: video ids for the video effects pad.
-- `defaults.video`: `{ "shuffle": false, "switchMinutes": 5, "resume": true }`.
+- `defaults.video`: `{ "shuffle": false, "switchMinutes": 10, "resume": true }`.
 - `backups.includeVideo`: `false` by default; videos are big.
 

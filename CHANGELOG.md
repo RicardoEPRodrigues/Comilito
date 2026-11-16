@@ -66,6 +66,7 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
   background), remember where they left off across restarts, are fingerprinted like sounds,
   and unfinished conversions carry on when the project opens again. Space pauses only the sound (the video
   keeps playing; Esc blanks it). Everything video can be turned off in Preferences › Video.
+  Playlists switch videos every 10 minutes unless set otherwise.
 - **Loudness normalization can be turned on or off for one sound**, in its Loudness section in
   the Library, overriding its category's setting in Project settings.
 - **Downloads continue after a restart.** Downloads still queued or running when Comilito quits

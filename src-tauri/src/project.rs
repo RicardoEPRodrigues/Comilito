@@ -515,7 +515,7 @@ impl Default for VideoDefaults {
     fn default() -> Self {
         Self {
             shuffle: false,
-            switch_minutes: 5,
+            switch_minutes: 10,
             resume: true,
         }
     }
