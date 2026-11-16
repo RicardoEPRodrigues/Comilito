@@ -119,6 +119,11 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Fixed
 
+- Choosing a screen for the video window didn't move it on Wayland. Fullscreen now goes to the
+  chosen screen; a window that isn't fullscreen can't be moved by apps there, so the window says
+  to drag it (or press F). Screens without a proper name get "Screen 1", "Screen 2"... and the
+  picker shows each screen's resolution.
+- The video window's screen picker was hard to read (dark text on a dark list).
 - A video stayed black in the video window, even after restarting Comilito, when it had last
   stopped in its final second (common for short videos that loop seamlessly). Positions in the
   last second now count as the start, and a video that doesn't load within 8 seconds is

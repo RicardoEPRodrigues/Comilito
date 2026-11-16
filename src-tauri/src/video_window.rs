@@ -29,16 +29,23 @@ pub struct Screen {
     pub primary: bool,
 }
 
-/// The connected screens. Screens the OS doesn't name get "Screen 1", "Screen 2"...
+/// The connected screens, in the OS's order (on Linux, GDK's monitor numbers). Screens the OS
+/// doesn't name (Wayland calls a laptop's own screen "Unknown") get "Screen 1", "Screen 2"...,
+/// and a name used twice gets its number too, so every name picks one screen.
 fn screens(app: &AppHandle) -> Vec<(Screen, tauri::Monitor)> {
     let primary = app.primary_monitor().ok().flatten().map(|m| *m.position());
-    app.available_monitors()
-        .unwrap_or_default()
+    let monitors = app.available_monitors().unwrap_or_default();
+    let os_names: Vec<Option<String>> = monitors
+        .iter()
+        .map(|m| m.name().filter(|n| !n.is_empty() && n.as_str() != "Unknown").cloned())
+        .collect();
+    monitors
         .into_iter()
         .enumerate()
         .map(|(i, m)| {
+            let unique = os_names[i].as_ref().filter(|n| os_names.iter().filter(|o| o.as_ref() == Some(*n)).count() == 1);
             let screen = Screen {
-                name: m.name().cloned().unwrap_or_else(|| format!("Screen {}", i + 1)),
+                name: unique.cloned().unwrap_or_else(|| format!("Screen {}", i + 1)),
                 width: m.size().width,
                 height: m.size().height,
                 primary: Some(*m.position()) == primary,
@@ -48,26 +55,75 @@ fn screens(app: &AppHandle) -> Vec<(Screen, tauri::Monitor)> {
         .collect()
 }
 
-/// Puts the window on the named screen (its top-left area), if that screen is connected.
-fn move_to_screen(app: &AppHandle, window: &tauri::WebviewWindow, name: &str) {
-    if let Some((_, monitor)) = screens(app).into_iter().find(|(s, _)| s.name == name) {
-        let p = monitor.position();
-        let _ = window.set_position(PhysicalPosition::new(p.x + 40, p.y + 40));
-    }
+/// Which screen (its index in `screens`) `name` means: that one if connected, else the main
+/// screen, else the first.
+fn screen_index(app: &AppHandle, name: Option<&str>) -> Option<usize> {
+    let list = screens(app);
+    name.and_then(|n| list.iter().position(|(s, _)| s.name == n))
+        .or_else(|| list.iter().position(|(s, _)| s.primary))
+        .or(if list.is_empty() { None } else { Some(0) })
 }
 
-/// Puts an open video window on `screen` (`None`: the main screen) and in or out of fullscreen.
-/// A fullscreen window can't be moved, so it leaves fullscreen first.
-pub fn place(app: &AppHandle, screen: Option<&str>, fullscreen: bool) {
-    let Some(window) = app.get_webview_window(LABEL) else { return };
+/// Whether the desktop session is Wayland, where apps can't move their own windows.
+fn on_wayland() -> bool {
+    cfg!(target_os = "linux")
+        && std::env::var_os("WAYLAND_DISPLAY").is_some()
+        && std::env::var("GDK_BACKEND").map_or(true, |b| !b.starts_with("x11"))
+}
+
+/// Puts the video window on `screen` (`None`: the main screen), fullscreen or not (decision
+/// 0045). Returns false when a window that isn't fullscreen couldn't be moved: on Wayland apps
+/// can't place their windows, so it has to be dragged there (or made fullscreen).
+pub fn place(app: &AppHandle, screen: Option<&str>, fullscreen: bool) -> bool {
+    let Some(window) = app.get_webview_window(LABEL) else { return true };
+    let Some(index) = screen_index(app, screen) else { return true };
+    if fullscreen {
+        fullscreen_on(app, &window, index);
+        return true;
+    }
     if window.is_fullscreen().unwrap_or(false) {
         let _ = window.set_fullscreen(false);
     }
-    let main = app.primary_monitor().ok().flatten().and_then(|m| m.name().cloned());
-    if let Some(name) = screen.map(str::to_string).or(main) {
-        move_to_screen(app, &window, &name);
+    if on_wayland() {
+        return false;
     }
-    let _ = window.set_fullscreen(fullscreen);
+    if let Some((_, monitor)) = screens(app).into_iter().nth(index) {
+        let p = monitor.position();
+        let _ = window.set_position(PhysicalPosition::new(p.x + 40, p.y + 40));
+    }
+    true
+}
+
+/// Fullscreen on screen number `index`. On Linux through GTK, which asks the compositor for
+/// that screen (the one way to choose a screen on Wayland, and it works on X11 too). GTK must
+/// be called from the main thread, so it's queued there.
+#[cfg(target_os = "linux")]
+fn fullscreen_on(app: &AppHandle, window: &tauri::WebviewWindow, index: usize) {
+    use gtk::prelude::GtkWindowExt;
+    let window = window.clone();
+    let _ = app.run_on_main_thread(move || {
+        if let Ok(gtk_window) = window.gtk_window() {
+            let screen = GtkWindowExt::screen(&gtk_window);
+            if let Some(screen) = screen {
+                gtk_window.fullscreen_on_monitor(&screen, index as i32);
+                return;
+            }
+        }
+        let _ = window.set_fullscreen(true);
+    });
+}
+
+/// Elsewhere: leave fullscreen, move onto the screen, fullscreen there.
+#[cfg(not(target_os = "linux"))]
+fn fullscreen_on(app: &AppHandle, window: &tauri::WebviewWindow, index: usize) {
+    if window.is_fullscreen().unwrap_or(false) {
+        let _ = window.set_fullscreen(false);
+    }
+    if let Some((_, monitor)) = screens(app).into_iter().nth(index) {
+        let p = monitor.position();
+        let _ = window.set_position(PhysicalPosition::new(p.x + 40, p.y + 40));
+    }
+    let _ = window.set_fullscreen(true);
 }
 
 /// Opens the video window (or brings it to the front), on the chosen screen and in fullscreen
@@ -86,12 +142,8 @@ pub fn open(app: &AppHandle, state: &mut AppState) -> Result<(), String> {
         .disable_drag_drop_handler()
         .build()
         .map_err(|e| format!("could not open the video window: {e}"))?;
-    if let Some(screen) = &state.prefs.video.screen {
-        move_to_screen(app, &window, screen);
-    }
-    if state.prefs.video.fullscreen {
-        let _ = window.set_fullscreen(true);
-    }
+    drop(window);
+    place(app, state.prefs.video.screen.as_deref(), state.prefs.video.fullscreen);
     state.video_window_open = true;
     Ok(())
 }
@@ -131,28 +183,25 @@ pub fn list_screens(app: AppHandle) -> Vec<Screen> {
     screens(&app).into_iter().map(|(s, _)| s).collect()
 }
 
-/// Moves the window to another screen and remembers it.
+/// Moves the window to another screen and remembers it. Returns false when it couldn't be
+/// moved (Wayland, not fullscreen): the window then says to drag it, or use fullscreen.
 #[tauri::command]
-pub fn set_video_screen(name: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+pub fn set_video_screen(name: String, app: AppHandle, state: AppStateRef) -> Result<bool, String> {
     let mut s = lock(&state)?;
-    let fullscreen = app
-        .get_webview_window(LABEL)
-        .and_then(|w| w.is_fullscreen().ok())
-        .unwrap_or(false);
-    place(&app, Some(&name), fullscreen);
+    let fullscreen = s.prefs.video.fullscreen;
+    let moved = place(&app, Some(&name), fullscreen);
     s.prefs.video.screen = Some(name);
     s.save_prefs()?;
     let _ = app.emit("preferences-changed", &s.prefs);
-    Ok(())
+    Ok(moved)
 }
 
 /// Fullscreen on or off (the top bar's button, or a double-click on it); remembered.
 #[tauri::command]
 pub fn set_video_fullscreen(on: bool, app: AppHandle, state: AppStateRef) -> Result<(), String> {
     let mut s = lock(&state)?;
-    if let Some(window) = app.get_webview_window(LABEL) {
-        window.set_fullscreen(on).map_err(|e| e.to_string())?;
-    }
+    // Fullscreen goes to the chosen screen, not just the one the window happens to be on.
+    place(&app, s.prefs.video.screen.as_deref(), on);
     s.prefs.video.fullscreen = on;
     s.save_prefs()?;
     let _ = app.emit("preferences-changed", &s.prefs);

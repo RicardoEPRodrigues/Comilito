@@ -70,10 +70,14 @@ whole feature can be turned off in Preferences › Video.
 - A second Tauri window, labelled `video`, without a title bar; `main.ts` mounts
   `VideoWindow.svelte` in it instead of the app. Its top bar (shown while the pointer moves)
   is the drag handle; double-click or F toggles fullscreen; it has a screen picker and a close
-  button. Space works there as in the main window; Esc leaves fullscreen, or, when the window
-  isn't fullscreen, stops everything as in the main window. The *restart the interface* key (F5)
-  reloads just the video window; restarting from the main window reloads both. The screen and fullscreen are
-  remembered in the preferences, and the window-state plugin remembers its size and place.
+  button. Fullscreen goes to the chosen screen (through GTK on Linux, which Wayland allows); on
+  Wayland a window that isn't fullscreen can't be moved by the app, so the window says to drag
+  it there (decision 0045). Screens get "Screen 1", "Screen 2"... when the OS has no name for
+  them (Wayland calls a laptop's screen "Unknown") or two share a name. Space works there as in
+  the main window; Esc leaves fullscreen, or, when the window isn't fullscreen, stops everything
+  as in the main window. The *restart the interface* key (F5) reloads just the video window;
+  restarting from the main window reloads both. The screen and fullscreen are remembered in the
+  preferences, and the window-state plugin remembers its size and place.
 - Rust decides what should show: `TargetMix::video` (the playlist with its settings filled in),
   the transport and the playing video effect, all in the snapshot. The window decides the rest:
   the play order (shuffled per pass, never the same video twice in a row), switching after N

@@ -420,6 +420,17 @@
   let screens = $state<Screen[]>([]);
   const screenName = $derived(prefs?.video.screen ?? screens.find((s) => s.primary)?.name ?? "");
 
+  /** Shown under the top bar for a while when Wayland wouldn't let the window move. */
+  let screenHint = $state("");
+  let screenHintTimer: ReturnType<typeof setTimeout> | undefined;
+
+  async function chooseScreen(name: string) {
+    const moved = await api.setVideoScreen(name).catch(() => true);
+    clearTimeout(screenHintTimer);
+    screenHint = moved ? "" : `This desktop doesn't let apps move their windows. Drag this window to ${name}, or press F: fullscreen goes to ${name}.`;
+    if (screenHint) screenHintTimer = setTimeout(() => (screenHint = ""), 8000);
+  }
+
   function toggleFullscreen() {
     api.setVideoFullscreen(!fullscreen).catch(() => {});
   }
@@ -511,8 +522,8 @@
     {#if screens.length > 1}
       <label class="screen" title="Which screen the window is on">
         <Monitor size={14} />
-        <select value={screenName} onchange={(e) => api.setVideoScreen(e.currentTarget.value).catch(() => {})}>
-          {#each screens as s (s.name)}<option value={s.name}>{s.name}{s.primary ? " (main)" : ""}</option>{/each}
+        <select value={screenName} onchange={(e) => chooseScreen(e.currentTarget.value)}>
+          {#each screens as s (s.name)}<option value={s.name}>{s.name} · {s.width}×{s.height}{s.primary ? " (main)" : ""}</option>{/each}
         </select>
       </label>
     {/if}
@@ -521,6 +532,7 @@
     </button>
     <button title="Close the video window" onclick={() => win.close()}><X size={15} /></button>
   </div>
+  {#if screenHint}<div class="screen-hint" role="status">{screenHint}</div>{/if}
   {#if !fullscreen && turn > 0}
     <div class="turn"><i style:width="{turn * 100}%"></i></div>
   {/if}
@@ -618,7 +630,11 @@
     color: #fff;
     padding: 0.35rem 0.5rem;
   }
+  /* The list that drops down is drawn by the system, which ignored the bar's colours and
+     showed black text on a dark background. Colours of its own, and `color-scheme: dark` so
+     the system draws it dark to match. */
   .screen select {
+    color-scheme: dark;
     background: transparent;
     border: none;
     color: #fff;
@@ -626,7 +642,20 @@
     padding: 0;
   }
   .screen option {
-    color: #000;
+    background: #222;
+    color: #fff;
+  }
+  .screen-hint {
+    position: absolute;
+    z-index: 2;
+    top: 3.6rem;
+    right: 1.1rem;
+    max-width: 26rem;
+    padding: 0.5rem 0.7rem;
+    border-radius: 4px;
+    background: rgb(0 0 0 / 0.8);
+    color: #fff;
+    font-size: 0.8rem;
   }
   .turn {
     position: absolute;

@@ -567,6 +567,7 @@ dependencies = [
  "chrono",
  "cpal",
  "ebur128",
+ "gtk",
  "kira",
  "libc",
  "serde",

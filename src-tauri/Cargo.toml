@@ -47,6 +47,11 @@ souvlaki = { version = "0.9", default-features = false, features = ["use_zbus"] 
 # the build through tauri-plugin-opener, so this adds no new code.
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus = "5"
+# GTK's own window calls, for fullscreen on a chosen screen: Wayland doesn't let apps move
+# their windows, but it does let them ask for fullscreen on a given screen, which Tauri's
+# `set_fullscreen` doesn't expose (decision 0045). Tauri already builds on this exact crate
+# (`WebviewWindow::gtk_window` returns its type), so it adds nothing to the build.
+gtk = "0.18"
 # The cpal kira plays through, with its PulseAudio host on, to list and open the outputs the
 # desktop shows (decision 0032). Same version as kira's, so it's the same crate. Pure Rust.
 cpal = { version = "0.18", features = ["pulseaudio"] }

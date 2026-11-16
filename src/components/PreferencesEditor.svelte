@@ -219,6 +219,7 @@
                   {/if}
                 </select>
               </label>
+              <p class="muted small">On Wayland apps can't move their windows: fullscreen goes to this screen, but a window that isn't fullscreen has to be dragged there.</p>
               <label class="row">
                 <span>Picture</span>
                 <select bind:value={draft.video.fit}>

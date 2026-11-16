@@ -79,7 +79,7 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 | Setting | Default | Level |
 |---|---|---|
 | Use videos (the whole feature) | on | this computer |
-| Screen for the video window | the main screen | this computer |
+| Screen for the video window | the main screen. Fullscreen goes to it everywhere; on Wayland a window that isn't fullscreen can't be moved by the app and has to be dragged there (decision 0045) | this computer |
 | Open the video window in fullscreen | off | this computer |
 | Picture | fill the window (crop the edges); or show the whole picture | this computer |
 | Crossfade between videos | 1 s | this computer |

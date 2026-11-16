@@ -110,7 +110,7 @@ pub fn set_preferences(mut prefs: Preferences, app: AppHandle, state: AppStateRe
     if video_turned_off {
         crate::video_window::close(&app);
     } else if video_moved {
-        crate::video_window::place(&app, s.prefs.video.screen.as_deref(), s.prefs.video.fullscreen);
+        let _ = crate::video_window::place(&app, s.prefs.video.screen.as_deref(), s.prefs.video.fullscreen);
     }
     if output_changed {
         let device = s.prefs.playback.output_device.clone();

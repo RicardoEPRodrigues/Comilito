@@ -159,7 +159,8 @@ export const api = {
   toggleVideoWindow: () => invoke<void>("toggle_video_window"),
   showVideoWindow: () => invoke<void>("show_video_window"),
   listScreens: () => invoke<Screen[]>("list_screens"),
-  setVideoScreen: (name: string) => invoke<void>("set_video_screen", { name }),
+  /** False when the window couldn't be moved (Wayland, not fullscreen): drag it, or go fullscreen. */
+  setVideoScreen: (name: string) => invoke<boolean>("set_video_screen", { name }),
   setVideoFullscreen: (on: boolean) => invoke<void>("set_video_fullscreen", { on }),
   playVideoEffect: (id: string) => invoke<void>("play_video_effect", { id }),
   videoEffectEnded: (id: string) => invoke<void>("video_effect_ended", { id }),

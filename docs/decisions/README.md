@@ -51,6 +51,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0042](0042-projects-outside-the-projects-folder.md) | Open projects from outside the projects folder, in place | Accepted | 2026-11-16 |
 | [0043](0043-duplicating-sounds-and-videos.md) | Duplicating a sound or video copies its file | Accepted | 2026-11-16 |
 | [0044](0044-restarting-the-interface.md) | Restart the interface by reloading the webviews | Accepted | 2026-11-16 |
+| [0045](0045-video-window-screen-on-wayland.md) | Put the video window on its screen through fullscreen on Wayland | Accepted | 2026-11-16 |
 
 ## Template
 
