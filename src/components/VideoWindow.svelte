@@ -90,7 +90,8 @@
     const el = layerEls[active];
     const id = layerVideo[active];
     if (!el || !id || !layerShown[active]) return;
-    positions[id] = el.ended ? 0 : el.currentTime * 1000;
+    // The last second counts as the end: coming back there would show a moment and loop.
+    positions[id] = el.ended || el.currentTime > el.duration - 1 ? 0 : el.currentTime * 1000;
     api.saveVideoPosition(id, positions[id]).catch(() => {});
   }
 
@@ -138,6 +139,7 @@
     const el = layerEls[next];
     if (!el) return;
     const token = ++showToken;
+    loadingSince = performance.now();
     loads[next]?.destroy();
     layerVideo[next] = videoId;
     const load = loadVideo(el, video, fromMs / 1000);
@@ -145,6 +147,7 @@
     load.ready
       .then(() => {
         if (token !== showToken) return;
+        loadingSince = 0;
         if (!paused && !fxShown) el.play().catch(() => {});
         const old = active;
         active = next;
@@ -153,6 +156,7 @@
         release(old);
       })
       .catch((e) => {
+        if (token === showToken) loadingSince = 0;
         logProblem(`couldn't load “${video.name}”: ${e instanceof Error ? e.message : (e?.message ?? e)}`);
         // A fading loop that couldn't load: loop the old layer the plain way instead.
         if (token === showToken && loopingFrom === active) {
@@ -167,6 +171,7 @@
   function blank() {
     rememberPosition();
     showToken++;
+    loadingSince = 0;
     layerShown = [false, false];
     release(0);
     release(1);
@@ -312,16 +317,34 @@
   }
 
   // ---- The watchdog: a video that should be moving but isn't ----
-  // If the shown video's time stands still while it should play (a load that never finished,
-  // a stream that stopped feeding, a decoder error), it's logged and started again where it
-  // was, at most a few times in a row.
+  // If the shown video's time stands still while it should play (a stream that stopped
+  // feeding, a decoder error), it's logged and started again where it was. If a video being
+  // loaded never gets to its first frame, it's logged and started from the beginning. At most
+  // a few times in a row.
   const STUCK_MS = 4000;
+  const LOAD_MS = 8000;
   const MAX_RESTARTS = 3;
   let watchedTime = -1;
   let stillSince = 0;
   let restarts = 0;
+  /** When the latest show() started loading (0 once it's shown or failed). */
+  let loadingSince = 0;
 
   function watch(now: number, el: HTMLVideoElement | undefined) {
+    if (loadingSince && current && target && !document.hidden && now - loadingSince > LOAD_MS) {
+      loadingSince = 0;
+      const loading = 1 - active;
+      const state = describe(layerEls[loading], layerVideo[loading]);
+      if (restarts >= MAX_RESTARTS) {
+        logProblem(`a video still won't load after ${MAX_RESTARTS} tries; giving up. ${state}`);
+        return;
+      }
+      restarts++;
+      logProblem(`a video took over ${LOAD_MS / 1000} s to load; starting it from the beginning. ${state}`);
+      loopingFrom = -1;
+      show(current.videoId, 0);
+      return;
+    }
     const shouldMove = !!target && !!current && !paused && !fxShown && !!el && layerShown[active] && !document.hidden;
     if (!shouldMove || el.currentTime !== watchedTime) {
       if (shouldMove) restarts = 0; // It moved: things are fine again.

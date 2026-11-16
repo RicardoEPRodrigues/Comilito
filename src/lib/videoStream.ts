@@ -86,9 +86,14 @@ function whenLoaded(el: HTMLVideoElement, fromSec: number): Promise<void> {
     el.addEventListener(
       "loadedmetadata",
       () => {
-        // A position past the end (the file changed since) starts over.
-        const at = fromSec > 0 && fromSec < el.duration - 1 ? fromSec : 0;
-        if (at === 0) return el.readyState >= 2 ? resolve() : el.addEventListener("loadeddata", () => resolve(), { once: true });
+        if (fromSec <= 0) {
+          return el.readyState >= 2 ? resolve() : el.addEventListener("loadeddata", () => resolve(), { once: true });
+        }
+        // A position in the last second (or past the end, if the file changed) starts over.
+        // Still seek, even to 0: a stream (Stream.open) already jumped to the cluster holding
+        // `fromSec`, so there's no data at 0 until the seek sends it back to the start, and
+        // waiting for the first frame there would wait forever.
+        const at = fromSec < el.duration - 1 ? fromSec : 0;
         el.addEventListener("seeked", () => resolve(), { once: true });
         el.currentTime = at;
       },

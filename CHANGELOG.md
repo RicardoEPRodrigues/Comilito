@@ -119,6 +119,10 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Fixed
 
+- A video stayed black in the video window, even after restarting Comilito, when it had last
+  stopped in its final second (common for short videos that loop seamlessly). Positions in the
+  last second now count as the start, and a video that doesn't load within 8 seconds is
+  started from the beginning (and logged).
 - The video window could freeze on a picture: a video starting to load less than a second after
   a crossfade could be thrown away by the layer clean-up of the crossfade before it. A video (or
   video effect) that stops moving is now started again where it was, and video problems are
