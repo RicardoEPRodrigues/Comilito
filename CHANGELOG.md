@@ -104,6 +104,8 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 
 ### Fixed
 
+- Right-clicking most of the window opened the webview's own menu, with *Reload* and other
+  browser actions. Only text fields keep it now (for cut, copy and paste).
 - Downloading part of a video now shows its progress in percent, instead of only
   "downloading the selected part…".
 - With an audio output chosen in Preferences, every sound started 1 to 2 seconds late.
