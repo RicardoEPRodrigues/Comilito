@@ -12,6 +12,7 @@
 ## Bugs
 
 
+
 ## Platforms
 
 - macOS: choose where ffmpeg comes from (decision 0019); the app currently expects one on the PATH.
@@ -41,8 +42,7 @@
 
 - Not tried yet in the running app (only type-checked and unit-tested): opening a project from
   outside the projects folder and its home-screen entry (decision 0042), duplicating a sound and
-  a large video (0043), and restarting the interface with F5, including with a dialog open and
-  with the video window open (0044).
+  a large video (0043).
 - Backups are filed by project name (decision 0026), so two projects with the same name (more
   likely now that projects can live outside the projects folder, decision 0042) share a backup
   folder, and pruning to one project's "keep" count can delete the other's backups. Keying the
@@ -50,11 +50,6 @@
   save-format change.
 - Video (decision 0035): not tried yet in the running app: the video window on a second screen
   and in fullscreen, and exporting a project with its videos.
-- AppImage videos (decision 0041): the built AppImage's GStreamer and plugins were checked with
-  GStreamer's own tools (WebM decodes), not yet in the running AppImage. Open a project with
-  videos in it and watch the video window; WebKit's stderr names any element still missing.
 - Moving the projects folder across disks (the slow, copying case) was only tested by unit
   tests; on the virtual display both folders were on one disk, so the move was an instant rename.
   Worth trying once with a big project and a USB drive to see the progress dialog.
-- Flatpak needs a permanent app ID (reverse domain, e.g. `me.colorcrow.Comilito`), plus
-  `flatpak-builder` and the GNOME SDK with the Rust extension installed to build and test it.
