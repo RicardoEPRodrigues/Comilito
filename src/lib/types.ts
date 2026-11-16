@@ -325,6 +325,8 @@ export interface ProjectSummary {
   sounds: number | null;
   /** When comilito.json last changed (ISO 8601). */
   modified: string | null;
+  /** Opened from outside the projects folder; it stays where it is (decision 0042). */
+  elsewhere: boolean;
 }
 
 export interface Appearance {

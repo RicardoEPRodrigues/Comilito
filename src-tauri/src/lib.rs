@@ -251,6 +251,7 @@ pub fn run() {
             commands::projects_folder,
             commands::duplicate_project,
             commands::show_projects_folder,
+            commands::forget_project,
             commands::move_projects_folder,
             commands::create_project,
             commands::open_project,

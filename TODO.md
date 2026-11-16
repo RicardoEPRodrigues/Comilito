@@ -6,10 +6,9 @@
 - Create a first time experience.
 - add ability to scale the UI. Font and whole UI.
 - Add ability to have plugins.
-- Support projects outside of the projects folder.
 - Mini player: a very small version where the window remais always on top and just shows the stack and the scenes/presets.
 - if not enought width is available the bottom bar squishes its elements. we should adapt the UI to play nicely on mobile.
-- Add button to duplicate audio or video.
+- Add button to duplicate audio or video in the library.
 - Add option and keyboard shortcut to restart the UI. There may be unforseen bugs that might require a restart and we can try to ease that process.
 
 ## Bugs
@@ -42,6 +41,11 @@
 
 ### Other checks
 
+- Backups are filed by project name (decision 0026), so two projects with the same name (more
+  likely now that projects can live outside the projects folder, decision 0042) share a backup
+  folder, and pruning to one project's "keep" count can delete the other's backups. Keying the
+  folder by something unique to the project (an id in `comilito.json`) would fix it; that's a
+  save-format change.
 - Video (decision 0035): not tried yet in the running app: the video window on a second screen
   and in fullscreen, and exporting a project with its videos.
 - AppImage videos (decision 0041): the built AppImage's GStreamer and plugins were checked with

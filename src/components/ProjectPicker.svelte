@@ -1,7 +1,8 @@
 <script lang="ts">
   // The home screen (design "H · Home — projects" in pencil/comilito.pen): the brand column
   // with New project, the rarer actions under More, and "open the last project at start";
-  // on the right, the most recent project as "Continue", then every other project.
+  // on the right, the most recent project as "Continue", then every other project. Projects
+  // opened from outside the projects folder (decision 0042) are listed too, with their folder.
   import { fitText } from "../lib/fit";
   import {
     ArrowRight,
@@ -10,7 +11,9 @@
     ChevronDown,
     FolderInput,
     FolderOpen,
+    FolderSearch,
     History,
+    ListX,
     Info,
     Plus,
     RefreshCw,
@@ -18,6 +21,7 @@
     Trash2,
   } from "@lucide/svelte";
   import { onMount } from "svelte";
+  import { open as pickFolder } from "@tauri-apps/plugin-dialog";
   import icon from "../../src-tauri/icons/128x128@2x.png";
   import Watermark from "./Watermark.svelte";
   import { openMenu, type MenuItem } from "./ContextMenu.svelte";
@@ -86,6 +90,25 @@
 
   const capital = (name: string) => name.trim()[0]?.toUpperCase() ?? "?";
 
+  /** Where a project from elsewhere lives: the last two folders above it ("…/Drive/Campaigns"). */
+  function shortParent(path: string): string {
+    const parts = path.split(/[\\/]/).filter(Boolean).slice(0, -1);
+    return parts.length > 2 ? `…/${parts.slice(-2).join("/")}` : parts.join("/");
+  }
+
+  /** "Open a project folder…": a project anywhere, opened in place (decision 0042). Rust
+   *  remembers it, so it's listed here from then on. */
+  async function openFolder() {
+    const dir = await pickFolder({ directory: true, title: "Open a project folder (one with a comilito.json)" });
+    if (typeof dir === "string") await run(api.openProject(dir));
+  }
+
+  async function forget(p: ProjectSummary) {
+    await run(api.forgetProject(p.path));
+    notify(`Removed “${p.name}” from the list. Its folder is untouched.`);
+    await refresh();
+  }
+
   function open(p: ProjectSummary) {
     run(api.openProject(p.path));
   }
@@ -120,12 +143,14 @@
       { label: "Open", icon: ArrowRight, action: () => open(p) },
       { label: "Duplicate", icon: Copy, action: () => duplicate(p) },
       { label: "Show in file manager", icon: FolderOpen, action: () => run(api.showProjectsFolder(p.path)) },
+      ...(p.elsewhere ? [{ label: "Remove from list", icon: ListX, action: () => forget(p) }] : []),
       "separator",
       { label: "Delete…", icon: Trash2, danger: true, action: () => remove(p) },
     ];
   }
 
   const moreMenu: MenuItem[] = [
+    { label: "Open a project folder…", icon: FolderSearch, action: openFolder },
     { label: "Import a project…", icon: FolderInput, action: () => importProject() },
     { label: "Restore a backup…", icon: History, action: () => restoreBackup() },
     "separator",
@@ -156,6 +181,13 @@
   }
 </script>
 
+<!-- For a project from elsewhere: which folder it's in (the whole path in the tooltip). -->
+{#snippet where(p: ProjectSummary)}
+  {#if p.elsewhere}
+    <span class="meta where" title={p.path}><FolderOpen size={12} />{shortParent(p.path)}</span>
+  {/if}
+{/snippet}
+
 {#snippet row(p: ProjectSummary)}
   <li>
     <button class="project" onclick={() => open(p)} oncontextmenu={(e) => openMenu(e, projectMenu(p), p.name)}>
@@ -163,6 +195,7 @@
       <span class="texts">
         <span class="name">{p.name}</span>
         <span class="meta">{meta(p)}</span>
+        {@render where(p)}
       </span>
     </button>
     <button class="icon" title="Project options" onclick={(e) => openMenu(e, projectMenu(p), p.name)}><Ellipsis size={18} /></button>
@@ -214,6 +247,7 @@
         <span class="texts">
           <span class="name display" use:fitText>{last.name}</span>
           <span class="meta">{meta(last)}</span>
+          {@render where(last)}
         </span>
         <button class="primary" onclick={() => open(last)}>Open<ArrowRight size={15} /></button>
         <button class="icon" title="Project options" onclick={(e) => openMenu(e, projectMenu(last), last.name)}><Ellipsis size={18} /></button>
@@ -380,6 +414,11 @@
     font-size: 0.82rem;
     color: var(--muted);
     font-weight: 400;
+  }
+  .where {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
   }
   .cap {
     width: 2.75rem;

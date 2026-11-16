@@ -340,6 +340,10 @@ impl AppState {
             // Where its videos left off last time (resumed by the video window).
             self.video_positions = crate::video_window::load_positions(&self.data_dir, &dir);
             self.prefs.note_opened(&dir);
+            // Opened from elsewhere (decision 0042): remember it so the home screen lists it.
+            if !storage::is_in_root(&dir, &self.projects_root()) {
+                self.prefs.note_elsewhere(&dir);
+            }
             // Not being able to remember it isn't worth failing the open for.
             if let Err(e) = self.save_prefs() {
                 crate::logging::warn(&format!("could not save the recent projects: {e}"));

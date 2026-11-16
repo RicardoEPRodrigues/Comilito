@@ -82,6 +82,10 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 - **Smoother opening and closing:** the Library drawer slides open and shut, menus and dialogs
   ease in, and groups, folders and Tapestry entries unfold instead of jumping. All of it is
   turned off when the desktop asks for reduced motion.
+- **Projects outside the projects folder:** *Open a project folder…* (in the home screen's More
+  menu) opens a project wherever it is, on another drive or a synced folder, without copying
+  it. It's listed on the home screen from then on, with the folder it's in; *Remove from list*
+  forgets it without touching its files.
 
 ### Changed
 

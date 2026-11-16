@@ -48,6 +48,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0039](0039-ambience-videos-and-video-effects.md) | Ambience videos and video effects are kept apart, with Library tabs | Accepted | 2026-11-15 |
 | [0040](0040-crossfading-video-loops.md) | Videos crossfade back to their start unless marked as seamless loops | Accepted | 2026-11-15 |
 | [0041](0041-gstreamer-in-the-appimage.md) | Bundle a chosen set of GStreamer plugins in the AppImage | Accepted | 2026-11-15 |
+| [0042](0042-projects-outside-the-projects-folder.md) | Open projects from outside the projects folder, in place | Accepted | 2026-11-16 |
 
 ## Template
 

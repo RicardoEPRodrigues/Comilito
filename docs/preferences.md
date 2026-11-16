@@ -118,6 +118,7 @@ App `preferences.json` (`src-tauri/src/prefs.rs`), with its defaults:
   "projectsFolder": null,
   "openLastProject": false,
   "recentProjects": ["/home/me/Documents/Comilito/Curse of Strahd"],
+  "otherProjects": ["/media/me/Drive/Campaigns/Tomb of Annihilation"],
   "playback": { "outputDevice": null, "pauseFadeMs": 300, "stopFadeMs": 1000 },
   "behaviour": {
     "duplicateInStack": "ask",
@@ -154,6 +155,9 @@ App `preferences.json` (`src-tauri/src/prefs.rs`), with its defaults:
 ```
 
 - `projectsFolder: null` means the default, `~/Documents/Comilito`.
+- `recentProjects` and `otherProjects` are written only by Rust. `otherProjects` lists project
+  folders opened from outside the projects folder (*Open a project folder…*, decision 0042), so
+  the home screen shows them; omitted when empty. *Remove from list* takes one out.
 - `playback.outputDevice`: the chosen output's id (for example
   `pulseaudio:alsa_output.usb-…-stereo`), or `null` for the system default.
 - `shortcuts` values are `KeyboardEvent.key` names (`"Backspace"`, `"Delete"`, `"x"`); `""` turns

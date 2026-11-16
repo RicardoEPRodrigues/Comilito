@@ -21,6 +21,23 @@ impl Preferences {
         self.recent_projects.truncate(RECENT_PROJECTS);
     }
 
+    /// Remembers a project folder outside the projects folder, so the home screen lists it
+    /// (decision 0042). Returns whether it was new.
+    pub fn note_elsewhere(&mut self, dir: &Path) -> bool {
+        if self.other_projects.iter().any(|p| storage::same_folder(p, dir)) {
+            return false;
+        }
+        self.other_projects.push(dir.to_path_buf());
+        true
+    }
+
+    /// Forgets a project folder ("Remove from list", or after it was deleted). The folder
+    /// itself is left alone.
+    pub fn forget_project(&mut self, dir: &Path) {
+        self.other_projects.retain(|p| !storage::same_folder(p, dir));
+        self.recent_projects.retain(|p| !storage::same_folder(p, dir));
+    }
+
     /// After project folders moved from `from` to `to`, points the recent list at the new places.
     pub fn moved_projects(&mut self, from: &Path, to: &Path) {
         for p in &mut self.recent_projects {
@@ -46,6 +63,11 @@ pub struct Preferences {
     /// so a Preferences window opened earlier can't put an old list back.
     #[serde(default)]
     pub recent_projects: Vec<PathBuf>,
+    /// Project folders opened from outside the projects folder, which the home screen lists
+    /// with the others (decision 0042). Opened in place, never copied. Written only by Rust,
+    /// like `recent_projects`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub other_projects: Vec<PathBuf>,
     #[serde(default)]
     pub playback: Playback,
     #[serde(default)]
@@ -195,6 +217,7 @@ impl Default for Preferences {
             projects_folder: None,
             open_last_project: false,
             recent_projects: Vec::new(),
+            other_projects: Vec::new(),
             playback: Playback::default(),
             behaviour: Behaviour::default(),
             shortcuts: Shortcuts::default(),

@@ -96,8 +96,9 @@ pub fn get_preferences(state: AppStateRef) -> Result<Preferences, String> {
 #[tauri::command]
 pub fn set_preferences(mut prefs: Preferences, app: AppHandle, state: AppStateRef) -> Result<(), String> {
     let mut s = lock(&state)?;
-    // Rust keeps the recent list (see Preferences::recent_projects).
+    // Rust keeps the project lists (see Preferences::recent_projects).
     prefs.recent_projects = std::mem::take(&mut s.prefs.recent_projects);
+    prefs.other_projects = std::mem::take(&mut s.prefs.other_projects);
     let output_changed = prefs.playback.output_device != s.prefs.playback.output_device;
     let video_turned_off = s.prefs.video.enabled && !prefs.video.enabled;
     // The screen or fullscreen changed in Preferences: an open video window follows now.
@@ -181,7 +182,16 @@ pub fn read_theme_asset(name: String, state: AppStateRef) -> Result<tauri::ipc::
 #[tauri::command]
 pub fn list_projects(state: AppStateRef) -> Result<Vec<ProjectSummary>, String> {
     let s = lock(&state)?;
-    Ok(storage::list_projects(&s.projects_root()))
+    Ok(storage::list_projects(&s.projects_root(), &s.prefs.other_projects))
+}
+
+/// "Remove from list" on the home screen: forgets a project opened from elsewhere, leaving
+/// its folder alone (decision 0042).
+#[tauri::command]
+pub fn forget_project(path: PathBuf, state: AppStateRef) -> Result<(), String> {
+    let mut s = lock(&state)?;
+    s.prefs.forget_project(&path);
+    s.save_prefs()
 }
 
 #[tauri::command]
@@ -223,6 +233,14 @@ pub fn create_project(
 
 #[tauri::command]
 pub fn open_project(path: PathBuf, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    // "Open a project folder…" can pick any folder: say plainly when it isn't a project.
+    if !path.join(storage::PROJECT_FILE).is_file() {
+        return Err(format!(
+            "“{}” isn't a Comilito project: it has no {}. To bring audio in, create a project and add the files.",
+            path.display(),
+            storage::PROJECT_FILE
+        ));
+    }
     let mut s = lock(&state)?;
     s.open_project(path)?;
     emit_state(&app, &s, Vec::new());
@@ -264,6 +282,10 @@ pub fn duplicate_project(path: PathBuf, state: AppStateRef) -> Result<PathBuf, S
     }
     let copy = crate::relocate::duplicate_project(&path)?;
     crate::logging::info(&format!("Duplicated {} as {}", path.display(), copy.display()));
+    // The copy is next to the original: a copy of a project from elsewhere is elsewhere too.
+    if !storage::is_in_root(&copy, &s.projects_root()) && s.prefs.note_elsewhere(&copy) {
+        s.save_prefs()?;
+    }
     Ok(copy)
 }
 
@@ -378,6 +400,11 @@ pub fn delete_project(
     }
     let target = if delete_audio { &path } else { &project_file };
     trash::delete(target).map_err(|e| format!("could not move {} to the trash: {e}", target.display()))?;
+    // Either way it's no longer a project: drop it from the lists.
+    s.prefs.forget_project(&path);
+    if let Err(e) = s.save_prefs() {
+        crate::logging::warn(&format!("could not save the project lists: {e}"));
+    }
     emit_state(&app, &s, Vec::new());
     Ok(())
 }

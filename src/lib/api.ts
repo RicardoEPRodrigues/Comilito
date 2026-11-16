@@ -62,6 +62,7 @@ export const api = {
   showProjectsFolder: (project: string | null = null) => invoke<void>("show_projects_folder", { project }),
   createProject: (name: string, sample: boolean) => invoke<void>("create_project", { name, sample }),
   openProject: (path: string) => invoke<void>("open_project", { path }),
+  forgetProject: (path: string) => invoke<void>("forget_project", { path }),
   closeProject: () => invoke<void>("close_project"),
   reloadProject: () => invoke<void>("reload_project"),
   deleteProject: (path: string, deleteAudio: boolean) =>

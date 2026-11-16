@@ -32,40 +32,68 @@ pub struct ProjectSummary {
     pub sounds: Option<usize>,
     /// When comilito.json last changed (RFC 3339), shown as "edited 2 days ago".
     pub modified: Option<String>,
+    /// Opened from outside the projects folder (it stays where it is).
+    pub elsewhere: bool,
 }
 
-/// Finds every folder directly inside `root` that contains a `comilito.json`.
-pub fn list_projects(root: &Path) -> Vec<ProjectSummary> {
+/// Finds every folder directly inside `root` that contains a `comilito.json`, plus those of
+/// `others` (projects opened from elsewhere) that are still there. A folder of `others` that
+/// is missing (an unplugged drive, say) is left out but not forgotten: it may come back.
+pub fn list_projects(root: &Path, others: &[PathBuf]) -> Vec<ProjectSummary> {
     // `let Ok(x) = ... else { ... }` is "unwrap this or bail out": if reading the folder
-    // fails (for example it doesn't exist yet), there are simply no projects.
-    let Ok(entries) = fs::read_dir(root) else {
-        return Vec::new();
-    };
-
-    let mut projects: Vec<ProjectSummary> = entries
+    // fails (for example it doesn't exist yet), there are simply no projects in it.
+    let in_root: Vec<PathBuf> = match fs::read_dir(root) {
         // `flatten()` skips entries that failed to read (each item is a Result).
-        .flatten()
-        .map(|entry| entry.path())
+        Ok(entries) => entries.flatten().map(|entry| entry.path()).collect(),
+        Err(_) => Vec::new(),
+    };
+    let mut projects: Vec<ProjectSummary> = in_root
+        .into_iter()
         .filter(|path| path.join(PROJECT_FILE).is_file())
-        .map(|path| {
-            let modified = project_file_modified(&path).map(|t| DateTime::<Utc>::from(t).to_rfc3339());
-            // Show the name stored in the file; fall back to the folder name if it can't be read.
-            match load_project(&path) {
-                Ok(p) => ProjectSummary {
-                    name: p.name,
-                    scenes: Some(p.scenes.len()),
-                    presets: Some(p.stack_presets.len()),
-                    sounds: Some(p.sounds.len()),
-                    modified,
-                    path,
-                },
-                Err(_) => ProjectSummary { name: folder_name(&path), scenes: None, presets: None, sounds: None, modified, path },
-            }
-        })
+        .map(|path| project_summary(path, false))
         .collect();
+    for path in others {
+        let known = projects.iter().any(|p| same_folder(&p.path, path));
+        if !known && path.join(PROJECT_FILE).is_file() {
+            projects.push(project_summary(path.clone(), true));
+        }
+    }
 
     projects.sort_by_key(|p| p.name.to_lowercase());
     projects
+}
+
+/// What the picker shows for one project folder.
+fn project_summary(path: PathBuf, elsewhere: bool) -> ProjectSummary {
+    let modified = project_file_modified(&path).map(|t| DateTime::<Utc>::from(t).to_rfc3339());
+    // Show the name stored in the file; fall back to the folder name if it can't be read.
+    match load_project(&path) {
+        Ok(p) => ProjectSummary {
+            name: p.name,
+            scenes: Some(p.scenes.len()),
+            presets: Some(p.stack_presets.len()),
+            sounds: Some(p.sounds.len()),
+            modified,
+            elsewhere,
+            path,
+        },
+        Err(_) => ProjectSummary { name: folder_name(&path), scenes: None, presets: None, sounds: None, modified, elsewhere, path },
+    }
+}
+
+/// Whether two paths are the same folder, even when spelled differently (a symlink, a
+/// trailing `/`, `..`). Falls back to comparing as written if either can't be resolved.
+pub fn same_folder(a: &Path, b: &Path) -> bool {
+    match (a.canonicalize(), b.canonicalize()) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => a == b,
+    }
+}
+
+/// Whether `dir` is a project folder directly inside `root` (where the picker finds projects
+/// by itself). Anything else counts as "elsewhere" (decision 0042).
+pub fn is_in_root(dir: &Path, root: &Path) -> bool {
+    dir.parent().is_some_and(|parent| same_folder(parent, root))
 }
 
 /// Creates `root/<name>/` with an empty project and its audio folders.
@@ -524,12 +552,32 @@ mod tests {
         let dir = create_project(&root.0, "Curse of Strahd", ProjectDefaults::default()).unwrap();
 
         assert!(dir.join("audio/music").is_dir());
-        let listed = list_projects(&root.0);
+        let listed = list_projects(&root.0, &[]);
         assert_eq!(listed.len(), 1);
         assert_eq!(listed[0].name, "Curse of Strahd");
+        assert!(!listed[0].elsewhere);
 
         let project = load_project(&dir).unwrap();
         assert_eq!(project.name, "Curse of Strahd");
+    }
+
+    #[test]
+    fn lists_projects_from_elsewhere_once_and_skips_missing_ones() {
+        let root = TempDir::new();
+        let other = TempDir::new();
+        let inside = create_project(&root.0, "Inside", ProjectDefaults::default()).unwrap();
+        let outside = create_project(&other.0, "Outside", ProjectDefaults::default()).unwrap();
+        let gone = other.0.join("Unplugged");
+
+        // A project in the root that's also in the list (the root changed) shows once.
+        let listed = list_projects(&root.0, &[outside.clone(), inside.clone(), gone]);
+        let names: Vec<(&str, bool)> = listed.iter().map(|p| (p.name.as_str(), p.elsewhere)).collect();
+        assert_eq!(names, [("Inside", false), ("Outside", true)]);
+
+        assert!(is_in_root(&inside, &root.0));
+        assert!(!is_in_root(&outside, &root.0));
+        // Spelled differently, still the same folder.
+        assert!(is_in_root(&inside, &root.0.join(".")));
     }
 
     #[test]
