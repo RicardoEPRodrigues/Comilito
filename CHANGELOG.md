@@ -121,6 +121,8 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Fixed
 
+- With the Library drawer closed, results of its quick search couldn't be dragged onto a scene
+  or the tapestry: the pop-up closed as soon as a result was pressed.
 - Videos often failed to load on Linux ("Media failed to decode") when starting partway in:
   the Library's thumbnails stayed empty and the video window showed nothing, while the video's
   own page still played it from the start. Seeking within long videos could fail the same way.

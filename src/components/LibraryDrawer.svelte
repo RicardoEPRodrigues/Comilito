@@ -43,6 +43,10 @@
   let search = $state("");
   let filter = $state<Filter>("all");
   let searchFocused = $state(false);
+  /** While a quick-search result is pressed or dragged. Pressing it takes the focus away from
+   *  the search box, which closes the pop-up; if the pop-up went away mid-drag, the row being
+   *  dragged would go with it and WebKit would cancel the drag. So it stays until the drag ends. */
+  let holdingQuick = $state(false);
 
   const ICONS: Record<Shelf, Component> = { music: Music, ambience: AudioLines, effects: Zap, ambienceVideo: Mountain, videoEffect: Sparkles };
   const FILTERS: { id: Filter; label: string; icon?: Component }[] = [
@@ -232,6 +236,8 @@
   <button class="icon" title="Open the Library workspace" onclick={() => showView("library")}><Maximize2 size={16} /></button>
 {/snippet}
 
+<svelte:window onpointerup={() => (holdingQuick = false)} />
+
 <section
   class="drawer"
   class:open={ui.drawerOpen}
@@ -288,9 +294,11 @@
     <span class="spacer"></span>
     {@render tools()}
 
-    {#if !ui.drawerOpen && searchFocused && quickResults.length + quickVideos.length > 0}
+    {#if !ui.drawerOpen && (searchFocused || holdingQuick) && quickResults.length + quickVideos.length > 0}
       {@const n = quickResults.length + quickVideos.length}
-      <div class="quick" role="list" transition:pop>
+      <!-- dragend bubbles up from the row that was dragged. A drag also cancels the pointer
+           (pointercancel), so only pointerup and dragend let go. -->
+      <div class="quick" role="list" transition:pop onpointerdown={() => (holdingQuick = true)} ondragend={() => (holdingQuick = false)}>
         <span class="caps muted">{n} result{n === 1 ? "" : "s"} · drag onto a scene or the tapestry</span>
         {#each quickResults as s (s.id)}
           <SoundRow sound={s} detail={`${CATEGORIES.find((c) => c.id === s.category)?.label}${folderOf(s) ? ` › ${folderOf(s)}` : ""}`} />
