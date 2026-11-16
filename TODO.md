@@ -11,7 +11,8 @@
 
 ## Bugs
 
-
+- with the library drawer closed, dragging from the search results does not work.
+- if the switching video after x minutes is enabled (greater than 0 minutes), then videos shorter than that time should loop before switching to another.
 
 ## Platforms
 
