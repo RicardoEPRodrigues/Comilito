@@ -93,6 +93,8 @@ Nothing has been released yet; everything below goes into the first release, 0.2
   button in Preferences › Projects & tools › Troubleshooting and in About. It reloads the
   windows as if Comilito had just started, for when something on screen gets stuck; the project
   stays open and the sound keeps playing.
+- **Linux download:** an AppImage that runs on Ubuntu 22.04 and newer (and other distros of the
+  same age or newer). A Flatpak is planned; there's no `.deb` or `.rpm` package.
 
 ### Changed
 
