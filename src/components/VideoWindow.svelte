@@ -94,15 +94,38 @@
     api.saveVideoPosition(id, positions[id]).catch(() => {});
   }
 
-  /** Frees a layer once it has faded out (unless it's showing again by then). */
+  /** Frees a layer once it has faded out, unless it's showing again by then or a newer video
+   *  started loading on it meanwhile (that load isn't shown yet, and freeing it would leave
+   *  the window waiting for it forever). */
   function release(layer: number) {
+    const load = loads[layer];
     setTimeout(() => {
-      if (layerShown[layer]) return;
+      if (layerShown[layer] || loads[layer] !== load) return;
       layerEls[layer]?.pause();
-      loads[layer]?.destroy();
+      load?.destroy();
       loads[layer] = null;
       layerVideo[layer] = null;
     }, fadeMs + 50);
+  }
+
+  /** Writes a problem with the video window to the log (comilito.log, "See logs"): its console
+   *  isn't kept anywhere, and "it stopped" is hard to look into without a trace. */
+  function logProblem(message: string) {
+    console.warn("video window:", message);
+    api.logMessage("warn", `Video window: ${message}`).catch(() => {});
+  }
+
+  /** The state of a <video> element, for the log. */
+  function describe(el: HTMLVideoElement | undefined, videoId: string | null): string {
+    if (!el) return "no element";
+    const name = videoId ? (videoById(videoId)?.name ?? videoId) : "nothing";
+    const ranges = Array.from({ length: el.buffered.length }, (_, i) => `${el.buffered.start(i).toFixed(1)}-${el.buffered.end(i).toFixed(1)}`);
+    const error = el.error ? `, error ${el.error.code} ${el.error.message}` : "";
+    return (
+      `“${name}” at ${el.currentTime.toFixed(1)}/${el.duration.toFixed(1)} s, readyState ${el.readyState}, ` +
+      `networkState ${el.networkState}, ${el.paused ? "paused" : "playing"}${el.ended ? ", ended" : ""}, ` +
+      `buffered [${ranges.join(", ")}]${error}`
+    );
   }
 
   /** Loads `videoId` (at `fromMs`) on the hidden layer and fades it in once it's ready, then
@@ -130,7 +153,7 @@
         release(old);
       })
       .catch((e) => {
-        console.warn("video:", videoId, e);
+        logProblem(`couldn't load “${video.name}”: ${e instanceof Error ? e.message : (e?.message ?? e)}`);
         // A fading loop that couldn't load: loop the old layer the plain way instead.
         if (token === showToken && loopingFrom === active) {
           loopingFrom = -1;
@@ -216,10 +239,12 @@
       const video = id ? videoById(id) : undefined;
       if (!video) {
         fxShown = false;
+        // As release(): not if another effect started loading meanwhile.
+        const load = fxLoad;
         setTimeout(() => {
-          if (fxShown) return;
+          if (fxShown || fxLoad !== load) return;
           el.pause();
-          fxLoad?.destroy();
+          load?.destroy();
           fxLoad = null;
         }, fadeMs + 50);
         return;
@@ -233,7 +258,11 @@
           el.play().catch(() => {});
           fxShown = true;
         })
-        .catch((e) => console.warn("video effect:", id, e));
+        .catch((e) => {
+          logProblem(`couldn't load the video effect “${video.name}”: ${e instanceof Error ? e.message : (e?.message ?? e)}`);
+          // Tell Rust it's over, or the effect would count as playing (and hide the playlist) for good.
+          if (fxPlaying === id) effectEnded();
+        });
     });
   });
   $effect(() => {
@@ -282,6 +311,37 @@
     advance(t, true);
   }
 
+  // ---- The watchdog: a video that should be moving but isn't ----
+  // If the shown video's time stands still while it should play (a load that never finished,
+  // a stream that stopped feeding, a decoder error), it's logged and started again where it
+  // was, at most a few times in a row.
+  const STUCK_MS = 4000;
+  const MAX_RESTARTS = 3;
+  let watchedTime = -1;
+  let stillSince = 0;
+  let restarts = 0;
+
+  function watch(now: number, el: HTMLVideoElement | undefined) {
+    const shouldMove = !!target && !!current && !paused && !fxShown && !!el && layerShown[active] && !document.hidden;
+    if (!shouldMove || el.currentTime !== watchedTime) {
+      if (shouldMove) restarts = 0; // It moved: things are fine again.
+      watchedTime = el?.currentTime ?? -1;
+      stillSince = now;
+      return;
+    }
+    if (now - stillSince < STUCK_MS) return;
+    stillSince = now;
+    const state = describe(el, layerVideo[active]) + (loopingFrom === active ? "; its loop was still loading" : "");
+    if (restarts >= MAX_RESTARTS) {
+      if (restarts++ === MAX_RESTARTS) logProblem(`the video is still stuck after ${MAX_RESTARTS} restarts; giving up. ${state}`);
+      return;
+    }
+    restarts++;
+    logProblem(`the video stopped moving; starting it again. ${state}`);
+    loopingFrom = -1;
+    show(current!.videoId, el.ended ? 0 : el.currentTime * 1000);
+  }
+
   // ---- The clock: switching, saving positions, telling the main window ----
   let lastStatus = 0;
   let lastSave = 0;
@@ -302,6 +362,7 @@
     if (playing && t.videos.length === 1 && fadesWhenLooping(el, current!.videoId)) {
       if ((el.duration - el.currentTime) * 1000 < loopLeadMs) loopWithFade(current!.videoId);
     }
+    watch(now, el);
     if (now - lastSave > 5000) {
       lastSave = now;
       if (playing) rememberPosition();

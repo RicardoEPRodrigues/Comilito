@@ -119,6 +119,10 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Fixed
 
+- The video window could freeze on a picture: a video starting to load less than a second after
+  a crossfade could be thrown away by the layer clean-up of the crossfade before it. A video (or
+  video effect) that stops moving is now started again where it was, and video problems are
+  written to the log (*See logs*).
 - The video's playing time in the video window's top bar didn't move.
 - Esc in the video window now stops everything, as in the main window, when the window isn't
   fullscreen (in fullscreen it still leaves fullscreen first).

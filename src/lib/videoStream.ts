@@ -15,6 +15,7 @@
 // conversion anyway.
 
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { api } from "./api";
 import { ui } from "./store.svelte";
 import type { Video } from "./types";
 import { offsetFor, readWebmIndex, type WebmIndex } from "./webmIndex";
@@ -134,6 +135,8 @@ class Stream implements Playback {
     this.ready = Promise.race([whenLoaded(el, fromSec), failed]);
     this.ms.addEventListener("sourceopen", () => this.open(), { once: true });
     el.addEventListener("timeupdate", this.pump);
+    // Ran out of data: `timeupdate` stops while the element waits, so ask for more here too.
+    el.addEventListener("waiting", this.pump);
     el.addEventListener("seeking", this.onSeeking);
     el.src = this.objectUrl;
   }
@@ -241,7 +244,12 @@ class Stream implements Playback {
         this.ms.endOfStream();
       }
     } catch (e) {
-      if (!this.dead) console.warn("video stream:", e);
+      if (!this.dead) {
+        // Kept in the log: the window's console isn't saved, and a stream that stops feeding
+        // shows up only as a video that stops.
+        console.warn("video stream:", e);
+        api.logMessage("warn", `Video stream ${this.url.split("/").pop()}: ${e instanceof Error ? e.message : e}`).catch(() => {});
+      }
     } finally {
       this.feeding = false;
     }
@@ -275,6 +283,7 @@ class Stream implements Playback {
   destroy() {
     this.dead = true;
     this.el.removeEventListener("timeupdate", this.pump);
+    this.el.removeEventListener("waiting", this.pump);
     this.el.removeEventListener("seeking", this.onSeeking);
     this.el.removeAttribute("src");
     this.el.load();
