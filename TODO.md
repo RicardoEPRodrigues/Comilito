@@ -14,8 +14,6 @@
 
 ## Bugs
 
-- with the library drawer closed, dragging from the search results does not work.
-- if the switching video after x minutes is enabled (greater than 0 minutes), then videos shorter than that time should loop before switching to another.
 
 ## Platforms
 
@@ -44,9 +42,6 @@
 
 ### Other checks
 
-- Not tried yet in the running app (only type-checked and unit-tested): opening a project from
-  outside the projects folder and its home-screen entry (decision 0042), duplicating a sound and
-  a large video (0043).
 - Backups are filed by project name (decision 0026), so two projects with the same name (more
   likely now that projects can live outside the projects folder, decision 0042) share a backup
   folder, and pruning to one project's "keep" count can delete the other's backups. Keying the
