@@ -1,6 +1,6 @@
 [package]
 name = "comilito"
-version = "0.1.0"
+version = "0.2.0"
 description = "A soundboard and mixer for Dungeons & Dragons DMs"
 authors = ["Ricardo Rodrigues"]
 license = "MIT"

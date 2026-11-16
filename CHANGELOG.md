@@ -9,7 +9,7 @@ version number and date.
 
 ## Unreleased
 
-Nothing has been released yet; everything below is the first version, 0.1.0.
+Nothing has been released yet; everything below goes into the first release, 0.2.0.
 
 ### Added
 
