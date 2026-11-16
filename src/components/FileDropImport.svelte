@@ -213,15 +213,14 @@
       const showVideos = videos.length > 0 && audio.length === 0;
       ui.libraryTab = showVideos ? "videos" : "sounds";
       remember("libraryTab", ui.libraryTab);
-      ui.library = {
-        ...ui.library,
+      Object.assign(ui.library, {
         smart: "all",
         category: showVideos ? videoShelf : category,
         folder: showVideos ? videoFolder : folder,
         search: "",
         selected: added,
         cropping: false,
-      };
+      });
       ui.view = "library";
     }
     close();

@@ -104,6 +104,8 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 
 ### Fixed
 
+- After opening a finished video download (or a video from the drawer's search, or dropped
+  files), clicking folders in the Library did nothing until Comilito was restarted.
 - In the Library drawer, the scrollbar could cover the number of items next to a folder.
 - A scene's details in the Tapestry now list its videos and video effects too, with a ✕ to
   take one out of the scene.

@@ -121,6 +121,8 @@ export const ui = $state({
   drawerHeight: remembered<number | null>("drawerHeight", null),
   /** Scene / preset group headings the user folded away. */
   collapsed: remembered<string[]>("collapsed", []),
+  // Components keep a reference to this object (`const lib = ui.library`), so change its
+  // fields (or Object.assign) and never replace it: they'd keep editing the old object.
   library: {
     smart: "all" as SmartList,
     category: null as Shelf | null,

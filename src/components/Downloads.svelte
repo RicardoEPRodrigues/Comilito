@@ -16,7 +16,7 @@
     if (!video) return openSoundInLibrary(id);
     ui.libraryTab = "videos";
     remember("libraryTab", "videos");
-    ui.library = { ...ui.library, smart: "all", category: shelfOfKind(video.kind), folder: null, search: "", selected: [id], cropping: false };
+    Object.assign(ui.library, { smart: "all", category: shelfOfKind(video.kind), folder: null, search: "", selected: [id], cropping: false });
     ui.view = "library";
   }
 </script>

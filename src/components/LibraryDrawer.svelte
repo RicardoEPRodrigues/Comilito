@@ -114,7 +114,7 @@
     const video = videoById(id);
     ui.libraryTab = "videos";
     remember("libraryTab", "videos");
-    ui.library = { ...ui.library, smart: "all", category: shelfOfKind(video?.kind), folder: null, search: "", selected: [id], cropping: false };
+    Object.assign(ui.library, { smart: "all", category: shelfOfKind(video?.kind), folder: null, search: "", selected: [id], cropping: false });
     showView("library");
   }
   const quickResults = $derived(search.trim() ? findSounds(project, snapshot.missing, { filter: "all", search }).slice(0, 8) : []);
