@@ -815,10 +815,28 @@ pub fn log_message(level: String, message: String) {
     }
 }
 
-/// "See logs": opens the log file in the system's text viewer.
+/// "See logs": opens, in the system's own app, `which` of the logs (see logging.rs):
+/// `"events"` (comilito.log: errors and background events), `"errors"` (stderr.log: what
+/// Comilito, GTK and WebKit printed, crashes included) or `"folder"` (the logs folder).
 #[tauri::command]
-pub fn open_log_file(app: AppHandle) -> Result<(), String> {
-    let path = crate::logging::path().ok_or("logging isn't available")?;
+pub fn open_log_file(which: String, app: AppHandle) -> Result<(), String> {
+    let events = crate::logging::path().ok_or("logging isn't available")?;
+    let dir = events.parent().ok_or("logging isn't available")?.to_path_buf();
+    let path = match which.as_str() {
+        "events" => events,
+        "folder" => dir,
+        "errors" => {
+            let path = dir.join("stderr.log");
+            if !path.exists() {
+                // Only written when nobody is watching stderr (see logging::capture_stderr).
+                return Err("There's no error log yet. It's written when Comilito is started without a terminal \
+                            (from the desktop or the AppImage), and only on Linux."
+                    .into());
+            }
+            path
+        }
+        _ => return Err(format!("unknown log \"{which}\"")),
+    };
     app.opener()
         .open_path(path.to_string_lossy(), None::<&str>)
         .map_err(|e| format!("could not open the log: {e}"))

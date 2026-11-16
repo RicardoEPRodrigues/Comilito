@@ -84,7 +84,7 @@ Stack indexes count from the bottom (0 = bottom), like `stack` in `comilito.json
 
 | Area | Commands |
 |------|----------|
-| General | `app_version`, `confirm_quit` (quit after the "still busy" warning), `get_state`, `get_preferences`, `set_preferences(prefs)` (switches the audio output if it changed), `list_output_devices` |
+| General | `app_version`, `confirm_quit` (quit after the "still busy" warning), `get_state`, `get_preferences`, `set_preferences(prefs)` (switches the audio output if it changed), `list_output_devices`, `log_message(level, message)`, `open_log_file(which)` (`events`: comilito.log, `errors`: stderr.log, or `folder`) |
 | Projects | `list_projects` (with counts and last edit), `projects_folder`, `duplicate_project(path)`, `move_projects_folder(to)`, `show_projects_folder(project?)`, `create_project(name, sample)`, `open_project(path)`, `delete_project(path, delete_audio)`, `close_project`, `reload_project`, `keep_my_version`, `rename_project(name)` |
 | Moving projects | `export_project(dest, include_audio)`, `import_project(path)`, `backups_folder`, `relink_from_folder(folder)`, `relink_sound(id, path)` |
 | Project settings | `set_master_volume(volume)`, `set_category_volume(category, volume)` (the top scene's, or the project's when no scene is enabled), `set_project_defaults(defaults)`, `set_backup_settings(backups)`, `reset_project_defaults` |

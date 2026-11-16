@@ -36,7 +36,10 @@
     <img src={icon} alt="" width="96" height="96" />
     <h1 class="display" use:fitText>Comilito</h1>
     <p class="muted">Version {version}</p>
-    <p><button onclick={openLogs}><FileText size={13} />See logs</button></p>
+    <p class="logs">
+      <button onclick={() => openLogs("events")}><FileText size={13} />See logs</button>
+      <button onclick={() => openLogs("errors")}><FileText size={13} />See error log</button>
+    </p>
     <p>A soundboard and mixer for Dungeons &amp; Dragons Dungeon Masters.</p>
     <p>
       Made by Ricardo Rodrigues ·
@@ -128,6 +131,11 @@
   }
   .intro p {
     margin: 0.3rem 0;
+  }
+  .intro .logs {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
   }
   h3 {
     font-size: 0.95rem;

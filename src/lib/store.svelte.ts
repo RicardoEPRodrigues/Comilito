@@ -185,9 +185,10 @@ export async function run<T>(promise: Promise<T>): Promise<T | undefined> {
   }
 }
 
-/** "See logs": opens the log file. */
-export function openLogs() {
-  return run(api.openLogFile());
+/** "See logs": opens the log of errors and events, the error output log (stderr.log), or the
+ *  folder holding both. */
+export function openLogs(which: "events" | "errors" | "folder" = "events") {
+  return run(api.openLogFile(which));
 }
 
 /** Shows a question and waits for the answer (`null` if cancelled). */

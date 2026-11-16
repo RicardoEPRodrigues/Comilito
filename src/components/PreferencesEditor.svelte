@@ -301,8 +301,12 @@
             {/if}
           </section>
           <section>
-            <div class="section-head"><span class="caps">Logs</span><span class="hint">Errors and background events, for troubleshooting</span></div>
-            <div class="row"><button onclick={openLogs}>See logs</button></div>
+            <div class="section-head"><span class="caps">Logs</span><span class="hint">For troubleshooting</span></div>
+            <div class="row">
+              <button title="Errors and background events (downloads, backups, tools)" onclick={() => openLogs("events")}>See logs</button>
+              <button title="What Comilito and its libraries printed, crashes included (Linux, when not started from a terminal)" onclick={() => openLogs("errors")}>See error log</button>
+              <button title="The folder with all the log files" onclick={() => openLogs("folder")}><FolderOpen size={13} />Open logs folder</button>
+            </div>
           </section>
           <section>
             <div class="section-head"><span class="caps">Remove Comilito's data</span></div>

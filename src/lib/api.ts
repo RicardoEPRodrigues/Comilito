@@ -108,7 +108,7 @@ export const api = {
   stopPreview: () => invoke<void>("stop_preview"),
   previewPosition: () => invoke<[string, number] | null>("preview_position"),
   logMessage: (level: "info" | "warn" | "error", message: string) => invoke<void>("log_message", { level, message }),
-  openLogFile: () => invoke<void>("open_log_file"),
+  openLogFile: (which: "events" | "errors" | "folder" = "events") => invoke<void>("open_log_file", { which }),
   forgetAllData: (keepBackups: boolean) => invoke<void>("forget_all_data", { keepBackups }),
   toggleEffect: (id: string) => invoke<void>("toggle_effect", { id }),
   moveSounds: (ids: string[], category: Category, folder: string) =>

@@ -108,6 +108,8 @@ Nothing has been released yet; everything below is the first version, 0.1.0.
 
 ### Fixed
 
+- *See error log* and *Open logs folder* next to *See logs* (Preferences › Projects & tools,
+  and About), for the error output GTK and WebKit print, crashes included.
 - The AppImage froze when opening a project with videos: it carried GStreamer without its
   plugins, so WebKit couldn't play any video. It now bundles the plugins needed for WebM, and
   keeps its own GStreamer plugin cache instead of overwriting the one other programs share.
