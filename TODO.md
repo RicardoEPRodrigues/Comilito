@@ -18,15 +18,13 @@
 ## Platforms
 
 - macOS: choose where ffmpeg comes from (decision 0019); the app currently expects one on the PATH.
-- Windows: the desktop accent colour (registry) and the downloaded tools are untested.
 - Windows and macOS: choosing the audio output (decision 0032) lists devices through cpal's own
   hosts there; untested.
-- Windows and macOS: the OS media controls (decision 0030) compile but are untested. On
-  Windows they're tied to the main window's handle, created from a background thread.
+- macOS: the OS media controls (decision 0030) compile but are untested.
 - Windows and macOS: the progress of downloading part of a video comes from ffmpeg's status
   line, which it redraws with `\r`. Output is split at `\r` and `\n` (so Windows' `\r\n` works
   too), and ffmpeg prints the same `time=` everywhere, so it should work; untested.
-- Windows and macOS: the video window (decision 0035) is untested: WebView2 and WKWebView play
+- macOS: the video window (decision 0035) is untested: WKWebView play
   MP4 as well as WebM, the borderless window's drag handle (`data-tauri-drag-region`),
   fullscreen on a chosen screen, and the asset protocol URLs (`convertFileSrc`).
 - Windows and macOS: dropping audio files onto the window (decision 0022) uses a different path

@@ -194,10 +194,16 @@ pub fn close(app: &AppHandle) {
 }
 
 // ---- Commands -------------------------------------------------------------------------------
+//
+// The commands that can create the window are `async`, though nothing in them awaits. Tauri runs
+// a sync command on the main thread, and on Windows WebView2 needs that same thread to finish
+// building a window, so `build()` there waits on itself forever: a white window and a frozen app.
+// An async command runs on a worker thread instead. (Tauri's docs for `build` warn about this.)
+// The state lock is never held across an `.await` (there are none), which keeps the futures `Send`.
 
 /// The header's video button: opens the window, or closes it if it's open.
 #[tauri::command]
-pub fn toggle_video_window(app: AppHandle, state: AppStateRef) -> Result<(), String> {
+pub async fn toggle_video_window(app: AppHandle, state: AppStateRef<'_>) -> Result<(), String> {
     let mut s = lock(&state)?;
     if s.video_window_open {
         close(&app);
@@ -210,7 +216,7 @@ pub fn toggle_video_window(app: AppHandle, state: AppStateRef) -> Result<(), Str
 
 /// Opens the video window, or brings it to the front (the bottom bar's now-playing).
 #[tauri::command]
-pub fn show_video_window(app: AppHandle, state: AppStateRef) -> Result<(), String> {
+pub async fn show_video_window(app: AppHandle, state: AppStateRef<'_>) -> Result<(), String> {
     let mut s = lock(&state)?;
     open(&app, &mut s)?;
     emit_state(&app, &s, Vec::new());
@@ -250,7 +256,7 @@ pub fn set_video_fullscreen(on: bool, app: AppHandle, state: AppStateRef) -> Res
 /// The video effects pad: plays a video effect over the scene's video until it ends, or stops
 /// it if it's the one playing.
 #[tauri::command]
-pub fn play_video_effect(id: String, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+pub async fn play_video_effect(id: String, app: AppHandle, state: AppStateRef<'_>) -> Result<(), String> {
     let mut s = lock(&state)?;
     if s.open_ref()?.project.video(&id).is_none() {
         return Err("that video no longer exists".into());
