@@ -112,6 +112,10 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Changed
 
+- Comilito now presents itself as a soundboard for game masters of any tabletop role-playing game
+  (Dungeons & Dragons among them), on the home screen and in About, which also credits
+  dnd-soundboard as an inspiration.
+
 - In an expanded Tapestry entry, a ducked ambience layer shows a ⌄ icon after its volume instead
   of "ducked from 60%"; hover it for the level it came down from.
 - **Scenes say what they hold with icons:** in the Scenes tab, the Tapestry and the mini player,

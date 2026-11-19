@@ -42,8 +42,9 @@ They run as separate programs; Comilito doesn't link to them.
 
 ## Inspiration
 
-- [Ascapes Mixer](https://github.com/ilyaly/ascapes-mixer) by ilyaly (MIT). Comilito is an
-  independent implementation, not a fork.
+- [Ascapes Mixer](https://github.com/ilyaly/ascapes-mixer) by ilyaly (MIT), and
+  [dnd-soundboard](https://github.com/carolinabras/dnd-soundboard) by carolinabras. Comilito is an
+  independent implementation, not a fork of either.
 
 ## Built with
 

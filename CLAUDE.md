@@ -4,7 +4,7 @@ Guidance for Claude (and other AI assistants) working on Comilito.
 
 ## Project
 
-Comilito is a Tauri 2 desktop soundboard/mixer for D&D DMs, with three sound categories:
+Comilito is a Tauri 2 desktop soundboard/mixer for tabletop RPG game masters (D&D and others), with three sound categories:
 Music, Ambience and Effects. Read [README.md](README.md) and [docs/](docs/) before making changes.
 
 ## Who you're working with

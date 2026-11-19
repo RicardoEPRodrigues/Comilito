@@ -41,7 +41,7 @@
       <button onclick={() => openLogs("errors")}><FileText size={13} />See error log</button>
       <button title="Reloads the windows; the project stays open and the sound keeps playing" onclick={restartInterface}><RotateCcw size={13} />Restart the interface</button>
     </p>
-    <p>A soundboard and mixer for Dungeons &amp; Dragons Dungeon Masters.</p>
+    <p>A soundboard and mixer for game masters of tabletop role-playing games, such as Dungeons &amp; Dragons.</p>
     <p>
       Made by Ricardo Rodrigues ·
       {@render link("https://colorcrow.me/", "colorcrow.me")} ·
@@ -100,8 +100,9 @@
     <ul>
       <li>
         {@render link("https://github.com/ilyaly/ascapes-mixer", "Ascapes Mixer")} by ilyaly (MIT).
-        Comilito is an independent implementation, not a fork.
       </li>
+      <li>{@render link("https://github.com/carolinabras/dnd-soundboard", "dnd-soundboard")} by carolinabras.</li>
+      <li>Comilito is an independent implementation, not a fork of either.</li>
     </ul>
 
     <h3>Built with</h3>

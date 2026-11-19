@@ -207,7 +207,7 @@
     <div class="brand">
       <img src={icon} alt="" width="96" height="96" />
       <h1 class="display" use:fitText>Comilito</h1>
-      <span class="caps tagline">A soundboard for Dungeon Masters</span>
+      <span class="caps tagline">A soundboard for game masters</span>
     </div>
     <p class="intro">
       Each campaign is a project: its sounds, scenes and presets, kept together in one folder you
