@@ -43,6 +43,9 @@ pub struct ToolsStatus {
     /// The installed ffmpeg's release ("9.0"), or `None` for one installed before decision
     /// 0051 (yt-dlp's nightly build, which GPU encoding may not work with).
     pub ffmpeg_version: Option<String>,
+    /// After an install or update: what was downloaded ("yt-dlp", "ffmpeg"); empty when
+    /// everything was up to date.
+    pub updated: Vec<String>,
     /// Disk space used by the tools folder, in bytes.
     pub size: u64,
 }
@@ -109,6 +112,7 @@ pub fn status(dir: &Path) -> ToolsStatus {
         yt_dlp,
         ffmpeg: ffmpeg_path(dir).is_some(),
         ffmpeg_version: installed_ffmpeg_build(dir).as_deref().and_then(release_version),
+        updated: Vec::new(),
         size: folder_size(dir),
     }
 }

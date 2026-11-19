@@ -1076,21 +1076,30 @@ pub fn tools_status(state: AppStateRef) -> Result<crate::tools::ToolsStatus, Str
     Ok(crate::tools::status(&dir))
 }
 
-/// Downloads (or updates) yt-dlp and ffmpeg, reporting `tools-progress` events. ffmpeg is
-/// replaced when it's from before decision 0051 or a newer release is out.
+/// Downloads (or updates) yt-dlp and ffmpeg, reporting `tools-progress` events. Each is
+/// downloaded only when missing or out of date (ffmpeg also when it's from before decision
+/// 0051). Checking needs the internet; the result lists what was downloaded.
 #[tauri::command(async)]
 pub fn install_tools(app: AppHandle, state: AppStateRef) -> Result<crate::tools::ToolsStatus, String> {
     let dir = lock(&state)?.tools_dir.clone();
     let mut report = |p: crate::tools::InstallProgress| {
         let _ = app.emit("tools-progress", &p);
     };
-    crate::tools::install_yt_dlp(&dir, &mut report)?;
+    let mut updated = Vec::new();
+    // yt-dlp only when missing or a newer one is out (unknown when offline: left alone).
+    let yt_dlp_missing = !crate::tools::yt_dlp_path(&dir).is_file();
+    if yt_dlp_missing || crate::tools::yt_dlp_update_available(&dir) == Some(true) {
+        report(crate::tools::InstallProgress { step: "yt-dlp".into(), done: 0, total: 0 });
+        crate::tools::install_yt_dlp(&dir, &mut report)?;
+        updated.push("yt-dlp".to_string());
+    }
     if crate::tools::ffmpeg_needs_install(&dir) {
         crate::tools::install_ffmpeg(&dir, &mut report)?;
+        updated.push("ffmpeg".to_string());
         // A new ffmpeg may offer other GPU encoders (decision 0051): look again when next asked.
         lock(&state)?.video_encoders = None;
     }
-    Ok(crate::tools::status(&dir))
+    Ok(crate::tools::ToolsStatus { updated, ..crate::tools::status(&dir) })
 }
 
 #[tauri::command(async)]
