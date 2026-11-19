@@ -9,11 +9,10 @@
   "Later · Mobile" (Scenes / Tapestry / Effects tabs, the mixer bar on two rows). On the desktop
   a narrow window uses the mini player (decision 0049).
 - Middle clicking on a scene in the tapestry and draggin up or down, should disable or enable the scenes based on the state of the first clicked on scene. e.g., click on the a disabled scene and drag up, that scene and above scenes selected by the mouse, should now be enabled.
-- Use the GPU for video and audio playback if it improves performance. Audio mixing is light
-  on the CPU and wouldn't gain anything. Videos decode on the CPU on purpose (decision 0047:
-  NVIDIA's GStreamer decoders froze after seeks), and 1080p60 VP9 and AV1 played with no dropped
-  frames when GPU encoding was added. Decision 0047 left room for an opt-in "decode on the GPU"
-  preference if software decoding turns out too slow somewhere (4K on a weak CPU); measure first.
+- GPU video decoding (decision 0052) is an opt-in switch, tested only on a virtual display,
+  where the CPU saving can't be seen. Measure it on a real desktop (CPU use with it on and off,
+  1080p60 and 4K); if it clearly helps and nothing freezes, consider turning it on by default.
+  Audio mixing is light on the CPU and wouldn't gain from a GPU.
 
 ## Bugs
 

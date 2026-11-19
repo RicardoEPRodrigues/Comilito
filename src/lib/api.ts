@@ -38,6 +38,8 @@ import type {
 export const api = {
   appVersion: () => invoke<string>("app_version"),
   confirmQuit: () => invoke<void>("confirm_quit"),
+  /** Decoding videos on the GPU (Linux, decision 0052): whether it applies here, and whether this run uses it. */
+  gpuDecode: () => invoke<{ available: boolean; active: boolean }>("gpu_decode"),
   // The mini player (decision 0049): only the window's size and always-on-top live in Rust.
   miniPlayer: () => invoke<MiniPlayer>("mini_player"),
   setMiniPlayer: (on: boolean, resize: boolean) => invoke<MiniPlayer>("set_mini_player", { on, resize }),

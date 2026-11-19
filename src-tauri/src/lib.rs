@@ -69,6 +69,10 @@ fn private_gstreamer_registry() {
 /// `GST_PLUGIN_FEATURE_RANK` lists `element:rank` pairs; rank 0 means "never pick it on your
 /// own". Child processes (WebKit's web process) inherit it. Any value the user set is kept
 /// after ours, so it wins where both name the same element.
+///
+/// Preferences › Video › "Decode videos on the GPU" (decision 0052) skips this, so the NVIDIA
+/// decoders are used again. Retested in November 2026 (GStreamer 1.20, driver 595, the
+/// current video streaming), they no longer froze; but they stay opt-in until tried more widely.
 #[cfg(target_os = "linux")]
 fn no_nvidia_video_decoders() {
     const OURS: &str = "nvvp8dec:0,nvvp8sldec:0,nvvp9dec:0,nvvp9sldec:0,nvav1dec:0,nvav1sldec:0";
@@ -80,6 +84,41 @@ fn no_nvidia_video_decoders() {
     unsafe { std::env::set_var("GST_PLUGIN_FEATURE_RANK", value) };
 }
 
+/// Whether this run lets NVIDIA's GStreamer decoders play videos (decision 0052), as read from
+/// the preferences at start. WebKit's processes take the environment when they start, so a
+/// change applies from the next start; the UI compares this with the preference to say so.
+static GPU_DECODE_ACTIVE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+
+/// Where `preferences.json` lives, worked out before Tauri runs (it can't tell us yet): the
+/// same folder Tauri's `config_dir()` gives on Linux, `$XDG_CONFIG_HOME` or `~/.config`.
+#[cfg(target_os = "linux")]
+fn early_config_dir() -> Option<PathBuf> {
+    let base = std::env::var_os("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .filter(|p| p.is_absolute())
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))?;
+    Some(base.join("comilito"))
+}
+
+/// What Preferences › Video shows about GPU decoding (decision 0052).
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GpuDecode {
+    /// Whether the setting means anything here: Linux, not the AppImage (which carries only
+    /// software decoders, decision 0041). Elsewhere the webview decodes on the GPU by itself.
+    available: bool,
+    /// Whether this run uses the GPU decoders.
+    active: bool,
+}
+
+#[tauri::command]
+fn gpu_decode() -> GpuDecode {
+    GpuDecode {
+        available: cfg!(target_os = "linux") && std::env::var_os("APPIMAGE").is_none(),
+        active: *GPU_DECODE_ACTIVE.get().unwrap_or(&false),
+    }
+}
+
 // On Android this function becomes the app's entry point; on desktop main.rs calls it.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -87,7 +126,11 @@ pub fn run() {
     #[cfg(target_os = "linux")]
     {
         private_gstreamer_registry();
-        no_nvidia_video_decoders();
+        let gpu_decode = early_config_dir().is_some_and(|dir| prefs::load(&dir).video.gpu_decode);
+        let _ = GPU_DECODE_ACTIVE.set(gpu_decode);
+        if !gpu_decode {
+            no_nvidia_video_decoders();
+        }
     }
     // Before anything else, so a crash during startup leaves a trace (see logging.rs).
     #[cfg(target_os = "linux")]
@@ -238,6 +281,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::confirm_quit,
+            gpu_decode,
             mini_player::mini_player,
             mini_player::set_mini_player,
             mini_player::set_mini_on_top,

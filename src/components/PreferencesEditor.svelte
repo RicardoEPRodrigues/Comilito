@@ -2,7 +2,7 @@
   // App preferences (this computer, docs/preferences.md): levels for new projects, playback,
   // projects folder and download tools, behaviour, and appearance. Never changes existing
   // projects. Appearance changes preview live and are undone if you cancel.
-  import { Film, FolderOpen, MousePointerClick, Palette, Play, RefreshCw, RotateCcw, SlidersHorizontal } from "@lucide/svelte";
+  import { Film, FolderOpen, LoaderCircle, MousePointerClick, Palette, Play, RefreshCw, RotateCcw, SlidersHorizontal } from "@lucide/svelte";
   import { open } from "@tauri-apps/plugin-dialog";
   import type { Component } from "svelte";
   import { api } from "../lib/api";
@@ -87,6 +87,32 @@
       notify(String(err));
     }
   }
+
+  /** Update: downloads only what's out of date (Rust checks), with its progress shown here. */
+  let updatingTools = $state(false);
+  async function updateTools() {
+    updatingTools = true;
+    ui.toolsProgress = null;
+    try {
+      const tools = await api.installTools();
+      ui.tools = tools;
+      // A new ffmpeg may find other GPU encoders.
+      if (tools.updated.includes("ffmpeg")) encoders = null;
+      const versions = `yt-dlp ${tools.ytDlp ?? "?"}, ffmpeg ${tools.ffmpegVersion ?? "?"}`;
+      notify(tools.updated.length ? `Updated ${tools.updated.join(" and ")} (${versions}).` : `The download tools are up to date (${versions}).`);
+    } catch (err) {
+      notify(`Couldn't update the download tools: ${err}`);
+    } finally {
+      updatingTools = false;
+      ui.toolsProgress = null;
+    }
+  }
+
+  // Decoding videos on the GPU (decision 0052): Linux only, read when Comilito starts.
+  let gpuDecode = $state<{ available: boolean; active: boolean } | null>(null);
+  $effect(() => {
+    if (page === "video" && gpuDecode === null) api.gpuDecode().then((g) => (gpuDecode = g)).catch(() => {});
+  });
 
   async function removeTools() {
     if (!(await confirmAction("Remove the download tools?", "yt-dlp and ffmpeg are deleted. They're downloaded again the next time you need them.", "Remove", true))) return;
@@ -250,6 +276,18 @@
                 <input type="checkbox" bind:checked={draft.video.keepPlayingWhenPaused} />
                 <span>Keep the video playing while the sound is paused (Space); Esc still blanks it</span>
               </label>
+              {#if gpuDecode?.available}
+                <label class="switch">
+                  <input type="checkbox" bind:checked={draft.video.gpuDecode} />
+                  <span>Decode videos on the GPU (NVIDIA, experimental)</span>
+                </label>
+                <p class="muted small">
+                  Lets NVIDIA's GStreamer decoders play videos, which takes work off the CPU. Needs
+                  <code>gstreamer1.0-plugins-bad</code>; VP8 and VP9 on GStreamer 1.20, AV1 too on newer
+                  ones. Intel and AMD GPUs are used without this setting.
+                  {#if draft.video.gpuDecode !== gpuDecode.active}<strong class="warn-note">Applies the next time Comilito starts.</strong>{/if}
+                </p>
+              {/if}
             </section>
             <section class="form">
               <div class="section-head"><span class="caps">Downloads and import</span></div>
@@ -323,10 +361,18 @@
                 <span class="grow">
                   yt-dlp {ui.tools.ytDlp ?? "not installed"} · ffmpeg {ui.tools.ffmpeg ? (ui.tools.ffmpegVersion ?? "(older build: Update for GPU video conversion)") : "not installed"} · {formatBytes(ui.tools.size)} on disk
                 </span>
-                <!-- Updating may replace ffmpeg, and with it the GPU encoders found. -->
-                <button onclick={() => run(api.installTools().then((t) => ((ui.tools = t), (encoders = null))))}>Update</button>
-                <button class="danger" onclick={removeTools}>Remove</button>
+                <button onclick={updateTools} disabled={updatingTools}>
+                  {#if updatingTools}<LoaderCircle size={13} class="spin" />Updating…{:else}Update{/if}
+                </button>
+                <button class="danger" onclick={removeTools} disabled={updatingTools}>Remove</button>
               </div>
+              {#if updatingTools}
+                {@const p = ui.toolsProgress}
+                <p class="muted small tools-progress">
+                  {#if p?.total}Downloading {p.step} · {formatBytes(p.done)} of {formatBytes(p.total)}{:else if p}{p.step === "yt-dlp" ? "Updating yt-dlp" : p.step}…{:else}Checking for newer versions…{/if}
+                </p>
+                {#if p?.total}<div class="tools-track"><div style:width="{(p.done / p.total) * 100}%"></div></div>{/if}
+              {/if}
             {:else}
               <ToolsInstall />
             {/if}
@@ -497,6 +543,19 @@
   code {
     font-size: 0.82rem;
     user-select: text;
+  }
+  .tools-track {
+    height: 5px;
+    background: var(--track);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .tools-track div {
+    height: 100%;
+    background: var(--accent);
+  }
+  .tools-progress {
+    margin: 0;
   }
   .warn-note {
     color: var(--warn);

@@ -85,6 +85,7 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 | Picture | fill the window (crop the edges); or show the whole picture | this computer |
 | Crossfade between videos | 1 s | this computer |
 | Keep the video playing while the sound is paused (Space; Esc still blanks it) | on | this computer |
+| Decode videos on the GPU (NVIDIA, Linux; not in the AppImage) | off. Applies from the next start ([0052](decisions/0052-gpu-video-decoding-preference.md)) | this computer |
 | Video resolution when downloading | up to 1080p | this computer |
 | Videos that may not play | ask (other choices: always convert, never convert) | this computer |
 | Convert videos with | Automatic: the first GPU that works, else the CPU (other choices: a GPU found on this computer, CPU only) ([0051](decisions/0051-gpu-video-encoding.md)) | this computer |
@@ -154,7 +155,8 @@ App `preferences.json` (`src-tauri/src/prefs.rs`), with its defaults:
     "downloadHeight": 1080,
     "convert": "ask",
     "keepPlayingWhenPaused": true,
-    "encoder": "auto"
+    "encoder": "auto",
+    "gpuDecode": false
   },
   "newProjectDefaults": { "...": "masterVolume, categories, defaults and backups, as in a project" }
 }

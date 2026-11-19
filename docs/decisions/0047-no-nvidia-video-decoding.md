@@ -1,6 +1,6 @@
 # 0047. Decode videos without NVIDIA's hardware decoders on Linux
 
-- Status: Accepted
+- Status: Accepted (made opt-out by a preference in 0052)
 - Date: 2026-11-16
 
 ## Context

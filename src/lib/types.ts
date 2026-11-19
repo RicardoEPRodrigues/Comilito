@@ -94,6 +94,8 @@ export interface VideoPrefs {
   keepPlayingWhenPaused: boolean;
   /** What converts videos (decision 0051): "auto", "cpu", or a GPU encoder's id. */
   encoder: string;
+  /** Linux: let NVIDIA's GStreamer decoders play videos (decision 0052); read at start. */
+  gpuDecode: boolean;
 }
 
 /** A GPU encoder that works on this computer (decision 0051). */
@@ -407,6 +409,8 @@ export interface ToolsStatus {
   ffmpeg: boolean;
   /** The installed ffmpeg release ("9.0"); null for a build from before decision 0051. */
   ffmpegVersion: string | null;
+  /** After an install or update: what was downloaded (empty: everything was up to date). */
+  updated: string[];
   size: number;
 }
 

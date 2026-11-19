@@ -13,6 +13,10 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Added
 
+- **Decode videos on the GPU** (Linux, NVIDIA): a new, experimental switch in Preferences ›
+  Video lets NVIDIA's GStreamer decoders play videos, taking work off the CPU. Off by default;
+  it applies the next time Comilito starts. (Intel and AMD GPUs, and Windows and macOS, already
+  decode on the GPU.)
 - **Videos convert on the GPU** when it can: NVIDIA (RTX 40 and newer), recent Intel and AMD
   GPUs encode AV1, which plays everywhere, many times faster than the CPU (a 30-second 1080p60
   clip: about 3 s instead of 47 s on an RTX 5070 Ti). Preferences › Video › *Convert videos with*
@@ -161,6 +165,10 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 - The app icon is the plain horse-skull mark at every size; the decorated version was too busy.
 
 ### Fixed
+
+- *Update* in Preferences › Projects & tools › Download tools shows what it's doing (checking,
+  downloading with progress, unpacking) and then what was updated, or that everything was up to
+  date. It no longer downloads yt-dlp again when it's already the newest.
 
 - In Preferences › Appearance, a theme's name wraps onto a second line when it's long or its font
   is wide, instead of pushing the "Custom" badge out of its card.

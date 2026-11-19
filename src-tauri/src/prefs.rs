@@ -108,6 +108,8 @@ pub struct VideoPrefs {
     /// What converts videos (decision 0051): "auto" (the first GPU that works, else the CPU),
     /// "cpu", or a GPU encoder's id ("nvenc:0").
     pub encoder: String,
+    /// Linux: let NVIDIA's GStreamer decoders play videos (decision 0052). Read at start only.
+    pub gpu_decode: bool,
 }
 
 impl Default for VideoPrefs {
@@ -122,6 +124,7 @@ impl Default for VideoPrefs {
             convert: ask(),
             keep_playing_when_paused: true,
             encoder: "auto".into(),
+            gpu_decode: false,
         }
     }
 }
