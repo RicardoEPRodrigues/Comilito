@@ -40,6 +40,11 @@ const OPTIONAL = [
   "alpha", "alphacolor", "videocrop", "videobox", "imagefreeze",
   // plugins-bad, only ones without patent trouble
   "videoparsersbad", "aom", "codecalpha",
+  // plugins-bad: NVIDIA's decoders, for Preferences › Video › "Decode videos on the GPU"
+  // (decision 0053). The plugin carries no codec of its own: it loads CUDA and NVDEC from the
+  // system's NVIDIA driver when it starts, and registers nothing where there's no NVIDIA GPU.
+  // With the switch off, Comilito ranks its decoders out at startup (decision 0047).
+  "nvcodec",
 ];
 
 const args = process.argv.slice(2);

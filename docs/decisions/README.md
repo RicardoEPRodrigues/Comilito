@@ -58,7 +58,8 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0049](0049-mini-player.md) | A mini player in the main window, also used by narrow windows | Accepted | 2026-11-19 |
 | [0050](0050-accent-following-themes.md) | Theme colours that follow the accent; Birch replaces Hearth | Accepted | 2026-11-19 |
 | [0051](0051-gpu-video-encoding.md) | Convert videos on the GPU; ffmpeg from BtbN's release builds | Accepted | 2026-11-19 |
-| [0052](0052-gpu-video-decoding-preference.md) | A preference to decode videos on NVIDIA GPUs (Linux) | Accepted | 2026-11-19 |
+| [0052](0052-gpu-video-decoding-preference.md) | A preference to decode videos on NVIDIA GPUs (Linux) | Accepted (AppImage in 0053) | 2026-11-19 |
+| [0053](0053-nvidia-decoders-in-the-appimage.md) | Carry NVIDIA's GStreamer decoders in the AppImage | Accepted | 2026-11-19 |
 
 ## Template
 

@@ -104,8 +104,8 @@ fn early_config_dir() -> Option<PathBuf> {
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct GpuDecode {
-    /// Whether the setting means anything here: Linux, not the AppImage (which carries only
-    /// software decoders, decision 0041). Elsewhere the webview decodes on the GPU by itself.
+    /// Whether the setting means anything here: Linux, the AppImage included (it carries
+    /// NVIDIA's decoder plugin, decision 0053). Elsewhere the webview decodes on the GPU by itself.
     available: bool,
     /// Whether this run uses the GPU decoders.
     active: bool,
@@ -114,7 +114,7 @@ struct GpuDecode {
 #[tauri::command]
 fn gpu_decode() -> GpuDecode {
     GpuDecode {
-        available: cfg!(target_os = "linux") && std::env::var_os("APPIMAGE").is_none(),
+        available: cfg!(target_os = "linux"),
         active: *GPU_DECODE_ACTIVE.get().unwrap_or(&false),
     }
 }

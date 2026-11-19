@@ -111,7 +111,10 @@ it's appended before the new cluster. On Windows and macOS a plain `src` is used
 
 On Linux, Comilito keeps GStreamer from picking NVIDIA's hardware video decoders
 (`GST_PLUGIN_FEATURE_RANK`, set at startup): they freeze after jumps
-([0047](decisions/0047-no-nvidia-video-decoding.md)). The AppImage doesn't carry them anyway.
+([0047](decisions/0047-no-nvidia-video-decoding.md)), unless Preferences › Video › "Decode videos
+on the GPU" is on ([0052](decisions/0052-gpu-video-decoding-preference.md)). The AppImage carries
+NVIDIA's decoder plugin too, which uses the system's NVIDIA driver
+([0053](decisions/0053-nvidia-decoders-in-the-appimage.md)).
 
 ## Trimming
 
