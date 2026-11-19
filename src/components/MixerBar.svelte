@@ -37,7 +37,11 @@
   </button>
   <button class="stop" onclick={() => run(api.stopAll())} title="Stop all (Esc)" aria-label="Stop all"><Square size={13} /></button>
   <span class="divider"></span>
-  <VolumeSlider label="Master" value={project.masterVolume} onchange={(v) => run(api.setMasterVolume(v))} />
+  <!-- An empty line where the scene sliders have their owner's name, so all four line up. -->
+  <div class="master">
+    <span class="owner caps" aria-hidden="true">&nbsp;</span>
+    <VolumeSlider label="Master" value={project.masterVolume} onchange={(v) => run(api.setMasterVolume(v))} />
+  </div>
   <span class="divider"></span>
   <div
     class="scene-levels"
@@ -158,6 +162,12 @@
     width: 1px;
     height: 2.2rem;
     background: color-mix(in srgb, var(--mixer-text) 25%, transparent);
+  }
+  .master {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    flex: none;
   }
   .scene-levels {
     display: flex;

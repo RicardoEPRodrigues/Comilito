@@ -9,6 +9,7 @@
   import { project, remember, ui } from "../lib/store.svelte";
   import type { Scene, StackPreset } from "../lib/types";
   import GroupHeading from "./GroupHeading.svelte";
+  import SceneContents from "./SceneContents.svelte";
 
   const p = $derived(project()!);
   const inStack = $derived(new Set(p.stack.filter((e) => e.enabled).map((e) => e.scene)));
@@ -62,6 +63,7 @@
   >
     <span class="dot" class:on={inStack.has(scene.id)}></span>
     <span class="name">{scene.name}</span>
+    <span class="contents"><SceneContents {scene} size={11} /></span>
     {#if scene.hotkey}<kbd>{scene.hotkey}</kbd>{/if}
   </button>
 {/snippet}
@@ -236,6 +238,16 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .contents {
+    flex: none;
+    color: var(--side-muted);
+    font-weight: 400;
+  }
+  .contents :global(.contents) {
+    flex-wrap: nowrap;
+    gap: 0.45rem;
+    font-size: 0.66rem;
   }
   kbd,
   .loaded {

@@ -1,7 +1,7 @@
 <script lang="ts">
   // The Scenes tab: scene cards in collapsible groups. Drag a scene into the tapestry, or drop
   // a sound from the Library on a scene to add it there. The ⋯ menu (or right-click) has the rest.
-  import { Copy, Ellipsis, FolderInput, FolderMinus, FolderPlus, Pencil, Plus, Replace, TextCursorInput, Trash2, ArrowUpToLine, Film } from "@lucide/svelte";
+  import { Copy, Ellipsis, FolderInput, FolderMinus, FolderPlus, Pencil, Plus, Replace, TextCursorInput, Trash2, ArrowUpToLine } from "@lucide/svelte";
   import { api } from "../lib/api";
   import {
     addSceneOnTop,
@@ -14,10 +14,10 @@
     ungroupScenes,
   } from "../lib/actions";
   import { focusOn, project, run, ui } from "../lib/store.svelte";
-  import { videoEnabled } from "../lib/video";
   import type { Scene } from "../lib/types";
   import { openMenu, type MenuItem } from "./ContextMenu.svelte";
   import GroupHeading from "./GroupHeading.svelte";
+  import SceneContents from "./SceneContents.svelte";
 
   const p = $derived(project()!);
   const inStack = $derived(new Set(p.stack.filter((e) => e.enabled).map((e) => e.scene)));
@@ -29,7 +29,7 @@
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
   });
 
-  /** "Music · 3 tracks · 2 layers"-style summary. */
+  /** "Music · 3 tracks · 2 layers"-style summary, for the card's tooltip (the card shows icons). */
   function meta(s: Scene): string {
     const parts: string[] = [];
     const tracks = s.music?.tracks.length ?? 0;
@@ -104,7 +104,7 @@
     role="button"
     tabindex="0"
     draggable="true"
-    title="Drag into the tapestry · double-click to add on top"
+    title={`${meta(scene)}\nDrag into the tapestry · double-click to add on top`}
     ondragstart={(e) => startDrag(e, scene.id)}
     ondragend={() => (ui.drag = null)}
     ondragover={(e) => {
@@ -142,9 +142,8 @@
     <span class="dot" class:on={inStack.has(scene.id)} title={inStack.has(scene.id) ? "In the tapestry" : ""}></span>
     <span class="text">
       <span class="name">{scene.name}</span>
-      <span class="meta">{meta(scene)}</span>
+      <span class="meta"><SceneContents {scene} /></span>
     </span>
-    {#if scene.video && videoEnabled()}<span class="has-video" title="Has videos"><Film size={13} /></span>{/if}
     {#if scene.hotkey}<kbd>{scene.hotkey}</kbd>{/if}
     <button class="icon" title="Scene options" onclick={(e) => openMenu(e, menuFor(scene), scene.name)}><Ellipsis size={16} /></button>
   </div>
@@ -173,11 +172,6 @@
 </div>
 
 <style>
-  .has-video {
-    color: var(--side-muted);
-    display: inline-flex;
-    flex: none;
-  }
   .list {
     flex: 1;
     overflow: auto;

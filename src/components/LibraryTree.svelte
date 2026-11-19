@@ -6,6 +6,7 @@
   // Sounds (the three audio categories) and Videos (ambience videos and video effects), each
   // with its own smart lists.
   import { fitText } from "../lib/fit";
+  import { SHELF_ICONS } from "../lib/icons";
   import {
     AudioLines,
     ChevronDown,
@@ -13,8 +14,6 @@
     CircleDashed,
     FilePlus,
     Film,
-    Mountain,
-    Sparkles,
     Folder,
     FolderOpen,
     FolderInput,
@@ -22,13 +21,11 @@
     History,
     Library,
     Link,
-    Music,
     Pencil,
     Search,
     Star,
     Trash2,
     TriangleAlert,
-    Zap,
   } from "@lucide/svelte";
   import type { Component } from "svelte";
   import { api } from "../lib/api";
@@ -44,7 +41,7 @@
   const project = $derived(snapshot.project!);
   const lib = ui.library;
 
-  const ICONS: Record<Shelf, Component> = { music: Music, ambience: AudioLines, effects: Zap, ambienceVideo: Mountain, videoEffect: Sparkles };
+  const ICONS = SHELF_ICONS;
   /** The Videos tab is open (only while video is on). */
   const videosTab = $derived(videoEnabled() && ui.libraryTab === "videos");
   /** The shelves of the open tab. */

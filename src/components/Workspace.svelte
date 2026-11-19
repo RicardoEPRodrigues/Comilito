@@ -26,17 +26,29 @@
   import SceneEditor from "./SceneEditor.svelte";
   import TapestryPanel from "./TapestryPanel.svelte";
   import MiniPlayer from "./MiniPlayer.svelte";
+  import { untrack } from "svelte";
 
   /** Narrower than this (CSS pixels, so the interface scale counts), the three columns don't
    *  fit: the mini player turns on. Widened again, it turns off. */
   const NARROW = 860;
   let width = $state(window.innerWidth);
   const narrow = $derived(width < NARROW);
+  /** `narrow` when the effect below last ran; undefined before its first run. */
+  let wasNarrow: boolean | undefined;
   $effect(() => {
+    // Only the window's width (and an editor closing) drives this, not the mini player's own
+    // state: the buttons turn it on before the window has shrunk, and reacting to that would
+    // turn it straight back off. `untrack` reads `ui.mini.on` without re-running on its changes.
+    const isNarrow = narrow;
+    const crossed = isNarrow !== wasNarrow;
+    wasNarrow = isNarrow;
     // Not while editing something in place or in the Library workspace: the mini player has
     // neither, and switching would throw away unsaved edits. Those stay until they're closed.
-    if (narrow && !ui.mini.on && !ui.focus && ui.view === "tapestry") setMiniPlayer(true, false);
-    else if (!narrow && ui.mini.on) setMiniPlayer(false, false);
+    const free = !ui.focus && ui.view === "tapestry";
+    untrack(() => {
+      if (isNarrow && free && !ui.mini.on) setMiniPlayer(true, false);
+      else if (!isNarrow && crossed && ui.mini.on) setMiniPlayer(false, false);
+    });
   });
   const mini = $derived(ui.mini.on);
 

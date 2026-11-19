@@ -142,6 +142,15 @@
     text-align: left;
     color: var(--text);
   }
+  /* A long name (or one long word) wraps inside the button instead of running out of it. */
+  .pad button {
+    min-width: 0;
+    overflow: hidden;
+  }
+  .pad button span {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
   .pad button :global(svg) {
     color: var(--accent);
   }

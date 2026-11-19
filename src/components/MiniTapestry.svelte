@@ -9,6 +9,7 @@
   import { run, sceneById, ui } from "../lib/store.svelte";
   import type { Scene, StackEntry } from "../lib/types";
   import Capital from "./Capital.svelte";
+  import SceneContents from "./SceneContents.svelte";
   import { openMenu, type MenuItem } from "./ContextMenu.svelte";
 
   const snapshot = $derived(ui.snapshot!);
@@ -115,7 +116,10 @@
         title="Enable / disable"
       />
       <Capital name={scene?.name ?? "?"} size={28} {live} />
-      <span class="name">{scene?.name ?? "?"}</span>
+      <span class="text">
+        <span class="name">{scene?.name ?? "?"}</span>
+        {#if scene && entry.enabled}<span class="contents"><SceneContents {scene} size={11} /></span>{/if}
+      </span>
       {#if music === "playing"}
         <span class="status playing"><Music size={10} />Playing</span>
       {:else if music === "paused"}
@@ -186,9 +190,22 @@
   input {
     margin: 0;
   }
-  .name {
+  .text {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .contents {
+    color: var(--muted);
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .contents :global(.contents) {
+    flex-wrap: nowrap;
+    font-size: 0.66rem;
+  }
+  .name {
     font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;

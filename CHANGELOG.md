@@ -107,6 +107,11 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Changed
 
+- **Scenes say what they hold with icons:** in the Scenes tab, the Tapestry and the mini player,
+  a scene's music tracks, ambience layers, effects and videos show as the Library's category
+  icons with a count (and the Tapestry's ducking as "⌄ 30%"), instead of a sentence. Hover an
+  icon, or the scene, for the words.
+
 - **Narrow windows:** making the window narrower than about 860 px turns on the mini player
   (without keeping it on top; its pin does that), and widening it past that turns it off. The
   window can now be made as small as 360 × 420. Below 1100 px the side columns narrow, the
@@ -135,6 +140,11 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 - The app icon is the plain horse-skull mark at every size; the decorated version was too busy.
 
 ### Fixed
+
+- A long effect name wraps inside its button on the effects pad instead of running out of it.
+- The bottom bar's master volume lines up with the scene's volumes.
+- The mini player's button now always keeps the window on top: the window's own resize could
+  briefly turn the mini player off and back on as if the window had been narrowed by hand.
 
 - The bottom bar's "now showing" video no longer lets its text spill out of its box; long names
   and details end with "…".

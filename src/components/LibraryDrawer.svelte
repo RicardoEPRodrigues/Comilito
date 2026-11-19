@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { SHELF_ICONS } from "../lib/icons";
   // The Library drawer along the bottom of the Tapestry view (decision 0017).
   //
   // Open: three columns (Music, Ambience, Effects), each grouped by Library folder, with
@@ -12,8 +13,6 @@
     ChevronsDownUp,
     ChevronsUpDown,
     Film,
-    Mountain,
-    Sparkles,
     FilePlus,
     Folder,
     FolderOpen,
@@ -21,11 +20,9 @@
     Layers,
     Link,
     Maximize2,
-    Music,
     Plus,
     Search,
     Star,
-    Zap,
   } from "@lucide/svelte";
   import type { Component } from "svelte";
   import { api } from "../lib/api";
@@ -48,7 +45,7 @@
    *  dragged would go with it and WebKit would cancel the drag. So it stays until the drag ends. */
   let holdingQuick = $state(false);
 
-  const ICONS: Record<Shelf, Component> = { music: Music, ambience: AudioLines, effects: Zap, ambienceVideo: Mountain, videoEffect: Sparkles };
+  const ICONS = SHELF_ICONS;
   const FILTERS: { id: Filter; label: string; icon?: Component }[] = [
     { id: "all", label: "All" },
     { id: "favourites", label: "Favourites", icon: Star },

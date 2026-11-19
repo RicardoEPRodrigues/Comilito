@@ -12,6 +12,7 @@
   import {
     BookmarkPlus,
     ChevronDown,
+    ChevronsDown,
     ChevronUp,
     Ellipsis,
     Eraser,
@@ -36,6 +37,7 @@
   import { videoById } from "../lib/video";
   import { ROLES, roleLabel, type Role, type Scene, type StackEntry } from "../lib/types";
   import Capital from "./Capital.svelte";
+  import SceneContents from "./SceneContents.svelte";
   import { openMenu, type MenuItem } from "./ContextMenu.svelte";
   import Watermark from "./Watermark.svelte";
 
@@ -147,6 +149,17 @@
     return "covered";
   }
 
+  /** How much this scene turns down the ones below (not for the bottom one: nothing is below). */
+  function ducking(entry: StackEntry, scene: Scene): { label: string; title: string } | null {
+    const duck = scene.duckLevel ?? project.defaults.duckLevel;
+    // A scene only ducks the roles it has layers for, unless it ducks everything.
+    const ducks = scene.ducksAll || scene.ambience.length > 0;
+    if (!ducks || duck >= 1 || entry.id === displayed[displayed.length - 1]?.id) return null;
+    const what = scene.ducksAll ? "all the ambience below" : "the ambience below";
+    return { label: percent(duck), title: `Ducks ${what} to ${percent(duck)}` };
+  }
+
+  /** The whole summary in words: the tooltip (the entry shows icons, SceneContents.svelte). */
   function meta(entry: StackEntry, scene: Scene | undefined): string {
     if (!scene) return "";
     if (!entry.enabled) return "Disabled · keeps its place in the tapestry";
@@ -305,9 +318,18 @@
             title="Enable / disable (or middle-click the scene)"
           />
           <Capital name={scene?.name ?? "?"} live={live} />
-          <button class="text" onclick={() => toggleExpanded(entry.id)}>
+          <button class="text" title={meta(entry, scene)} onclick={() => toggleExpanded(entry.id)}>
             <span class="name">{scene?.name ?? "?"}</span>
-            <span class="meta">{meta(entry, scene)}</span>
+            {#if !entry.enabled || !scene}
+              <span class="meta">{meta(entry, scene)}</span>
+            {:else}
+              {@const duck = ducking(entry, scene)}
+              <span class="meta">
+                <SceneContents {scene}>
+                  {#if duck}<span class="item" title={duck.title}><ChevronsDown size={12} />{duck.label}</span>{/if}
+                </SceneContents>
+              </span>
+            {/if}
           </button>
           {#if music === "playing"}
             <span title="Its music is playing" class="status playing"><Music size={11} /><span class="label">Playing</span></span>
