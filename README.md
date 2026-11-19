@@ -3,6 +3,14 @@
 A lightweight desktop soundboard and mixer for game masters of tabletop role-playing games, such
 as Dungeons & Dragons, Pathfinder or Call of Cthulhu.
 
+Comilito is free and made in spare time. If it livens up your table, you can support its
+development with a donation on Liberapay:
+
+[![Donate using Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/RicardoEPRodrigues/donate)
+
+> **Disclaimer:** Comilito was made mostly with AI (Claude, through Claude Code). The author
+> directs the design and the decisions and tests the app, but most of the code was written by AI.
+
 ![Comilito with the sample project open: three scenes stacked in the Tapestry, the top one silencing the music below it, with the effects pad on the right and the Library underneath](docs/images/screenshot.png)
 
 ## What it does
@@ -153,8 +161,7 @@ The AppImage carries only the GStreamer plugins videos need; see
 
 ## Contributing
 
-Comilito is free and made in spare time. If it livens up your table, you can support its
-development with a donation on Liberapay:
+You can support Comilito with a donation on Liberapay:
 
 [![Donate using Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/RicardoEPRodrigues/donate)
 
@@ -168,6 +175,3 @@ Inspired by [Ascapes Mixer](https://github.com/ilyaly/ascapes-mixer) by ilyaly (
 [dnd-soundboard](https://github.com/carolinabras/dnd-soundboard) by carolinabras.
 Comilito is an independent implementation, not a fork of either. Sample audio credits and other
 acknowledgements are in [CREDITS.md](CREDITS.md) and the app's About window.
-
-Comilito was created with the help of AI (Claude, through Claude Code), with the author directing
-the design and decisions.
