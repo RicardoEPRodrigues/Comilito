@@ -124,12 +124,20 @@ On the owner's desktop, force X11 through XWayland — same commands, started wi
 env -u WAYLAND_DISPLAY GDK_BACKEND=x11 ~/.cargo/bin/tauri-driver &
 ```
 
-Headless, on a virtual X display (no window on the user's desktop, no permission needed;
-needs `sudo apt install xvfb`, not yet tried here):
+Headless, on a virtual X display (no window on the user's desktop, no permission needed):
 
 ```bash
 env -u WAYLAND_DISPLAY GDK_BACKEND=x11 xvfb-run -a -s '-screen 0 1600x1000x24' ~/.cargo/bin/tauri-driver &
 ```
+
+- WebDriver's `/screenshot` hangs on the virtual display. Capture the display instead:
+  `XAUTHORITY=$(ls /tmp/xvfb-run.*/Xauthority) DISPLAY=:99 import -window root shot.png`
+  (ImageMagick; `xvfb-run -a` picks `:99` first), then crop with `convert … -trim`.
+- The app uses the real config, data and projects folders. To keep the owner's preferences,
+  window state and projects untouched, start `tauri-driver` with `HOME`, `XDG_CONFIG_HOME`,
+  `XDG_DATA_HOME` and `XDG_CACHE_HOME` pointing into a scratch folder (create
+  `$HOME/Documents` there), and make a project with
+  `window.__TAURI_INTERNALS__.invoke("create_project", {name: "Test", sample: true})`.
 
 Use X11 for anything Wayland doesn't allow apps to do (e.g. setting their own window position)
 and to check that X11 users aren't broken; Wayland is what most Linux users will run.
