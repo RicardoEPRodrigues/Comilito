@@ -56,6 +56,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0047](0047-no-nvidia-video-decoding.md) | Decode videos without NVIDIA's hardware decoders on Linux | Accepted | 2026-11-16 |
 | [0048](0048-interface-scale.md) | Scale the interface with the webview's zoom | Accepted | 2026-11-18 |
 | [0049](0049-mini-player.md) | A mini player in the main window, also used by narrow windows | Accepted | 2026-11-19 |
+| [0050](0050-accent-following-themes.md) | Theme colours that follow the accent; Birch replaces Hearth | Accepted | 2026-11-19 |
 
 ## Template
 

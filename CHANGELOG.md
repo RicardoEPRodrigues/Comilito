@@ -27,7 +27,12 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 - **Downloads** from YouTube and other sites (through yt-dlp, which Comilito downloads and
   updates itself) or from direct audio links, optionally only part of a long video.
 - **Cropping** sounds on their waveform, saving a copy or replacing the original.
-- **Themes:** Codex, Ironwood and Hearth, your own themes, and the desktop's accent colour.
+- **Themes:** Codex (parchment), Ironwood (dark) and Birch (clear and light), your own themes,
+  and the desktop's accent colour. Codex's header follows the accent you choose. A theme can
+  colour its header, side panel or mixer bar with whatever accent is in use, or keep its own
+  accent whatever is chosen (for themes built around one colour).
+- **Hearth** is now an optional theme in `extras/themes/` (import it from Preferences ›
+  Appearance); its red side panel follows the accent.
 - **Themes can bring their own woodcut and fonts.** Themes are now shared as `.comilito-theme`
   files, which can include a watermark (drawn in the theme's gold, in place of the skeletal
   horse), font files and their licences. Theme files exported earlier (`.json`) still import.
@@ -142,6 +147,9 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 - The app icon is the plain horse-skull mark at every size; the decorated version was too busy.
 
 ### Fixed
+
+- A sound's page in the Library has its Duplicate and Remove buttons next to its name, as icons,
+  like a video's page; on both, Remove is red.
 
 - A long effect name wraps inside its button on the effects pad instead of running out of it.
 - The bottom bar's master volume lines up with the scene's volumes.

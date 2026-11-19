@@ -4,8 +4,24 @@
 > [decision 0025](decisions/0025-theme-packages.md)).
 
 A theme is a set of design tokens: colours, a display font, a body font, and whether it's light
-or dark. The three built-in themes (Codex, Ironwood, Hearth) live in `src/lib/themes.ts`. User
-themes are saved by Rust (`src-tauri/src/themes.rs`) in the app's config folder.
+or dark. The three built-in themes (Codex, Ironwood, Birch) live in `src/lib/themes.ts`. User
+themes are saved by Rust (`src-tauri/src/themes.rs`) in the app's config folder. Hearth, built in
+until [decision 0050](decisions/0050-accent-following-themes.md), is an extra theme now.
+
+## Following the accent
+
+The accent is the theme's own, the desktop's, or a custom colour (Preferences › Appearance). A
+colour token can be the word `"accent"` instead of a colour: it then takes whichever accent is in
+use ([decision 0050](decisions/0050-accent-following-themes.md)). Codex's header does this.
+
+- The theme editor offers it (the link button) for the header, side panel and mixer bar
+  backgrounds, the gold and the borders.
+- When the header, side panel or mixer bar follows the accent, the text on it follows too: near
+  white or near black, whichever reads better on that accent (the side panel's secondary text is
+  that colour mixed 72% into the accent). The theme's own text colours for it are ignored.
+- `"fixedAccent": true` makes the theme always use its own accent, whatever is chosen in
+  Preferences, for themes built around one colour (Horde, Alliance). Preferences says so when
+  such a theme is in use.
 
 A user theme can also bring files with it:
 
@@ -72,7 +88,8 @@ imported theme always gets a new one, so importing never overwrites anything):
   "fonts": { "display": "New Rocker", "body": "Inter" },
   "watermark": "watermark.png",
   "fontFiles": { "New Rocker": "fonts/NewRocker.woff2" },
-  "licences": ["fonts/OFL.txt"]
+  "licences": ["fonts/OFL.txt"],
+  "fixedAccent": true
 }
 ```
 
@@ -87,7 +104,8 @@ files.
 
 A theme file is something people download and pass around, so import is strict:
 
-- colours must be `#rgb` or `#rrggbb`, and font names only letters, digits, spaces, `-` and `_`;
+- colours must be `#rgb`, `#rrggbb` or `accent`, and font names only letters, digits, spaces, `-`
+  and `_`;
 - every file the theme names must be in the package, of a type allowed for its role, and its
   first bytes must match its extension (a "PNG" that's really an HTML page is refused);
 - `theme.json` is limited to 256 KB, each file to 4 MB, and the whole package to 16 MB, counted

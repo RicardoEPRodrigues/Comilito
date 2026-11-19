@@ -22,6 +22,7 @@
     "track": "#3d2a22",
     "warn": "#e0a43a"
   },
+  "fixedAccent": true,
   "fonts": { "display": "New Rocker", "body": "Inter" },
   "watermark": "watermark.png",
   "fontFiles": { "New Rocker": "fonts/NewRocker-Regular.woff2" },

@@ -385,6 +385,8 @@ export interface Theme {
   /** Font family → font file, for fonts that come with the theme. */
   fontFiles?: Record<string, string>;
   licences?: string[];
+  /** Always use the theme's own accent, whatever the user picked (decision 0050). */
+  fixedAccent?: boolean;
 }
 
 export interface DesktopAppearance {

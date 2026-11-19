@@ -1,6 +1,10 @@
 // Themes (decision 0016): every colour and font is a named token, set as a CSS variable on
 // <html>. Components only ever use `var(--token)`, so switching theme is just setting new
-// values. The three built-in themes come from the designs in pencil/comilito.pen.
+// values. The built-in themes come from the designs in pencil/comilito.pen.
+//
+// A token can be "accent" instead of a colour (decision 0050): it then takes whatever accent is
+// in use (the theme's, the desktop's or the user's), and the text on it follows (see
+// ACCENT_PAIRS). A theme with `fixedAccent` always uses its own accent.
 //
 // User themes have the same shape and are stored by Rust (src-tauri/src/themes.rs).
 
@@ -47,7 +51,8 @@ export const BUILT_IN_THEMES: Theme[] = [
       rule: "#c6b88f",
       gold: "#c6b88f",
       accent: "#dd4b2e",
-      "header-bg": "#dd4b2e",
+      // The header is the accent (decision 0050), so it follows a desktop or custom accent.
+      "header-bg": "accent",
       "header-text": "#fbf4e8",
       "side-bg": "#e8e3c8",
       "side-text": "#281d1b",
@@ -87,33 +92,46 @@ export const BUILT_IN_THEMES: Theme[] = [
     },
   },
   {
-    id: "hearth",
-    name: "Hearth",
+    // Ironwood's light sibling (decision 0050): clear and bright, cool white instead of
+    // Codex's parchment, the same ember accent and Grenze Gotisch headings.
+    id: "birch",
+    name: "Birch",
     dark: false,
-    fonts: { display: "Pirata One", body: "Inter" },
+    fonts: { display: "Grenze Gotisch", body: "Inter" },
     colors: {
-      bg: "#f4f2e9",
-      surface: "#fbfaf4",
-      text: "#281d1b",
-      muted: "#7a6a5e",
-      rule: "#c6b88f",
-      gold: "#c6b88f",
-      accent: "#dd4b2e",
-      "header-bg": "#281d1b",
-      "header-text": "#f4f2e9",
-      "side-bg": "#dd4b2e",
-      "side-text": "#fbf4e8",
-      "side-muted": "#f8cdbf",
-      "fx-bg": "#e8e3c8",
-      "mixer-bg": "#281d1b",
-      "mixer-text": "#f4f2e9",
-      track: "#e3dcc4",
+      bg: "#f7f5f2",
+      surface: "#ffffff",
+      text: "#2a201d",
+      muted: "#75675e",
+      rule: "#ddd4ca",
+      gold: "#b8a27c",
+      accent: "#d1492b",
+      "header-bg": "#ebe6e0",
+      "header-text": "#2a201d",
+      "side-bg": "#f0ece7",
+      "side-text": "#2a201d",
+      "side-muted": "#75675e",
+      "fx-bg": "#f0ece7",
+      "mixer-bg": "#e6e0d8",
+      "mixer-text": "#2a201d",
+      track: "#e4ddd3",
       warn: "#a8620e",
       danger: "#b3261e",
     },
   },
 ];
 
+/** Backgrounds that may follow the accent, and the text tokens on them. When the background
+ *  follows it, so do those, worked out to stay readable on whatever accent is chosen. */
+export const ACCENT_PAIRS: Record<string, string[]> = {
+  "header-bg": ["header-text"],
+  "side-bg": ["side-text", "side-muted"],
+  "mixer-bg": ["mixer-text"],
+};
+/** Tokens the theme editor lets follow the accent: those backgrounds, and the ornaments. */
+export const ACCENT_FOLLOWERS = [...Object.keys(ACCENT_PAIRS), "gold", "rule"];
+
+/** Hearth was a built-in theme until decision 0050 (now in extras/themes/); chosen, it gives Codex. */
 export function findTheme(id: string, userThemes: Theme[]): Theme {
   return [...BUILT_IN_THEMES, ...userThemes].find((t) => t.id === id) ?? BUILT_IN_THEMES[0];
 }
@@ -125,20 +143,39 @@ export function activeTheme(appearance: Appearance, desktop: DesktopAppearance |
   return findTheme(dark ? appearance.darkTheme : appearance.lightTheme, userThemes);
 }
 
-/** Sets the CSS variables and switches for a theme. */
-export function applyTheme(theme: Theme, appearance: Appearance, desktop: DesktopAppearance | null) {
-  const root = document.documentElement;
-  // Fill any token a (user) theme lacks from the built-in theme of the same lightness.
+/**
+ * A theme's colours as they'll be shown: tokens it lacks filled in from the built-in theme of
+ * the same lightness, the accent chosen in Preferences (unless the theme keeps its own), and
+ * every "accent" token replaced by it. Also adds `accent-text`, the text colour on the accent.
+ */
+export function resolveColors(theme: Theme, appearance: Appearance, desktop: DesktopAppearance | null): Record<string, string> {
   const base = BUILT_IN_THEMES.find((t) => t.id === (theme.dark ? "ironwood" : "codex"))!;
   const colors = { ...base.colors, ...theme.colors };
-
-  let accent = colors.accent;
-  if (appearance.accent === "desktop" && desktop?.accent) accent = desktop.accent;
-  if (appearance.accent === "custom" && /^#[0-9a-f]{6}$/i.test(appearance.customAccent)) accent = appearance.customAccent;
+  // The theme's own accent; a theme can't have "accent" as its accent, so fall back to the base's.
+  let accent = colors.accent === "accent" ? base.colors.accent : colors.accent;
+  if (!theme.fixedAccent) {
+    if (appearance.accent === "desktop" && desktop?.accent) accent = desktop.accent;
+    if (appearance.accent === "custom" && /^#[0-9a-f]{6}$/i.test(appearance.customAccent)) accent = appearance.customAccent;
+  }
   // Keep the accent readable against the page (3:1, the guideline for UI elements).
   colors.accent = ensureContrast(accent, colors.bg, 3);
   colors["accent-text"] = bestTextOn(colors.accent);
+  for (const [key, value] of Object.entries(colors)) if (value === "accent") colors[key] = colors.accent;
+  // Text on a background that follows the accent follows too: the theme's own text colour was
+  // chosen for its own accent and may not read on another.
+  for (const [bg, texts] of Object.entries(ACCENT_PAIRS)) {
+    if ((theme.colors[bg] ?? base.colors[bg]) !== "accent") continue;
+    for (const text of texts) {
+      colors[text] = text.endsWith("muted") ? mix(colors["accent-text"], colors.accent, 0.72) : colors["accent-text"];
+    }
+  }
+  return colors;
+}
 
+/** Sets the CSS variables and switches for a theme. */
+export function applyTheme(theme: Theme, appearance: Appearance, desktop: DesktopAppearance | null) {
+  const root = document.documentElement;
+  const colors = resolveColors(theme, appearance, desktop);
   for (const [key, value] of Object.entries(colors)) root.style.setProperty(`--${key}`, value);
   root.style.setProperty("--font-display", `${fontStack(theme.fonts.display)}, serif`);
   root.style.setProperty("--font-body", `${fontStack(theme.fonts.body)}, system-ui, sans-serif`);
@@ -236,6 +273,12 @@ function luminance(hex: string): number {
 export function contrast(a: string, b: string): number {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
+}
+
+/** `a` mixed with `b`, `amount` of the way towards `a` (in sRGB, like CSS color-mix). */
+function mix(a: string, b: string, amount: number): string {
+  const [x, y] = [hexToRgb(a), hexToRgb(b)];
+  return rgbToHex(x.map((v, i) => v * amount + y[i] * (1 - amount)) as Rgb);
 }
 
 /** Near-white or near-black, whichever reads better on `bg`. */

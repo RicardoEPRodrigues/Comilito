@@ -1,0 +1,26 @@
+{
+  "id": "",
+  "name": "Hearth",
+  "dark": false,
+  "colors": {
+    "accent": "#dd4b2e",
+    "bg": "#f4f2e9",
+    "danger": "#b3261e",
+    "fx-bg": "#e8e3c8",
+    "gold": "#c6b88f",
+    "header-bg": "#281d1b",
+    "header-text": "#f4f2e9",
+    "mixer-bg": "#281d1b",
+    "mixer-text": "#f4f2e9",
+    "muted": "#7a6a5e",
+    "rule": "#c6b88f",
+    "side-bg": "accent",
+    "side-muted": "#f8cdbf",
+    "side-text": "#fbf4e8",
+    "surface": "#fbfaf4",
+    "text": "#281d1b",
+    "track": "#e3dcc4",
+    "warn": "#a8620e"
+  },
+  "fonts": { "display": "Pirata One", "body": "Inter" }
+}

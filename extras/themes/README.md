@@ -7,6 +7,12 @@ Import theme file…**.
 |---|---|---|---|
 | **Horde** (dark) | charred iron, blood-red header and accent, bronze ornaments | New Rocker | a tribal war sigil on a round iron shield |
 | **Alliance** (light) | parchment, navy header, royal-blue accent, gold ornaments | Cinzel Decorative | a roaring lion in a kite shield, with fleur-de-lis and sword |
+| **Hearth** (light) | parchment, dark header, side panel in the accent colour | Pirata One (bundled) | the skeletal horse |
+
+Hearth was a built-in theme until [decision 0050](../../docs/decisions/0050-accent-following-themes.md);
+its side panel follows the accent (desktop or custom). Horde and Alliance keep their own accent
+whatever is chosen in Preferences (`"fixedAccent": true`), since their colours are built around
+one faction colour.
 
 The designs are in [pencil/extra-themes.pen](../../pencil/extra-themes.pen).
 
@@ -16,7 +22,7 @@ Each folder is a theme package unzipped (the format is described in
 [docs/themes.md](../../docs/themes.md)). To make the `.comilito-theme` files:
 
 ```bash
-extras/themes/build.sh        # writes extras/themes/dist/Horde.comilito-theme, Alliance.comilito-theme
+extras/themes/build.sh        # writes extras/themes/dist/<Name>.comilito-theme for each folder
 ```
 
 `dist/` is not committed. After changing a woodcut, keep it a single colour with a transparent

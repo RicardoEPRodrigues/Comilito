@@ -5,7 +5,7 @@
   import { open, save } from "@tauri-apps/plugin-dialog";
   import { api } from "../lib/api";
   import { confirmAction, refreshUserThemes, run, ui } from "../lib/store.svelte";
-  import { BUILT_IN_THEMES, activeTheme, findTheme, loadThemeFiles } from "../lib/themes";
+  import { BUILT_IN_THEMES, activeTheme, loadThemeFiles, resolveColors } from "../lib/themes";
   import { SCALES } from "../lib/scale";
   import type { Appearance, Theme } from "../lib/types";
   import ThemeEditor from "./ThemeEditor.svelte";
@@ -81,7 +81,7 @@
     <div class="section-head"><span class="caps">Theme</span><span class="hint">Built-in themes can be duplicated and edited; your own can be shared as files</span></div>
     <div class="cards">
       {#each themes as t (t.id)}
-        {@const colors = { ...findTheme(t.dark ? "ironwood" : "codex", []).colors, ...t.colors }}
+        {@const colors = resolveColors(t, appearance, ui.desktop)}
         <button class="card" class:selected={current.id === t.id} onclick={() => pick(t)}>
           <span class="preview" style:background={colors.bg}>
             <span class="p-head" style:background={colors["header-bg"]}></span>
@@ -148,7 +148,10 @@
 
   <section>
     <div class="section-head"><span class="caps">Accent colour</span><span class="hint">Used for what's live: the top scene, playing music, active effects</span></div>
-    <div class="accents">
+    {#if current.fixedAccent}
+      <p class="muted small fixed">{current.name} always uses its own accent: its colours were made for it. The choice below applies to other themes.</p>
+    {/if}
+    <div class="accents" class:dim={current.fixedAccent}>
       <label class="accent" class:selected={appearance.accent === "theme"}>
         <input type="radio" bind:group={appearance.accent} value="theme" />
         <span class="swatch" style:background={current.colors.accent}></span>
@@ -337,6 +340,12 @@
   small {
     font-size: 0.72rem;
     color: var(--muted);
+  }
+  .fixed {
+    margin: 0;
+  }
+  .accents.dim {
+    opacity: 0.55;
   }
   .small {
     font-size: 0.8rem;

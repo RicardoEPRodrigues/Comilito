@@ -3,12 +3,23 @@
   // token, and the files the theme brings with it (its woodcut watermark, font files and their
   // licences). The whole app previews the theme live while it's edited. Built-in themes are
   // never edited directly; the Appearance page makes a copy first.
-  import { Check, FileText, ImageUp, Plus, RotateCcw, Trash2, Type } from "@lucide/svelte";
+  import { Check, FileText, ImageUp, Link, Plus, RotateCcw, Trash2, Type } from "@lucide/svelte";
   import { open } from "@tauri-apps/plugin-dialog";
   import horse from "../assets/skeletal-horse.svg";
   import { api } from "../lib/api";
   import { askText, refreshUserThemes, run, ui } from "../lib/store.svelte";
-  import { BODY_FONTS, BUILT_IN_THEMES, COLOR_TOKENS, DISPLAY_FONTS, contrast, loadFont, watermarkUrl } from "../lib/themes";
+  import {
+    ACCENT_FOLLOWERS,
+    ACCENT_PAIRS,
+    BODY_FONTS,
+    BUILT_IN_THEMES,
+    COLOR_TOKENS,
+    DISPLAY_FONTS,
+    contrast,
+    loadFont,
+    resolveColors,
+    watermarkUrl,
+  } from "../lib/themes";
   import type { Theme } from "../lib/types";
 
   let { theme, onsave, oncancel }: { theme: Theme; onsave: (t: Theme) => void; oncancel: () => void } = $props();
@@ -23,8 +34,21 @@
     return () => (ui.previewTheme = null);
   });
 
+  // The colours as shown, with "accent" tokens turned into the accent in use (decision 0050).
+  const shown = $derived(resolveColors(draft, ui.previewAppearance ?? ui.prefs!.appearance, ui.desktop));
   function colour(key: string) {
-    return draft.colors[key] ?? base.colors[key];
+    return shown[key];
+  }
+
+  /** The token's own value: a colour, or "accent". */
+  const valueOf = (key: string) => draft.colors[key] ?? base.colors[key];
+  const follows = (key: string) => valueOf(key) === "accent";
+  /** A text token whose background follows the accent: it follows too (worked out to read well). */
+  const followsBackground = (key: string) => Object.entries(ACCENT_PAIRS).some(([bg, texts]) => texts.includes(key) && follows(bg));
+
+  /** Turns "follow the accent" on or off; off, the token keeps the colour it showed. */
+  function toggleFollow(key: string) {
+    draft.colors[key] = follows(key) ? colour(key) : "accent";
   }
 
   // Fonts the theme brought with it (decision 0025) are offered next to the bundled ones,
@@ -124,13 +148,31 @@
     </label>
     <label class="switch dark"><input type="checkbox" bind:checked={draft.dark} />Dark theme</label>
   </div>
+  <label class="switch" title="For themes whose colours were chosen around one accent and clash with others">
+    <input type="checkbox" checked={!!draft.fixedAccent} onchange={(e) => (draft.fixedAccent = e.currentTarget.checked || undefined)} />
+    Always use this theme's accent (ignore the desktop's or a custom one)
+  </label>
   <p class="sample" style:font-family={`"${draft.fonts.display}"`}>The Tapestry</p>
 
   <div class="colours">
     {#each COLOR_TOKENS as token (token.key)}
-      <label class="colour">
-        <input type="color" value={colour(token.key)} oninput={(e) => (draft.colors[token.key] = e.currentTarget.value)} />
+      {@const linked = follows(token.key) || followsBackground(token.key)}
+      <label class="colour" title={followsBackground(token.key) ? "Follows its background, which follows the accent" : undefined}>
+        <input type="color" value={colour(token.key)} disabled={linked} oninput={(e) => (draft.colors[token.key] = e.currentTarget.value)} />
         <span>{token.label}</span>
+        {#if ACCENT_FOLLOWERS.includes(token.key)}
+          <button
+            class="icon follow"
+            class:on={follows(token.key)}
+            title={follows(token.key) ? "Follows the accent · click to give it its own colour" : "Follow the accent (the theme's, the desktop's or your own)"}
+            onclick={(e) => {
+              e.preventDefault();
+              toggleFollow(token.key);
+            }}
+          >
+            <Link size={12} />
+          </button>
+        {/if}
         {#if draft.colors[token.key] && draft.colors[token.key] !== base.colors[token.key]}
           <button class="icon" title="Use the default" onclick={() => delete draft.colors[token.key]}><RotateCcw size={12} /></button>
         {/if}
@@ -226,6 +268,17 @@
   }
   .colour span {
     flex: 1;
+  }
+  .colour input:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  .follow {
+    color: var(--muted);
+    padding: 0.15rem;
+  }
+  .follow.on {
+    color: var(--accent);
   }
   .files {
     display: grid;

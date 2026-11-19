@@ -2,10 +2,11 @@
 //! plus the files themes bring with them (a watermark, fonts, licences) in
 //! `<config>/themes/assets/`.
 //!
-//! The built-in themes (Codex, Ironwood, Hearth) live in the frontend (`src/lib/themes.ts`)
+//! The built-in themes (Codex, Ironwood, Birch) live in the frontend (`src/lib/themes.ts`)
 //! and are read-only. Editing one makes a user copy, stored here. Rust doesn't interpret the
-//! colours; it only checks that each is a `#rgb`/`#rrggbb` value, so a hand-edited or
-//! imported file can't inject anything else into the page's CSS.
+//! colours; it only checks that each is a `#rgb`/`#rrggbb` value or the word `accent` (the
+//! accent the user chose, decision 0050), so a hand-edited or imported file can't inject
+//! anything else into the page's CSS.
 //!
 //! Bundled files are stored under their SHA-256 hash (`<hash>.png`). That gives every file
 //! a name that can't point anywhere else on disk, lets two themes (a theme and its copy)
@@ -65,6 +66,11 @@ pub struct Theme {
     /// with the theme when it's shared again.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub licences: Vec<String>,
+    /// The theme always uses its own accent, whatever accent the user picked (decision 0050):
+    /// for themes whose colours were made around one accent and clash with others.
+    /// `std::ops::Not::not` is a function that returns `!value`: false (the default) is left out.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub fixed_accent: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -134,6 +140,11 @@ fn path_for(config_dir: &Path, id: &str) -> PathBuf {
     themes_dir(config_dir).join(format!("{}.json", storage::safe_file_name(id)))
 }
 
+/// A colour token's value: `#rgb`, `#rrggbb`, or `accent` (whatever accent is in use).
+fn is_colour_value(value: &str) -> bool {
+    value == "accent" || is_hex_colour(value)
+}
+
 /// `#rgb` or `#rrggbb`.
 fn is_hex_colour(value: &str) -> bool {
     let Some(hex) = value.strip_prefix('#') else {
@@ -187,7 +198,7 @@ fn validate(theme: &Theme) -> Result<(), String> {
     if theme.name.trim().is_empty() {
         return Err("the theme needs a name".into());
     }
-    if let Some((key, value)) = theme.colors.iter().find(|(_, v)| !is_hex_colour(v)) {
+    if let Some((key, value)) = theme.colors.iter().find(|(_, v)| !is_colour_value(v)) {
         return Err(format!("\"{key}\" is not a colour: {value}"));
     }
     let families = theme.font_files.keys().map(String::as_str);
@@ -449,6 +460,7 @@ mod tests {
             watermark: None,
             font_files: BTreeMap::new(),
             licences: Vec::new(),
+            fixed_accent: false,
         }
     }
 
@@ -597,5 +609,18 @@ mod tests {
         missing.watermark = Some(format!("{}.png", "a".repeat(64)));
         assert!(save(&dir.0, &missing).is_err(), "files must exist");
         assert!(read_asset(&dir.0, "../prefs.json").is_err());
+    }
+
+    #[test]
+    fn colours_can_follow_the_accent() {
+        let dir = TempDir::new();
+        let mut t = theme("user-6");
+        t.colors.insert("header-bg".into(), "accent".into());
+        t.fixed_accent = true;
+        save(&dir.0, &t).unwrap();
+        assert_eq!(list(&dir.0), vec![t]);
+        let mut bad = theme("user-7");
+        bad.colors.insert("header-bg".into(), "accented".into());
+        assert!(save(&dir.0, &bad).is_err());
     }
 }

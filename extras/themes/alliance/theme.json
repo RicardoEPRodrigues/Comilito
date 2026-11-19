@@ -22,6 +22,7 @@
     "track": "#d6d8d3",
     "warn": "#a8620e"
   },
+  "fixedAccent": true,
   "fonts": { "display": "Cinzel Decorative", "body": "Inter" },
   "watermark": "watermark.png",
   "fontFiles": { "Cinzel Decorative": "fonts/CinzelDecorative-Regular.woff2" },
