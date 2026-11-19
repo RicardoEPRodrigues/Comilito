@@ -216,7 +216,7 @@
 
 <!-- In an expanded entry, a ✕ that takes a sound or video out of the scene (it stays in the library). -->
 {#snippet removeButton(sceneId: string, soundId: string)}
-  <button class="icon small" title="Remove from this scene" onclick={() => run(api.removeSoundFromScene(sceneId, soundId))}>
+  <button class="icon small remove" title="Remove from this scene" onclick={() => run(api.removeSoundFromScene(sceneId, soundId))}>
     <X size={13} />
   </button>
 {/snippet}
@@ -403,7 +403,7 @@
                     aria-label="Volume in this scene"
                   />
                 </span>
-                <span class="vol">{entry.enabled ? percent(effective) : "—"}</span>
+                <span class="vol" title={entry.enabled && effective < base - 0.005 ? `Ducked from ${percent(base)}` : undefined}>{entry.enabled ? percent(effective) : "—"}</span>
                 {#if entry.enabled && effective < base - 0.005}<span class="note">ducked from {percent(base)}</span>{/if}
                 {@render removeButton(scene.id, layer.sound)}
               </div>
@@ -670,14 +670,22 @@
     color: var(--accent);
     font-weight: 600;
   }
+  /* Every row's ✕ sits at the right end. Without this it followed the row's content, and
+     ambience rows (with their percentage and "ducked from") put it further right than others. */
+  .sound .remove {
+    margin-left: auto;
+    flex: none;
+  }
   .sname {
-    width: 11rem;
+    flex: 0 1 11rem;
+    min-width: 4rem;
     color: var(--text);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .role {
+    flex: none;
     width: 7rem;
   }
   .tag {
@@ -702,7 +710,8 @@
   }
   .bars,
   .bar-space {
-    width: 12rem;
+    flex: 0 1 12rem;
+    min-width: 4rem;
     font-size: 0.75rem;
   }
   .bars {
@@ -733,6 +742,7 @@
     cursor: pointer;
   }
   .vol {
+    flex: none;
     width: 2.6rem;
     color: var(--text);
     font-weight: 600;
@@ -740,6 +750,7 @@
   }
   .note {
     font-size: 0.75rem;
+    white-space: nowrap;
   }
   .small {
     padding: 0.15rem;
@@ -776,6 +787,13 @@
     }
     .details {
       padding-left: 1rem;
+    }
+    /* "ducked from …" stays in the percentage's tooltip, so the row fits. */
+    .note {
+      display: none;
+    }
+    .role {
+      width: 5.5rem;
     }
   }
 </style>

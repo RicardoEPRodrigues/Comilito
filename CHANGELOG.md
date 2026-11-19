@@ -143,6 +143,8 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 - A long effect name wraps inside its button on the effects pad instead of running out of it.
 - The bottom bar's master volume lines up with the scene's volumes.
+- In an expanded Tapestry entry, every sound's remove button lines up at the right edge (ambience
+  rows used to push theirs further right), and the rows fit a narrow Tapestry.
 - The mini player's button now always keeps the window on top: the window's own resize could
   briefly turn the mini player off and back on as if the window had been narrowed by hand.
 
