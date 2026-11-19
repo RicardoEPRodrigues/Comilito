@@ -4,9 +4,10 @@ A lightweight desktop soundboard and mixer for game masters of tabletop role-pla
 as Dungeons & Dragons, Pathfinder or Call of Cthulhu.
 
 Comilito is free and made in spare time. If it livens up your table, you can support its
-development with a donation on Liberapay:
+development with a donation on Liberapay or Ko-fi:
 
 [![Donate using Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/colorcrow/donate)
+[![Buy me a Mead on Ko-fi](https://img.shields.io/badge/Buy%20me%20a%20Mead-Ko--fi-72a4f2?logo=ko-fi&logoColor=white)](https://ko-fi.com/N8Q82AYC2B)
 
 > **Disclaimer:** Comilito was made mostly with AI (Claude, through Claude Code). The author
 > directs the design and the decisions and tests the app, but most of the code was written by AI.
@@ -161,9 +162,10 @@ The AppImage carries only the GStreamer plugins videos need; see
 
 ## Contributing
 
-You can support Comilito with a donation on Liberapay:
+You can support Comilito with a donation on Liberapay or Ko-fi:
 
 [![Donate using Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/colorcrow/donate)
+[![Buy me a Mead on Ko-fi](https://img.shields.io/badge/Buy%20me%20a%20Mead-Ko--fi-72a4f2?logo=ko-fi&logoColor=white)](https://ko-fi.com/N8Q82AYC2B)
 
 Code is welcome too: open a pull request with a fix or a feature (for anything big, open an issue
 first so we can agree on the approach). [CLAUDE.md](CLAUDE.md) and [docs/](docs/) describe how
