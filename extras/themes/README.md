@@ -9,6 +9,7 @@ Import theme file…**.
 | **Alliance** (light) | parchment, navy header, royal-blue accent, gold ornaments | Cinzel Decorative | a roaring lion in a kite shield, with fleur-de-lis and sword |
 | **Hearth** (light) | parchment, dark header, side panel in the accent colour | Pirata One (bundled) | the skeletal horse |
 | **Bubblegum Pink** (light) | candy pink, plum text and mixer, hot pink accent; always keeps its own pink | Sniglet | a smiling heart with a big bow, hearts and sparkles |
+| **Starship** (dark) | deep space navy, cool white text, steel-blue ornaments, electric cyan accent; takes the accent you choose | Orbitron | a starship passing a ringed planet, in a hexagonal mission patch |
 
 Hearth was a built-in theme until [decision 0050](../../docs/decisions/0050-accent-following-themes.md);
 its side panel follows the accent (desktop or custom). Horde and Alliance keep their own accent
@@ -33,13 +34,13 @@ background: the app only uses its shape and paints it in the theme's gold.
 ## Credits and licences
 
 - **New Rocker** by Pablo Impallari, Brenda Gallo and Rodrigo Fuenzalida, **Cinzel
-  Decorative** by Natanael Gama, and **Sniglet** (ExtraBold) by Haley Fiege, Brenda Gallo and
-  Pablo Impallari. All are under the SIL Open Font License 1.1; the licence travels with each
-  theme (`fonts/OFL.txt`).
+  Decorative** by Natanael Gama, **Sniglet** (ExtraBold) by Haley Fiege, Brenda Gallo and
+  Pablo Impallari, and **Orbitron** by The Orbitron Project Authors (Matt McInerney). All are
+  under the SIL Open Font License 1.1; the licence travels with each theme (`fonts/OFL.txt`).
 - The **woodcuts** were generated for this project in Pencil (pen.dev) and cleaned up to one
   colour on a transparent background.
 - These are unofficial fan themes. *Warcraft*, the Horde and the Alliance are trademarks of
   Blizzard Entertainment; the woodcuts are interpretations of the faction emblems, not the
   official artwork. Keep these themes out of public releases of Comilito.
-- The Bubblegum heart is an original mascot (not based on any existing character), so the
-  Bubblegum theme carries no such restriction.
+- The Bubblegum heart and the Starship emblem are original (not based on any existing character
+  or franchise), so those themes carry no such restriction.

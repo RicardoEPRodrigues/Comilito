@@ -1,0 +1,29 @@
+{
+  "id": "",
+  "name": "Starship",
+  "dark": true,
+  "colors": {
+    "accent": "#22d3ee",
+    "bg": "#0b1019",
+    "danger": "#ff5c7a",
+    "fx-bg": "#0e1521",
+    "gold": "#4f7aa8",
+    "header-bg": "#070b12",
+    "header-text": "#dbe6f5",
+    "mixer-bg": "#05080e",
+    "mixer-text": "#dbe6f5",
+    "muted": "#8193ad",
+    "rule": "#243248",
+    "side-bg": "#0e1521",
+    "side-muted": "#7f91aa",
+    "side-text": "#dbe6f5",
+    "surface": "#121a27",
+    "text": "#dbe6f5",
+    "track": "#1c2738",
+    "warn": "#f5b942"
+  },
+  "fonts": { "display": "Orbitron", "body": "Inter" },
+  "watermark": "watermark.png",
+  "fontFiles": { "Orbitron": "fonts/Orbitron.ttf" },
+  "licences": ["fonts/OFL.txt"]
+}
