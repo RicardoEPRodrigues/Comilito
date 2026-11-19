@@ -107,6 +107,8 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Changed
 
+- In an expanded Tapestry entry, a ducked ambience layer shows a ⌄ icon after its volume instead
+  of "ducked from 60%"; hover it for the level it came down from.
 - **Scenes say what they hold with icons:** in the Scenes tab, the Tapestry and the mini player,
   a scene's music tracks, ambience layers, effects and videos show as the Library's category
   icons with a count (and the Tapestry's ducking as "⌄ 30%"), instead of a sentence. Hover an

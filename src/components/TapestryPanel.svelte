@@ -403,8 +403,11 @@
                     aria-label="Volume in this scene"
                   />
                 </span>
-                <span class="vol" title={entry.enabled && effective < base - 0.005 ? `Ducked from ${percent(base)}` : undefined}>{entry.enabled ? percent(effective) : "—"}</span>
-                {#if entry.enabled && effective < base - 0.005}<span class="note">ducked from {percent(base)}</span>{/if}
+                <span class="vol">{entry.enabled ? percent(effective) : "—"}</span>
+                {#if entry.enabled && effective < base - 0.005}
+                  <!-- The same icon as the entry's ducking, with the level it came down from on hover. -->
+                  <span class="note" title={`Ducked from ${percent(base)} by a scene above`}><ChevronsDown size={14} /></span>
+                {/if}
                 {@render removeButton(scene.id, layer.sound)}
               </div>
             {/each}
@@ -749,8 +752,9 @@
     font-variant-numeric: tabular-nums;
   }
   .note {
-    font-size: 0.75rem;
-    white-space: nowrap;
+    display: inline-flex;
+    flex: none;
+    color: var(--accent);
   }
   .small {
     padding: 0.15rem;
@@ -787,10 +791,6 @@
     }
     .details {
       padding-left: 1rem;
-    }
-    /* "ducked from …" stays in the percentage's tooltip, so the row fits. */
-    .note {
-      display: none;
     }
     .role {
       width: 5.5rem;
