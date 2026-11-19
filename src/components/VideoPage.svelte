@@ -104,7 +104,7 @@
         <Star size={18} class={video.favourite ? "fav on" : "fav"} fill={video.favourite ? "currentColor" : "none"} />
       </button>
       <button class="icon" title="Duplicate: a copy of the file with the same settings, in no scene" disabled={missing || busy} onclick={() => duplicateVideo(id)}><Copy size={17} /></button>
-      <button class="icon" title="Remove from the project…" onclick={() => removeVideo(id)}><Trash2 size={17} /></button>
+      <button class="icon danger" title="Remove from the project…" onclick={() => removeVideo(id)}><Trash2 size={17} /></button>
     </div>
 
     <div class="player">

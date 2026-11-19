@@ -173,9 +173,17 @@
         {CATEGORIES.find((c) => c.id === sound.category)?.label}{durationMs !== null ? ` · ${formatDuration(durationMs)}` : ""} · {ext} · {formatBytes(sound.file.size)}
       </span>
     </div>
-    <button class="icon fav" class:on={draft.favourite} title="Favourite" onclick={() => (draft.favourite = !draft.favourite)}>
-      <Star size={20} fill={draft.favourite ? "currentColor" : "none"} />
-    </button>
+    <!-- Favourite, duplicate and remove, as on a video's page (VideoPage.svelte). -->
+    <div class="head-actions">
+      <button class="icon fav" class:on={draft.favourite} title="Favourite" onclick={() => (draft.favourite = !draft.favourite)}>
+        <Star size={20} fill={draft.favourite ? "currentColor" : "none"} />
+      </button>
+      <!-- Copies the saved sound; leaving for the copy asks about unsaved changes here. -->
+      <button class="icon" disabled={missing} title="Duplicate: a copy of the file with the same settings, in no scene" onclick={() => duplicateSound(id, true)}>
+        <Copy size={17} />
+      </button>
+      <button class="icon danger" title="Remove from the project…" onclick={() => removeSound(id)}><Trash2 size={17} /></button>
+    </div>
   </div>
 
   <div class="wave-card">
@@ -328,10 +336,6 @@
       {:else}
         <span class="muted">No scene uses this sound yet.</span>
       {/each}
-      <span class="grow"></span>
-      <!-- Copies the saved sound; leaving for the copy asks about unsaved changes here. -->
-      <button disabled={missing} title="A copy of the file with the same settings, in no scene" onclick={() => duplicateSound(id, true)}><Copy size={13} />Duplicate</button>
-      <button class="danger" onclick={() => removeSound(id)}><Trash2 size={13} />Remove from project…</button>
     </div>
   </section>
   <p class="muted small tip"><Plus size={11} /> Drag sounds onto a scene in the Tapestry view (the Library drawer) to use them.</p>
@@ -350,6 +354,11 @@
     display: flex;
     align-items: center;
     gap: 1rem;
+  }
+  .head-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
   }
   .title {
     flex: 1;
