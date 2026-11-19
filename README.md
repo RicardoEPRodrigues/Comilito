@@ -6,7 +6,7 @@ as Dungeons & Dragons, Pathfinder or Call of Cthulhu.
 Comilito is free and made in spare time. If it livens up your table, you can support its
 development with a donation on Liberapay:
 
-[![Donate using Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/RicardoEPRodrigues/donate)
+[![Donate using Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/colorcrow/donate)
 
 > **Disclaimer:** Comilito was made mostly with AI (Claude, through Claude Code). The author
 > directs the design and the decisions and tests the app, but most of the code was written by AI.
@@ -163,7 +163,7 @@ The AppImage carries only the GStreamer plugins videos need; see
 
 You can support Comilito with a donation on Liberapay:
 
-[![Donate using Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/RicardoEPRodrigues/donate)
+[![Donate using Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/colorcrow/donate)
 
 Code is welcome too: open a pull request with a fix or a feature (for anything big, open an issue
 first so we can agree on the approach). [CLAUDE.md](CLAUDE.md) and [docs/](docs/) describe how
