@@ -340,6 +340,8 @@ export interface Appearance {
   watermark: boolean;
   rules: boolean;
   blackletter: boolean;
+  /** Interface scale, 1 = 100% (decision 0048). */
+  scale: number;
 }
 
 export interface Preferences {

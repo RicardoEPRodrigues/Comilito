@@ -38,6 +38,7 @@ files were dropped. The owner wants files dropped on a folder to go into that fo
 ## Consequences
 
 - Any other part of the UI can become a drop target by adding the two attributes.
-- If the app ever zooms the webview, the Linux position must be divided by that zoom.
+- If the app ever zooms the webview, the Linux position must be divided by that zoom. (It does
+  since decision 0048, the interface scale, and the position is divided.)
 - If a Tauri update starts converting the Linux position to physical pixels, the outline will
   appear below the pointer on scaled displays.

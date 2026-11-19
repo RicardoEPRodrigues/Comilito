@@ -201,6 +201,9 @@ pub struct Appearance {
     pub watermark: bool,
     pub rules: bool,
     pub blackletter: bool,
+    /// How big the whole interface is drawn, text included: 1.0 is 100%. Applied as the
+    /// webview's zoom, so the layout reflows instead of being stretched like an image.
+    pub scale: f64,
 }
 
 /// What a new project starts with. Changing these never touches existing projects.
@@ -266,12 +269,19 @@ impl Default for Appearance {
             watermark: true,
             rules: true,
             blackletter: true,
+            scale: 1.0,
         }
     }
 }
 
+/// The interface scale the app allows. Beyond these the layout stops being usable (and a
+/// hand-edited `0` would make the window blank).
+pub const MIN_SCALE: f64 = 0.5;
+pub const MAX_SCALE: f64 = 2.0;
+
 impl Appearance {
     /// Preferences saved before themes existed had `theme: "system" | "light" | "dark"`.
+    /// Also keeps a hand-edited `scale` within what the app allows.
     fn migrate(&mut self) {
         match self.theme.as_str() {
             "system" => {
@@ -288,6 +298,7 @@ impl Appearance {
             }
             _ => {}
         }
+        self.scale = self.scale.clamp(MIN_SCALE, MAX_SCALE);
     }
 }
 
@@ -363,6 +374,16 @@ mod tests {
         assert_eq!(prefs.appearance.mode, "fixed");
         assert_eq!(prefs.appearance.theme, "ironwood");
         assert!(prefs.appearance.capitals, "new fields get their defaults");
+        assert_eq!(prefs.appearance.scale, 1.0);
+    }
+
+    #[test]
+    fn interface_scale_is_kept_within_limits() {
+        let dir = TempDir::new();
+        std::fs::write(dir.0.join(PREFS_FILE), r#"{"formatVersion":1,"appearance":{"scale":0}}"#).unwrap();
+        assert_eq!(load(&dir.0).appearance.scale, MIN_SCALE);
+        std::fs::write(dir.0.join(PREFS_FILE), r#"{"formatVersion":1,"appearance":{"scale":1.25}}"#).unwrap();
+        assert_eq!(load(&dir.0).appearance.scale, 1.25);
     }
 
     #[test]

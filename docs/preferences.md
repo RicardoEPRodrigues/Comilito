@@ -103,6 +103,7 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 | Setting | Default |
 |---|---|
 | Theme | follow system (light / dark) |
+| Interface size | 100% (50%–200%; also Ctrl + / Ctrl − / Ctrl 0 outside Preferences). Scales the main window only, not the video window ([0048](decisions/0048-interface-scale.md)) |
 
 ## Project settings window
 
@@ -139,7 +140,8 @@ App `preferences.json` (`src-tauri/src/prefs.rs`), with its defaults:
     "capitals": true,
     "watermark": true,
     "rules": true,
-    "blackletter": true
+    "blackletter": true,
+    "scale": 1.0
   },
   "video": {
     "enabled": true,
@@ -166,6 +168,8 @@ App `preferences.json` (`src-tauri/src/prefs.rs`), with its defaults:
 - `appearance.mode` is `"system"` (follow the desktop's light/dark, using `lightTheme` /
   `darkTheme`) or `"fixed"` (always `theme`). `accent` is `"theme"`, `"desktop"` or `"custom"`
   (then `customAccent` is used). See [themes.md](themes.md).
+- `appearance.scale` is the interface size, `1.0` = 100%; values outside 0.5–2.0 are brought
+  within it on load.
 - Missing fields get their defaults, so older files still load. Files from before themes existed
   had `appearance.theme` set to `"system"`, `"light"` or `"dark"`; these are migrated on load.
 

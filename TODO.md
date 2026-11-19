@@ -5,7 +5,6 @@
 - flatpak version (not now)
 - Add ability to have plugins (not now)
 - Create a first time experience.
-- add ability to scale the UI. Font and whole UI.
 - Mini player: a very small version where the window remais always on top and just shows the stack and the scenes/presets.
 - if not enought width is available the bottom bar squishes its elements. we should adapt the UI to play nicely on mobile.
 - Middle clicking on a scene in the tapestry and draggin up or down, should disable or enable the scenes based on the state of the first clicked on scene. e.g., click on the a disabled scene and drag up, that scene and above scenes selected by the mouse, should now be enabled.

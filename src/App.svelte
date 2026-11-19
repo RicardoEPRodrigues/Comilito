@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { api } from "./lib/api";
-  import { init, leaveFocus, notify, project, restartInterface, run, ui } from "./lib/store.svelte";
+  import { init, leaveFocus, notify, project, restartInterface, run, savePrefs, ui } from "./lib/store.svelte";
   import { activeTheme, applyTheme, loadThemeFiles } from "./lib/themes";
+  import { applyScale, stepScale } from "./lib/scale";
   import ProjectPicker from "./components/ProjectPicker.svelte";
   import Workspace from "./components/Workspace.svelte";
   import Dialog from "./components/Dialog.svelte";
@@ -49,6 +50,28 @@
     });
   });
 
+  // The interface scale (decision 0048), live while Preferences is open, like the theme.
+  $effect(() => {
+    if (!ui.prefs) return;
+    const scale = (ui.previewAppearance ?? ui.prefs.appearance).scale;
+    applyScale(scale).catch((e) => notify(`Couldn't scale the interface: ${e}`));
+  });
+
+  /** Ctrl + / Ctrl − / Ctrl 0 change the interface scale and save it. With Preferences open
+   *  they do nothing: its draft would overwrite the change on Save. */
+  function scaleShortcut(e: KeyboardEvent): boolean {
+    if (!e.ctrlKey || e.altKey || e.metaKey || !ui.prefs || ui.previewAppearance) return false;
+    const now = ui.prefs.appearance.scale;
+    // "=" is the unshifted "+" on US keyboards; "+" covers the keypad and other layouts.
+    let next: number;
+    if (e.key === "+" || e.key === "=") next = stepScale(now, 1);
+    else if (e.key === "-") next = stepScale(now, -1);
+    else if (e.key === "0") next = 1;
+    else return false;
+    if (next !== now) savePrefs({ ...ui.prefs, appearance: { ...ui.prefs.appearance, scale: next } });
+    return true;
+  }
+
   /** "Open the last project at start" (the home screen's switch). If it fails (moved or
    *  deleted), the home screen shows instead, with the reason. */
   async function openLastProject() {
@@ -79,6 +102,11 @@
     }
     // Already handled by a dialog or menu.
     if (e.defaultPrevented) return;
+    // Scaling works in text fields too: none of its keys type anything with Ctrl held.
+    if (scaleShortcut(e)) {
+      e.preventDefault();
+      return;
+    }
     // Never steal keys while typing in a field.
     if (typing) return;
     // While a dialog or settings window is open, keys belong to it.

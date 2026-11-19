@@ -6,6 +6,7 @@
   import { api } from "../lib/api";
   import { confirmAction, refreshUserThemes, run, ui } from "../lib/store.svelte";
   import { BUILT_IN_THEMES, activeTheme, findTheme, loadThemeFiles } from "../lib/themes";
+  import { SCALES } from "../lib/scale";
   import type { Appearance, Theme } from "../lib/types";
   import ThemeEditor from "./ThemeEditor.svelte";
 
@@ -116,6 +117,17 @@
       <button onclick={importTheme}><Download size={13} />Import theme file…</button>
       {#if current.id.startsWith("user-")}<button class="danger" onclick={() => remove(current)}><Trash2 size={13} />Delete</button>{/if}
     </div>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="caps">Interface size</span><span class="hint">Text, icons and spacing together · Ctrl + / Ctrl − / Ctrl 0 outside Preferences</span></div>
+    <label class="radio">
+      Scale
+      <select bind:value={appearance.scale}>
+        {#if !SCALES.includes(appearance.scale)}<option value={appearance.scale}>{Math.round(appearance.scale * 100)}%</option>{/if}
+        {#each SCALES as s (s)}<option value={s}>{Math.round(s * 100)}%{s === 1 ? " (default)" : ""}</option>{/each}
+      </select>
+    </label>
   </section>
 
   <section>

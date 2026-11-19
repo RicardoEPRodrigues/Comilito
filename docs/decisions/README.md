@@ -54,6 +54,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0045](0045-video-window-screen-on-wayland.md) | Put the video window on its screen through fullscreen on Wayland | Accepted | 2026-11-16 |
 | [0046](0046-packaging-linux-in-a-container.md) | Package Linux builds as an AppImage, in an Ubuntu 22.04 container | Accepted | 2026-11-16 |
 | [0047](0047-no-nvidia-video-decoding.md) | Decode videos without NVIDIA's hardware decoders on Linux | Accepted | 2026-11-16 |
+| [0048](0048-interface-scale.md) | Scale the interface with the webview's zoom | Accepted | 2026-11-18 |
 
 ## Template
 
