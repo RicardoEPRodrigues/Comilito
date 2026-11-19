@@ -98,8 +98,19 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 - **Scale the whole interface** (text, icons and spacing) from 50% to 200% in Preferences ›
   Appearance › Interface size, or with Ctrl + / Ctrl − (Ctrl 0 goes back to 100%). Remembered
   on this computer; the video window isn't scaled.
+- **Mini player:** the header's new button shrinks the window to a small player that stays on
+  top of other windows (the pin turns that off), for running a session next to a virtual
+  tabletop or your notes. It shows the Tapestry, with scenes and presets in a drawer below
+  (a click adds a scene or loads a preset), the effects pad on a second tab, play / stop, the
+  master volume and the top scene's volumes, and the Video button. The arrows button goes back
+  to the full window, at its old size and place. Quitting in the mini player starts in it again.
 
 ### Changed
+
+- **Narrow windows:** below about 860 px wide the window shows the mini player's layout (without
+  staying on top) instead of squeezing the three columns; the window can now be made as small
+  as 360 × 420. Below 1100 px the bottom bar drops its keyboard hint and its sliders share the
+  room, instead of squashing everything.
 
 - **Backups** are kept in Comilito's data folder (`~/.local/share/com.comilito.app/backups` on
   Linux) instead of a `Backups` folder among your projects, so the projects folder holds only

@@ -2,11 +2,15 @@
   // Right panel: buttons for the effects of every enabled scene, top scene first.
   // Clicking an effect plays it; clicking it again while it plays stops it. Below them, the
   // video effects (decision 0035), which share the column.
+  // `compact` is the mini player's Effects tab (decision 0049): its tab names it, and video
+  // effects are left to the full window.
   import { fitText } from "../lib/fit";
   import { Film, Zap } from "@lucide/svelte";
   import { videoById, videoEnabled } from "../lib/video";
   import { api } from "../lib/api";
   import { run, sceneById, soundById, ui } from "../lib/store.svelte";
+
+  let { compact = false }: { compact?: boolean } = $props();
 
   const snapshot = $derived(ui.snapshot!);
   const playing = $derived(new Set(snapshot.playback.playingEffects));
@@ -22,10 +26,10 @@
   );
 </script>
 
-<aside>
+<aside class:compact>
   <!-- Sound effects take the room the video effects leave, and scroll in it. -->
   <div class="area sounds">
-    <h2 class="display" use:fitText>Effects</h2>
+    {#if !compact}<h2 class="display" use:fitText>Effects</h2>{/if}
     {#if sources.length}<span class="caps source">From {[...new Set(sources)].join(" · ")}</span>{/if}
     {#if snapshot.mix.effects.length === 0}
       <p class="muted">The effects of the scenes in the tapestry appear here.</p>
@@ -47,7 +51,7 @@
       {/each}
     </div>
   </div>
-  {#if videoEnabled() && snapshot.mix.videoEffects.length > 0}
+  {#if !compact && videoEnabled() && snapshot.mix.videoEffects.length > 0}
     <!-- Video effects (decision 0035): as tall as they need, up to half the column. -->
     <div class="area videos">
       <h2 class="display" use:fitText>Video effects</h2>
@@ -76,6 +80,15 @@
     flex-direction: column;
     min-height: 0;
     min-width: 0;
+  }
+  aside.compact {
+    flex: 1;
+    background: none;
+    border-left: none;
+  }
+  aside.compact .area {
+    padding: 0.8rem 0.75rem;
+    gap: 0.5rem;
   }
   .area {
     display: flex;

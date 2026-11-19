@@ -60,6 +60,7 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 | Projects folder | `~/Documents/Comilito`. *Move to…* moves every project to another folder (backups stay in the app data folder, decision 0026); *Choose…* only changes where Comilito looks (decision 0023) | this computer |
 | Open the last project at start | off (also a switch on the home screen) | this computer |
 | Window size, position and maximised state | remembered from the last run (1280×800, centred, the first time) | this computer, in `.window-state.json` next to `preferences.json` |
+| Mini player | off. Left on when quitting, the app starts in it again; `.mini-player.json` next to `preferences.json` keeps the full window's size and place (and the pin) meanwhile ([0049](decisions/0049-mini-player.md)) | this computer |
 | Backup interval | 30 min | default for new projects |
 | Backups to keep | 1 | default for new projects |
 | Include audio in backups | off | default for new projects |

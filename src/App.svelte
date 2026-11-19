@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { api } from "./lib/api";
-  import { init, leaveFocus, notify, project, restartInterface, run, savePrefs, ui } from "./lib/store.svelte";
+  import { init, leaveFocus, notify, project, restartInterface, run, savePrefs, setMiniPlayer, ui } from "./lib/store.svelte";
   import { activeTheme, applyTheme, loadThemeFiles } from "./lib/themes";
   import { applyScale, stepScale } from "./lib/scale";
   import ProjectPicker from "./components/ProjectPicker.svelte";
@@ -71,6 +71,13 @@
     if (next !== now) savePrefs({ ...ui.prefs, appearance: { ...ui.prefs.appearance, scale: next } });
     return true;
   }
+
+  // The mini player (decision 0049) is for a project. Started in it with none open (it was on
+  // when the app quit, and "open the last project" is off), or the project closed: back to the
+  // full window, or the home screen would be stuck small and on top.
+  $effect(() => {
+    if (ready && ui.mini.on && !ui.snapshot?.project) setMiniPlayer(false);
+  });
 
   /** "Open the last project at start" (the home screen's switch). If it fails (moved or
    *  deleted), the home screen shows instead, with the reason. */

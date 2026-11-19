@@ -6,6 +6,7 @@ mod desktop;
 mod downloads;
 mod logging;
 mod media_controls;
+mod mini_player;
 mod loudness;
 mod mix;
 mod prefs;
@@ -235,6 +236,9 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::confirm_quit,
+            mini_player::mini_player,
+            mini_player::set_mini_player,
+            mini_player::set_mini_on_top,
             video::add_videos,
             video::update_videos,
             video::duplicate_video,

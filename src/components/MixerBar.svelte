@@ -1,7 +1,9 @@
 <script lang="ts">
   // Bottom bar: play/pause and stop, the project's master volume, and the category volumes
   // of the top-most enabled scene (decision 0028). While a sound is previewed, a chip names it
-  // and stops it, wherever it was started from.
+  // and stops it, wherever it was started from. In a narrower window (1100 px or less) the
+  // keyboard hint goes and the sliders share what room there is (design J2); narrower still,
+  // the window shows the mini player instead (decision 0049).
   import { Film, Headphones, Pause, Play, Square } from "@lucide/svelte";
   import { videoById, videoEnabled } from "../lib/video";
   import { formatDuration } from "../lib/store.svelte";
@@ -179,6 +181,40 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  @media (max-width: 1100px) {
+    footer {
+      gap: 1rem;
+    }
+    .hint {
+      display: none;
+    }
+    .spacer {
+      flex: 0;
+    }
+    .scene-levels {
+      flex: 1 1 auto;
+    }
+    .sliders {
+      gap: 1rem;
+    }
+    /* VolumeSlider's label: a fixed 9.5rem in a wide window. */
+    footer :global(label) {
+      width: 7.5rem;
+      min-width: 4.5rem;
+      flex: 0 1 auto;
+    }
+    .sliders :global(label) {
+      flex: 1 1 0;
+      width: auto;
+    }
+    .now-video,
+    .preview {
+      max-width: 11rem;
+    }
+    .now-video .name {
+      max-width: 8rem;
+    }
   }
   .hint {
     font-size: 0.65rem;

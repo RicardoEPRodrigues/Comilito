@@ -489,3 +489,9 @@ export interface CutOptions {
   fadeEdges: boolean;
   exact: boolean;
 }
+
+/** The mini player (decision 0049): on, and whether its window stays on top. */
+export interface MiniPlayer {
+  on: boolean;
+  onTop: boolean;
+}

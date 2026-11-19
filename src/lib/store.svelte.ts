@@ -28,6 +28,7 @@ import type {
   ConversionJob,
   ConvertOffer,
   VideoStatus,
+  MiniPlayer,
 } from "./types";
 
 /** Windows shown over everything (modals). */
@@ -119,6 +120,12 @@ export const ui = $state({
   drawerTab: remembered<"sounds" | "videos">("drawerTab", "sounds"),
   /** Height of the open Library drawer in px, once resized; null = the default size. */
   drawerHeight: remembered<number | null>("drawerHeight", null),
+  /** The mini player (decision 0049). Also shown, without going on top, when the window is too
+   *  narrow for the full layout (see Workspace.svelte). */
+  mini: { on: false, onTop: false } as MiniPlayer,
+  miniTab: remembered<"tapestry" | "effects">("miniTab", "tapestry"),
+  /** The mini player's Scenes / Presets drawer (its tab is `leftTab`, shared with the full layout). */
+  miniDrawerOpen: remembered<boolean>("miniDrawerOpen", true),
   /** Scene / preset group headings the user folded away. */
   collapsed: remembered<string[]>("collapsed", []),
   // Components keep a reference to this object (`const lib = ui.library`), so change its
@@ -252,6 +259,20 @@ export async function restartInterface() {
   location.reload();
 }
 
+/** Turns the mini player on or off (decision 0049). An in-place editor is left first (it may
+ *  ask about unsaved changes), and the Library workspace closed: the mini player has neither. */
+export async function setMiniPlayer(on: boolean) {
+  if (on && !(await leaveFocus())) return;
+  if (on) ui.view = "tapestry";
+  const mini = await run(api.setMiniPlayer(on));
+  if (mini) ui.mini = mini;
+}
+
+export async function setMiniOnTop(onTop: boolean) {
+  const mini = await run(api.setMiniOnTop(onTop));
+  if (mini) ui.mini = mini;
+}
+
 /** Opens something in the centre panel, after leaving whatever was open. */
 export async function focusOn(focus: Focus) {
   if (!(await leaveFocus())) return;
@@ -347,6 +368,8 @@ export async function init() {
   ui.prefs = prefs;
   ui.desktop = desktop;
   ui.downloads = downloads;
+  // Left on when the app last quit: it starts in the mini player again.
+  ui.mini = await api.miniPlayer().catch(() => ({ on: false, onTop: false }));
   await refreshUserThemes();
 }
 

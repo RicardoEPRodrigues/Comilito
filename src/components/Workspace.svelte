@@ -7,11 +7,14 @@
   //   …or the full-screen Library workspace                        ← "library" view
   //   Library drawer (tapestry view only)
   //   mixer bar
-  import { Download, Info, Library, MonitorPlay, Settings2, SlidersHorizontal, X } from "@lucide/svelte";
+  //
+  // …or the mini player (decision 0049): when turned on, or when the window is too narrow for
+  // the columns above.
+  import { Download, Info, Library, MonitorPlay, PictureInPicture2, Settings2, SlidersHorizontal, X } from "@lucide/svelte";
   import { videoEnabled } from "../lib/video";
   import { api } from "../lib/api";
   import { exportProject, relinkFromFolder } from "../lib/actions";
-  import { askText, confirmAction, run, showView, ui } from "../lib/store.svelte";
+  import { askText, confirmAction, run, setMiniPlayer, showView, ui } from "../lib/store.svelte";
   import ContextBar from "./ContextBar.svelte";
   import EffectsPad from "./EffectsPad.svelte";
   import LeftPanel from "./LeftPanel.svelte";
@@ -22,6 +25,15 @@
   import PresetOutline from "./PresetOutline.svelte";
   import SceneEditor from "./SceneEditor.svelte";
   import TapestryPanel from "./TapestryPanel.svelte";
+  import MiniPlayer from "./MiniPlayer.svelte";
+
+  /** Narrower than this (CSS pixels, so the interface scale counts), the three columns don't
+   *  fit and the window shows the mini player's layout instead. */
+  const NARROW = 860;
+  let width = $state(window.innerWidth);
+  // Not while editing something in place or in the Library workspace: the mini player has
+  // neither, and switching would throw away unsaved edits. Those stay until they're closed.
+  const mini = $derived(ui.mini.on || (width < NARROW && !ui.focus && ui.view === "tapestry"));
 
   const snapshot = $derived(ui.snapshot!);
   const project = $derived(snapshot.project!);
@@ -52,6 +64,11 @@
   }
 </script>
 
+<svelte:window bind:innerWidth={width} />
+
+{#if mini}
+  <MiniPlayer />
+{:else}
 <div class="workspace">
   <header>
     <button class="title display" onclick={rename} title="Rename project">{project.name}</button>
@@ -78,6 +95,9 @@
           <MonitorPlay size={17} />Video
         </button>
       {/if}
+      <button class="icon" title="Mini player: a small window that stays on top" onclick={() => setMiniPlayer(true)}>
+        <PictureInPicture2 size={18} />
+      </button>
       <button class="icon" class:on={ui.view === "library"} title="Library workspace" onclick={() => showView(ui.view === "library" ? "tapestry" : "library")}>
         <Library size={18} />
       </button>
@@ -138,6 +158,7 @@
 
   <MixerBar />
 </div>
+{/if}
 
 <style>
   .workspace {

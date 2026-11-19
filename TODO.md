@@ -5,13 +5,19 @@
 - flatpak version (not now)
 - Add ability to have plugins (not now)
 - Create a first time experience.
-- Mini player: a very small version where the window remais always on top and just shows the stack and the scenes/presets.
-- if not enought width is available the bottom bar squishes its elements. we should adapt the UI to play nicely on mobile.
+- Adapt the UI to play nicely on mobile. A first design is in pencil/comilito.pen, section
+  "Later · Mobile" (Scenes / Tapestry / Effects tabs, the mixer bar on two rows). On the desktop
+  a narrow window uses the mini player (decision 0049).
 - Middle clicking on a scene in the tapestry and draggin up or down, should disable or enable the scenes based on the state of the first clicked on scene. e.g., click on the a disabled scene and drag up, that scene and above scenes selected by the mouse, should now be enabled.
 - Support GPU encoding.
 - if two GPUs are available, add a video option for which to use.
+- Improve theme:
+  - Codex: header bar should follow accent color.
+  - there should be a clear light theme. similar to the ironwood but light.
 
 ## Bugs
+
+- In the library, the sounds duplicate and delete buttons are different from the videos. we should be consistent in the design. lets use the design as shown in the video editor. Also, the trash can icon should be marked as dangerous and thus have a different color.
 
 
 ## Platforms
