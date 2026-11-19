@@ -10,7 +10,8 @@
 //!   out not to play everywhere are collected; once nothing is left to probe, the batch is
 //!   offered (`convert-offer` event), converted straight away, or left, per Preferences.
 //! - **Conversions** wait in a queue and run one at a time on a background thread, like
-//!   downloads (`conversions-changed` event). Unfinished ones are kept in `conversions.json`
+//!   downloads (`conversions-changed` event). They use a GPU encoder when one works
+//!   (video_encoders.rs, decision 0051), and are redone on the CPU if that fails. Unfinished ones are kept in `conversions.json`
 //!   in the app data folder and start again (from the beginning: ffmpeg can't continue a
 //!   half-written file) the next time their project opens.
 
@@ -34,6 +35,7 @@ use crate::{
     project::{TimeRange, VideoInfo},
     state::{AppState, emit_state},
     storage, tools,
+    video_encoders::{self, Encoder},
 };
 
 /// Whether every webview can play a file: WebM with VP8, VP9 or AV1. (A .mkv with VP9 has the
@@ -163,6 +165,8 @@ pub struct ConversionJob {
     pub message: Option<String>,
     /// A trim (true) rather than a plain conversion, for the UI's wording.
     pub trimming: bool,
+    /// What's converting it: a GPU's name, or `None` for the CPU.
+    pub encoder: Option<String>,
     #[serde(skip)]
     keep_original: bool,
     #[serde(skip)]
@@ -313,6 +317,7 @@ fn push_job(state: &mut AppState, id: &str, keep_original: bool, trim: Option<Ti
         progress: 0.0,
         message: None,
         trimming: trim.is_some(),
+        encoder: None,
         keep_original,
         project_dir: open.dir.clone(),
         trim,
@@ -362,16 +367,46 @@ struct Work {
     stored_path: String,
     input: PathBuf,
     duration_ms: u64,
+    /// The picture size, for GPU encoders that need a bitrate (0 if unknown).
+    width: u32,
+    height: u32,
+    /// The GPU encoder to use, or `None` for the CPU.
+    encoder: Option<Encoder>,
     keep_original: bool,
     trim: Option<TimeRange>,
     as_copy: bool,
     tools_dir: PathBuf,
 }
 
+/// The GPU encoders that work here, found the first time they're asked for (a few seconds of
+/// test encodes, done without holding the state lock). Empty without ffmpeg or a GPU.
+pub fn encoders(app: &AppHandle) -> Vec<Encoder> {
+    let state = app.state::<Mutex<AppState>>();
+    let tools_dir = match state.lock() {
+        Ok(s) => match &s.video_encoders {
+            Some(found) => return found.clone(),
+            None => s.tools_dir.clone(),
+        },
+        Err(_) => return Vec::new(),
+    };
+    let Some(ffmpeg) = tools::ffmpeg_path(&tools_dir) else { return Vec::new() };
+    let found = video_encoders::detect(&ffmpeg);
+    crate::logging::info(&format!(
+        "GPU video encoders: {}",
+        if found.is_empty() { "none".to_string() } else { found.iter().map(|e| e.label.as_str()).collect::<Vec<_>>().join(", ") }
+    ));
+    if let Ok(mut s) = state.lock() {
+        s.video_encoders = Some(found.clone());
+    }
+    found
+}
+
 /// The worker thread: waits to be woken, then converts queued videos one by one.
 pub fn worker(app: AppHandle, wakeup: mpsc::Receiver<()>) {
     while wakeup.recv().is_ok() {
         loop {
+            // Before taking a job: the first time, this looks for GPU encoders.
+            let found = encoders(&app);
             let work = {
                 let state = app.state::<Mutex<AppState>>();
                 let Ok(mut s) = state.lock() else { return };
@@ -388,6 +423,9 @@ pub fn worker(app: AppHandle, wakeup: mpsc::Receiver<()>) {
                         stored_path: video.file.path.clone(),
                         input: storage::absolute_audio_path(&open.dir, &video.file),
                         duration_ms: video.info.as_ref().map_or(0, |i| i.duration_ms),
+                        width: video.info.as_ref().map_or(0, |i| i.width),
+                        height: video.info.as_ref().map_or(0, |i| i.height),
+                        encoder: video_encoders::choose(&s.prefs.video.encoder, &found).cloned(),
                         keep_original: job.keep_original,
                         trim: job.trim,
                         as_copy: job.as_copy,
@@ -397,6 +435,7 @@ pub fn worker(app: AppHandle, wakeup: mpsc::Receiver<()>) {
                 match found {
                     Some(work) => {
                         job.status = JobStatus::Running;
+                        job.encoder = work.encoder.as_ref().map(|e| e.label.clone());
                         emit_conversions(&app, s);
                         work
                     }
@@ -408,7 +447,18 @@ pub fn worker(app: AppHandle, wakeup: mpsc::Receiver<()>) {
                     }
                 }
             };
-            let result = convert(&app, &work);
+            let mut result = convert(&app, &work, work.encoder.as_ref());
+            // A GPU that fails (a driver problem, a size it can't do): the CPU does it instead.
+            if let (Err(e), Some(gpu)) = (&result, &work.encoder) {
+                if e != "CANCELLED" && e != "TOOLS_MISSING" && !is_cancelled(&app, work.run) {
+                    crate::logging::warn(&format!("{} couldn't convert a video ({e}); converting it on the CPU", gpu.label));
+                    update(&app, work.run, |j| {
+                        j.progress = 0.0;
+                        j.encoder = None;
+                    });
+                    result = convert(&app, &work, None);
+                }
+            }
             finish(&app, &work, result);
         }
     }
@@ -421,9 +471,9 @@ fn working_path(input: &Path) -> PathBuf {
     input.with_file_name(format!(".{stem}.converting.webm"))
 }
 
-/// Runs ffmpeg: the first video stream to WebM (VP9), without sound or subtitles, keeping the
-/// size. Returns the working file once it's complete.
-fn convert(app: &AppHandle, work: &Work) -> Result<PathBuf, String> {
+/// Runs ffmpeg: the first video stream to WebM (AV1 on a GPU, VP9 on the CPU), without sound
+/// or subtitles, keeping the size. Returns the working file once it's complete.
+fn convert(app: &AppHandle, work: &Work, gpu: Option<&Encoder>) -> Result<PathBuf, String> {
     let ffmpeg = tools::ffmpeg_path(&work.tools_dir).ok_or("TOOLS_MISSING")?;
     if !work.input.is_file() {
         return Err("the video's file is missing".into());
@@ -431,6 +481,9 @@ fn convert(app: &AppHandle, work: &Work) -> Result<PathBuf, String> {
     let output = working_path(&work.input);
     let mut cmd = tools::hidden_command(&ffmpeg);
     cmd.args(["-hide_banner", "-nostats", "-loglevel", "error", "-y"]);
+    if let Some(gpu) = gpu {
+        cmd.args(gpu.input_args());
+    }
     // A trim: `-ss` before `-i` seeks quickly, and since the video is re-encoded the cut is
     // still exact to the frame; `-t` is the length to keep.
     if let Some(range) = work.trim {
@@ -440,10 +493,10 @@ fn convert(app: &AppHandle, work: &Work) -> Result<PathBuf, String> {
     cmd.arg("-i")
         .arg(&work.input)
         .args(["-map", "0:v:0", "-an", "-sn"])
-        // Constant quality (crf) VP9; "good" with cpu-used 4 is a fair speed for the quality,
-        // and row-mt uses every core.
-        .args(["-c:v", "libvpx-vp9", "-crf", "32", "-b:v", "0", "-deadline", "good", "-cpu-used", "4"])
-        .args(["-row-mt", "1", "-pix_fmt", "yuv420p"])
+        .args(match gpu {
+            Some(gpu) => gpu.output_args(work.width, work.height),
+            None => video_encoders::cpu_args(),
+        })
         // The seek index (Cues) at the front of the file, so the player can read it with the
         // first request and start in the middle straight away (decision 0037).
         .args(["-cues_to_front", "1"])
@@ -696,6 +749,13 @@ pub fn clear_conversions(app: AppHandle, state: AppStateRef) -> Result<(), Strin
     s.conversions.retain(|j| matches!(j.status, JobStatus::Queued | JobStatus::Running));
     emit_conversions(&app, &s);
     Ok(())
+}
+
+/// The GPU encoders that work here, for Preferences › Video (decision 0051). The first call
+/// looks for them, which takes a few seconds.
+#[tauri::command(async)]
+pub fn video_encoders(app: AppHandle) -> Vec<Encoder> {
+    encoders(&app)
 }
 
 #[tauri::command]

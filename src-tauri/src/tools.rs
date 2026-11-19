@@ -2,8 +2,9 @@
 //!
 //! - **yt-dlp** fetches audio from video sites. Standalone builds from its GitHub releases.
 //! - **ffmpeg** (with **ffprobe**) converts and cuts audio, for yt-dlp and for cropping
-//!   (decision 0020). ffmpeg.org publishes no binaries, so we use the builds yt-dlp
-//!   recommends (`yt-dlp/FFmpeg-Builds`, Linux and Windows).
+//!   (decision 0020), and converts videos (decision 0035). ffmpeg.org publishes no binaries,
+//!   so we use BtbN's release builds (`BtbN/FFmpeg-Builds`, Linux and Windows; decision 0051),
+//!   from the branch in `FFMPEG_BRANCH`.
 //!
 //! Both are installed into `<app data>/tools/` the first time they're needed. Every download
 //! is checked against the SHA-256 checksums published with the release before it's used.
@@ -21,7 +22,16 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 
 const YT_DLP_RELEASE: &str = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/";
-const FFMPEG_RELEASE: &str = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/";
+const FFMPEG_RELEASE: &str = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/";
+/// The ffmpeg release branch to install. Not simply the newest: each branch is built with a
+/// version of NVIDIA's encoder headers, and a newer one refuses older drivers. In November 2026
+/// the 9.0 builds (and the nightly ones) need driver 610, while 8.1 works from much older
+/// drivers on, and with newer ones too. Raise it once drivers have caught up. If BtbN stops
+/// publishing this branch, the newest release is installed instead.
+const FFMPEG_BRANCH: &str = "8.1";
+/// Written next to ffmpeg: the name of the release file it came from. Older Comilito versions
+/// installed yt-dlp's nightly build and wrote nothing, which is how that build is recognised.
+const FFMPEG_BUILD_FILE: &str = "build.txt";
 
 /// What the UI shows about the tools.
 #[derive(Debug, Clone, Default, Serialize)]
@@ -30,6 +40,9 @@ pub struct ToolsStatus {
     /// yt-dlp's version, if installed.
     pub yt_dlp: Option<String>,
     pub ffmpeg: bool,
+    /// The installed ffmpeg's release ("9.0"), or `None` for one installed before decision
+    /// 0051 (yt-dlp's nightly build, which GPU encoding may not work with).
+    pub ffmpeg_version: Option<String>,
     /// Disk space used by the tools folder, in bytes.
     pub size: u64,
 }
@@ -95,6 +108,7 @@ pub fn status(dir: &Path) -> ToolsStatus {
     ToolsStatus {
         yt_dlp,
         ffmpeg: ffmpeg_path(dir).is_some(),
+        ffmpeg_version: installed_ffmpeg_build(dir).as_deref().and_then(release_version),
         size: folder_size(dir),
     }
 }
@@ -174,6 +188,8 @@ fn folder_size(dir: &Path) -> u64 {
 /// The release file names for this computer, or an error on unsupported platforms.
 struct Assets {
     yt_dlp: &'static str,
+    /// The platform in BtbN's ffmpeg file names ("linux64"); the file itself is picked from the
+    /// release's checksum list (`ffmpeg_release`), as its name holds the version.
     ffmpeg: Option<&'static str>,
 }
 
@@ -183,20 +199,12 @@ fn assets() -> Result<Assets, String> {
     if cfg!(target_os = "linux") {
         Ok(Assets {
             yt_dlp: if arm { "yt-dlp_linux_aarch64" } else { "yt-dlp_linux" },
-            ffmpeg: Some(if arm {
-                "ffmpeg-master-latest-linuxarm64-gpl.tar.xz"
-            } else {
-                "ffmpeg-master-latest-linux64-gpl.tar.xz"
-            }),
+            ffmpeg: Some(if arm { "linuxarm64" } else { "linux64" }),
         })
     } else if cfg!(windows) {
         Ok(Assets {
             yt_dlp: if arm { "yt-dlp_arm64.exe" } else { "yt-dlp.exe" },
-            ffmpeg: Some(if arm {
-                "ffmpeg-master-latest-winarm64-gpl.zip"
-            } else {
-                "ffmpeg-master-latest-win64-gpl.zip"
-            }),
+            ffmpeg: Some(if arm { "winarm64" } else { "win64" }),
         })
     } else if cfg!(target_os = "macos") {
         Ok(Assets {
@@ -208,19 +216,82 @@ fn assets() -> Result<Assets, String> {
     }
 }
 
-/// Reads a published checksum list ("<sha256>  <file name>" per line) and finds `file`.
-fn expected_sha256(sums_url: &str, file: &str) -> Result<String, String> {
-    let text = ureq::get(sums_url)
+/// Downloads a published checksum list ("<sha256>  <file name>" per line).
+fn checksum_list(sums_url: &str) -> Result<String, String> {
+    ureq::get(sums_url)
         .call()
         .map_err(|e| format!("could not check the download: {e}"))?
         .body_mut()
         .read_to_string()
-        .map_err(|e| format!("could not check the download: {e}"))?;
-    text.lines()
+        .map_err(|e| format!("could not check the download: {e}"))
+}
+
+/// `(sha256, file name)` for each line of a checksum list.
+fn checksum_entries(list: &str) -> impl Iterator<Item = (String, &str)> {
+    list.lines()
         .filter_map(|line| line.split_once(char::is_whitespace))
-        .find(|(_, name)| name.trim().trim_start_matches('*') == file)
-        .map(|(hash, _)| hash.to_lowercase())
+        .map(|(hash, name)| (hash.to_lowercase(), name.trim().trim_start_matches('*')))
+}
+
+/// Finds `file` in a published checksum list.
+fn expected_sha256(sums_url: &str, file: &str) -> Result<String, String> {
+    let list = checksum_list(sums_url)?;
+    checksum_entries(&list)
+        .find(|(_, name)| *name == file)
+        .map(|(hash, _)| hash)
         .ok_or_else(|| format!("{file} is not listed in the published checksums"))
+}
+
+/// The version in a BtbN release file name: "ffmpeg-n9.0-latest-linux64-gpl-9.0.tar.xz" → "9.0".
+fn release_version(file: &str) -> Option<String> {
+    let version = file.strip_prefix("ffmpeg-n")?.split_once("-latest-")?.0;
+    let valid = !version.is_empty() && version.split('.').all(|part| part.parse::<u32>().is_ok());
+    valid.then(|| version.to_string())
+}
+
+/// The release build to install for `platform` from BtbN's checksum list, with its checksum:
+/// the `branch` one if it's published, else the newest. Only the full GPL builds in one file
+/// ("-gpl-8.1.tar.xz"), not "-lgpl-" or "-shared-", and not the nightly "master" builds.
+/// Versions compare as numbers, so 10.0 beats 9.1.
+fn ffmpeg_release(list: &str, platform: &str, branch: &str) -> Option<(String, String)> {
+    let builds: Vec<(String, String, String)> = checksum_entries(list)
+        .filter_map(|(hash, name)| {
+            let version = release_version(name)?;
+            let expected = format!("ffmpeg-n{version}-latest-{platform}-gpl-{version}.");
+            let ext_ok = name.ends_with(".tar.xz") || name.ends_with(".zip");
+            (name.starts_with(&expected) && ext_ok).then(|| (version, hash, name.to_string()))
+        })
+        .collect();
+    let pinned = builds.iter().find(|(version, _, _)| version == branch);
+    pinned
+        .or_else(|| {
+            builds
+                .iter()
+                .max_by_key(|(version, _, _)| version.split('.').map(|p| p.parse::<u32>().unwrap_or(0)).collect::<Vec<_>>())
+        })
+        .map(|(_, hash, name)| (name.clone(), hash.clone()))
+}
+
+/// The release file the installed ffmpeg came from, if it was installed by this version.
+pub fn installed_ffmpeg_build(dir: &Path) -> Option<String> {
+    let text = fs::read_to_string(ffmpeg_dir(dir).join(FFMPEG_BUILD_FILE)).ok()?;
+    Some(text.trim().to_string()).filter(|t| !t.is_empty())
+}
+
+/// Whether ffmpeg should be (re)installed: missing, from before decision 0051, or not the
+/// release build `install_ffmpeg` would pick now (a new build of the branch, or a new branch). Asks the internet only in the last case; offline, it's left alone.
+pub fn ffmpeg_needs_install(dir: &Path) -> bool {
+    if ffmpeg_dir(dir).join(exe("ffmpeg")).is_file() {
+        let Some(installed) = installed_ffmpeg_build(dir) else { return true };
+        let Some(platform) = assets().ok().and_then(|a| a.ffmpeg) else { return false };
+        checksum_list(&format!("{FFMPEG_RELEASE}checksums.sha256"))
+            .ok()
+            .and_then(|list| ffmpeg_release(&list, platform, FFMPEG_BRANCH))
+            .is_some_and(|(newest, _)| newest != installed)
+    } else {
+        // Not ours: on macOS one on the PATH may be used, and there's nothing to install.
+        assets().is_ok_and(|a| a.ffmpeg.is_some())
+    }
 }
 
 /// Downloads `url` to `dest`, reporting progress, and returns the file's SHA-256.
@@ -290,21 +361,24 @@ pub fn install_yt_dlp(dir: &Path, progress: &mut dyn FnMut(InstallProgress)) -> 
     fs::rename(&tmp, yt_dlp_path(dir)).map_err(|e| e.to_string())
 }
 
-/// Installs ffmpeg and ffprobe from the yt-dlp FFmpeg build.
+/// Installs (or replaces) ffmpeg and ffprobe with the BtbN release build (`FFMPEG_BRANCH`).
 pub fn install_ffmpeg(dir: &Path, progress: &mut dyn FnMut(InstallProgress)) -> Result<(), String> {
-    let Some(asset) = assets()?.ffmpeg else {
+    let Some(platform) = assets()?.ffmpeg else {
         return Err("on macOS, install ffmpeg yourself (for example with Homebrew) for now".into());
     };
     fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-    let expected = expected_sha256(&format!("{FFMPEG_RELEASE}checksums.sha256"), asset)?;
-    let archive = dir.join(asset);
+    let list = checksum_list(&format!("{FFMPEG_RELEASE}checksums.sha256"))?;
+    let (asset, expected) =
+        ffmpeg_release(&list, platform, FFMPEG_BRANCH).ok_or("no ffmpeg release build is published for this computer")?;
+    let archive = dir.join(&asset);
     let actual = download(&format!("{FFMPEG_RELEASE}{asset}"), &archive, "ffmpeg", progress)?;
     let result = verify(&actual, &expected, "ffmpeg").and_then(|_| {
         progress(InstallProgress { step: "unpacking ffmpeg".into(), done: 0, total: 0 });
         unpack_ffmpeg(&archive, dir)
     });
     let _ = fs::remove_file(&archive);
-    result
+    result?;
+    fs::write(ffmpeg_dir(dir).join(FFMPEG_BUILD_FILE), &asset).map_err(|e| e.to_string())
 }
 
 /// Takes `ffmpeg` and `ffprobe` out of the downloaded archive into `tools/ffmpeg/`.
@@ -394,6 +468,28 @@ mod tests {
     }
 
     #[test]
+    fn picks_the_pinned_branch_else_the_newest_full_release_build() {
+        let list = "\
+aa  ffmpeg-master-latest-linux64-gpl.tar.xz
+bb  ffmpeg-n8.1-latest-linux64-gpl-8.1.tar.xz
+cc  ffmpeg-n9.0-latest-linux64-gpl-9.0.tar.xz
+dd  ffmpeg-n8.1-latest-linux64-lgpl-8.1.tar.xz
+ee  ffmpeg-n8.1-latest-linux64-gpl-shared-8.1.tar.xz
+ff  ffmpeg-n10.0-latest-linuxarm64-gpl-10.0.tar.xz
+11  ffmpeg-n9.1-latest-linuxarm64-gpl-9.1.tar.xz
+00  ffmpeg-n8.1-latest-win64-gpl-8.1.zip
+";
+        let linux = ffmpeg_release(list, "linux64", "8.1").unwrap();
+        assert_eq!(linux, ("ffmpeg-n8.1-latest-linux64-gpl-8.1.tar.xz".to_string(), "bb".to_string()));
+        assert_eq!(ffmpeg_release(list, "win64", "8.1").unwrap().0, "ffmpeg-n8.1-latest-win64-gpl-8.1.zip");
+        // 8.1 not published for ARM here: the newest, compared as numbers.
+        assert_eq!(ffmpeg_release(list, "linuxarm64", "8.1").unwrap().0, "ffmpeg-n10.0-latest-linuxarm64-gpl-10.0.tar.xz");
+        assert_eq!(ffmpeg_release(list, "winarm64", "8.1"), None);
+        assert_eq!(release_version("ffmpeg-n9.0-latest-linux64-gpl-9.0.tar.xz").as_deref(), Some("9.0"));
+        assert_eq!(release_version("ffmpeg-master-latest-linux64-gpl.tar.xz"), None);
+    }
+
+    #[test]
     fn checksum_mismatch_is_refused() {
         assert!(verify("aa", "bb", "yt-dlp").is_err());
         assert!(verify("aa", "aa", "yt-dlp").is_ok());
@@ -412,6 +508,8 @@ mod tests {
         println!("{st:?}");
         assert!(st.yt_dlp.is_some());
         assert!(st.ffmpeg);
+        assert!(st.ffmpeg_version.is_some(), "a release build, with its version recorded");
+        assert!(!ffmpeg_needs_install(&dir.0));
         assert_eq!(yt_dlp_update_available(&dir.0), Some(false));
     }
 

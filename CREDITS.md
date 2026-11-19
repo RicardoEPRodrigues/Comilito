@@ -37,7 +37,7 @@ re-encoded to a lower MP3 bitrate (112 / 96 / 96 kbps) to keep the app small; no
 
 Comilito downloads these on first use, into its own data folder (decision 0019):
 [yt-dlp](https://github.com/yt-dlp/yt-dlp) (Unlicense) and
-[FFmpeg](https://ffmpeg.org) (GPL builds from [yt-dlp/FFmpeg-Builds](https://github.com/yt-dlp/FFmpeg-Builds)).
+[FFmpeg](https://ffmpeg.org) (GPL release builds from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds)).
 They run as separate programs; Comilito doesn't link to them.
 
 ## Inspiration

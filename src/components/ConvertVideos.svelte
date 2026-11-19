@@ -38,7 +38,7 @@
       case "queued":
         return "waiting";
       case "running":
-        return `converting · ${Math.round(job.progress * 100)}%`;
+        return `converting${job.encoder ? " on the GPU" : ""} · ${Math.round(job.progress * 100)}%`;
       case "done":
         return "converted";
       case "cancelled":

@@ -1076,7 +1076,8 @@ pub fn tools_status(state: AppStateRef) -> Result<crate::tools::ToolsStatus, Str
     Ok(crate::tools::status(&dir))
 }
 
-/// Downloads (or updates) yt-dlp and ffmpeg, reporting `tools-progress` events.
+/// Downloads (or updates) yt-dlp and ffmpeg, reporting `tools-progress` events. ffmpeg is
+/// replaced when it's from before decision 0051 or a newer release is out.
 #[tauri::command(async)]
 pub fn install_tools(app: AppHandle, state: AppStateRef) -> Result<crate::tools::ToolsStatus, String> {
     let dir = lock(&state)?.tools_dir.clone();
@@ -1084,8 +1085,10 @@ pub fn install_tools(app: AppHandle, state: AppStateRef) -> Result<crate::tools:
         let _ = app.emit("tools-progress", &p);
     };
     crate::tools::install_yt_dlp(&dir, &mut report)?;
-    if crate::tools::ffmpeg_path(&dir).is_none() {
+    if crate::tools::ffmpeg_needs_install(&dir) {
         crate::tools::install_ffmpeg(&dir, &mut report)?;
+        // A new ffmpeg may offer other GPU encoders (decision 0051): look again when next asked.
+        lock(&state)?.video_encoders = None;
     }
     Ok(crate::tools::status(&dir))
 }

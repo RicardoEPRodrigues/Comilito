@@ -45,7 +45,12 @@ whole feature can be turned off in Preferences › Video.
 - Videos added in this session (Add files, dropped, found in `video/`, downloaded) that turn
   out not to play everywhere are collected, and once nothing is left to look at they're offered
   together in the Convert dialog (or converted, or left, per Preferences › Video).
-- Conversions run one at a time with ffmpeg: VP9, constant quality (crf 32), no sound, same size.
+- Conversions run one at a time with ffmpeg, no sound, same size. On a GPU when one works
+  ([decision 0051](decisions/0051-gpu-video-encoding.md)): AV1 through NVENC (constant quality
+  36), VA-API, Quick Sync or AMF. Otherwise, or when the GPU fails (the CPU then redoes it), on the
+  CPU: VP9, constant quality (crf 32). Preferences › Video › *Convert videos with* picks
+  Automatic, a GPU, or CPU only. The GPUs are found the first time they're needed, by a tiny test
+  encode with each candidate, and logged.
   The working file is hidden (`.name.converting.webm`) so the folder scan ignores it, and is
   deleted if the conversion is cut off. The converted file replaces the original in every scene;
   the original goes to the trash, or stays as a video of its own ("(original)").

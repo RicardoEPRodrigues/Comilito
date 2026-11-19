@@ -92,6 +92,14 @@ export interface VideoPrefs {
   convert: "ask" | "always" | "never";
   /** Space pauses the sound only; the video keeps playing. Esc still blanks it. */
   keepPlayingWhenPaused: boolean;
+  /** What converts videos (decision 0051): "auto", "cpu", or a GPU encoder's id. */
+  encoder: string;
+}
+
+/** A GPU encoder that works on this computer (decision 0051). */
+export interface VideoEncoder {
+  id: string;
+  label: string;
 }
 
 export interface Video {
@@ -397,6 +405,8 @@ export interface DesktopAppearance {
 export interface ToolsStatus {
   ytDlp: string | null;
   ffmpeg: boolean;
+  /** The installed ffmpeg release ("9.0"); null for a build from before decision 0051. */
+  ffmpegVersion: string | null;
   size: number;
 }
 
@@ -470,6 +480,8 @@ export interface ConversionJob {
   status: "queued" | "running" | "done" | "failed" | "cancelled";
   progress: number;
   message: string | null;
+  /** The GPU converting it, or null for the CPU (decision 0051). */
+  encoder: string | null;
 }
 
 /** Videos that may not play, offered for conversion. "library": asked from a video's page. */

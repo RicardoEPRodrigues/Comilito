@@ -19,6 +19,7 @@ mod themes;
 mod tools;
 mod video;
 mod video_convert;
+mod video_encoders;
 mod video_window;
 mod waveform;
 
@@ -176,6 +177,7 @@ pub fn run() {
                 backing_up: false,
                 quitting: false,
                 conversions: Vec::new(),
+                video_encoders: None,
                 conversion_wakeup: Some(conversion_wakeup),
                 conversion_process: None,
                 waiting_conversions: video_convert::load_saved(&data_dir),
@@ -253,6 +255,7 @@ pub fn run() {
             video_convert::cancel_conversion,
             video_convert::clear_conversions,
             video_convert::list_conversions,
+            video_convert::video_encoders,
             video_window::toggle_video_window,
             video_window::show_video_window,
             video_window::list_screens,

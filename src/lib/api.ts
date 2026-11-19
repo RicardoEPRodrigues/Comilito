@@ -32,6 +32,7 @@ import type {
   Screen,
   VideoKind,
   MiniPlayer,
+  VideoEncoder,
 } from "./types";
 
 export const api = {
@@ -161,6 +162,8 @@ export const api = {
     invoke<void>("trim_video", { id, startMs: Math.round(startMs), endMs: Math.round(endMs), asCopy }),
   clearConversions: () => invoke<void>("clear_conversions"),
   listConversions: () => invoke<ConversionJob[]>("list_conversions"),
+  /** GPU encoders that work here (decision 0051); the first call takes a few seconds. */
+  videoEncoders: () => invoke<VideoEncoder[]>("video_encoders"),
   toggleVideoWindow: () => invoke<void>("toggle_video_window"),
   showVideoWindow: () => invoke<void>("show_video_window"),
   listScreens: () => invoke<Screen[]>("list_screens"),

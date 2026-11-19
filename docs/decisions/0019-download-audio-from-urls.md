@@ -1,6 +1,6 @@
 # 0019. Download audio from video sites and direct URLs (no streaming)
 
-- Status: Accepted
+- Status: Accepted (where ffmpeg comes from: superseded by 0051)
 - Date: 2026-11-13
 
 ## Context

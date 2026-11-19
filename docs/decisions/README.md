@@ -25,7 +25,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0016](0016-themes-and-desktop-accent.md) | Switchable themes, custom themes and the desktop accent colour | Accepted (theme files: 0025) | 2026-11-13 |
 | [0017](0017-library-drawer-and-presets-tab.md) | Presets get their own tab; sounds become a collapsible Library drawer | Partly proposed | 2026-11-13 |
 | [0018](0018-library-workspace.md) | A full-screen Library workspace for editing sounds | Accepted | 2026-11-13 |
-| [0019](0019-download-audio-from-urls.md) | Download audio from video sites and direct URLs (no streaming) | Accepted | 2026-11-13 |
+| [0019](0019-download-audio-from-urls.md) | Download audio from video sites and direct URLs (no streaming) | Accepted (ffmpeg source superseded by 0051) | 2026-11-13 |
 | [0020](0020-cropping-sounds.md) | Crop sounds in the app, saving a copy or overwriting | Accepted | 2026-11-13 |
 | [0021](0021-no-play-edit-mode.md) | Remove the Play / Edit mode; everything is always editable | Accepted | 2026-11-13 |
 | [0022](0022-dropping-files-onto-the-window.md) | Import audio by dropping files onto the window | Accepted (drop target: 0034) | 2026-11-13 |
@@ -57,6 +57,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0048](0048-interface-scale.md) | Scale the interface with the webview's zoom | Accepted | 2026-11-18 |
 | [0049](0049-mini-player.md) | A mini player in the main window, also used by narrow windows | Accepted | 2026-11-19 |
 | [0050](0050-accent-following-themes.md) | Theme colours that follow the accent; Birch replaces Hearth | Accepted | 2026-11-19 |
+| [0051](0051-gpu-video-encoding.md) | Convert videos on the GPU; ffmpeg from BtbN's release builds | Accepted | 2026-11-19 |
 
 ## Template
 

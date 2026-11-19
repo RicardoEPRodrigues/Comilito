@@ -105,6 +105,9 @@ pub struct VideoPrefs {
     /// Space pauses the sound but the video keeps playing (a still screen looks broken). Esc
     /// still blanks it.
     pub keep_playing_when_paused: bool,
+    /// What converts videos (decision 0051): "auto" (the first GPU that works, else the CPU),
+    /// "cpu", or a GPU encoder's id ("nvenc:0").
+    pub encoder: String,
 }
 
 impl Default for VideoPrefs {
@@ -118,6 +121,7 @@ impl Default for VideoPrefs {
             download_height: 1080,
             convert: ask(),
             keep_playing_when_paused: true,
+            encoder: "auto".into(),
         }
     }
 }

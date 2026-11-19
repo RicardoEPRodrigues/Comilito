@@ -7,7 +7,7 @@
   import type { Component } from "svelte";
   import { api } from "../lib/api";
   import { ask, confirmAction, formatBytes, moveProjects, notify, openLogs, refreshTools, restartInterface, run, ui } from "../lib/store.svelte";
-  import type { OutputDevice, Preferences, Screen } from "../lib/types";
+  import type { OutputDevice, Preferences, Screen, VideoEncoder } from "../lib/types";
   import { CATEGORIES } from "../lib/types";
   import { closeEditor, fingerprint } from "../lib/unsaved";
   import AppearancePage from "./AppearancePage.svelte";
@@ -38,6 +38,15 @@
     if (draft) ui.previewAppearance = $state.snapshot(draft.appearance);
     return () => (ui.previewAppearance = null);
   });
+
+  // GPU encoders (decision 0051), looked for when the Video page is first shown: the first
+  // time takes a few seconds of test encodes.
+  let encoders = $state<VideoEncoder[] | null>(null);
+  $effect(() => {
+    if (page === "video" && encoders === null) api.videoEncoders().then((e) => (encoders = e)).catch(() => (encoders = []));
+  });
+  /** An ffmpeg from before decision 0051, whose GPU encoders may not work with current drivers. */
+  const oldFfmpeg = $derived(!!ui.tools?.ffmpeg && !ui.tools.ffmpegVersion);
 
   async function chooseFolder() {
     const folder = await open({ directory: true, title: "Projects folder" });
@@ -261,11 +270,31 @@
                   <option value="never">Never convert</option>
                 </select>
               </label>
+              <label class="row">
+                <span>Convert videos with</span>
+                <select bind:value={draft.video.encoder} disabled={encoders === null}>
+                  <option value="auto">
+                    {encoders === null ? "Looking for GPUs…" : encoders.length ? `Automatic (${encoders[0].label})` : "Automatic (no GPU found: the CPU)"}
+                  </option>
+                  {#each encoders ?? [] as e (e.id)}<option value={e.id}>{e.label}</option>{/each}
+                  <option value="cpu">CPU only · VP9 (slower, any computer)</option>
+                  <!-- A GPU chosen earlier that isn't found now: kept, and "auto" is used meanwhile. -->
+                  {#if encoders && !["auto", "cpu"].includes(draft.video.encoder) && !encoders.some((e) => e.id === draft!.video.encoder)}
+                    <option value={draft.video.encoder}>A GPU not found now (Automatic meanwhile)</option>
+                  {/if}
+                </select>
+              </label>
               <p class="muted small">
                 WebM videos play everywhere. Others (MP4, MOV…) may need extra codecs on Linux, so
-                Comilito can convert them with its ffmpeg. Defaults for new projects' video
-                playlists are under Levels.
+                Comilito can convert them with its ffmpeg: on a GPU when one can (AV1, many times
+                faster), else on the CPU (VP9). If a GPU fails, the CPU takes over. Defaults for new
+                projects' video playlists are under Levels.
               </p>
+              {#if oldFfmpeg}
+                <p class="muted small warn-note">
+                  Comilito's ffmpeg is an older build that may not use your GPU. Update it in Projects &amp; tools › Download tools.
+                </p>
+              {/if}
             </section>
           {/if}
         {:else if page === "projects"}
@@ -292,9 +321,10 @@
             {#if ui.tools?.ytDlp || ui.tools?.ffmpeg}
               <div class="row">
                 <span class="grow">
-                  yt-dlp {ui.tools.ytDlp ?? "not installed"} · ffmpeg {ui.tools.ffmpeg ? "installed" : "not installed"} · {formatBytes(ui.tools.size)} on disk
+                  yt-dlp {ui.tools.ytDlp ?? "not installed"} · ffmpeg {ui.tools.ffmpeg ? (ui.tools.ffmpegVersion ?? "(older build: Update for GPU video conversion)") : "not installed"} · {formatBytes(ui.tools.size)} on disk
                 </span>
-                <button onclick={() => run(api.installTools().then((t) => (ui.tools = t)))}>Update</button>
+                <!-- Updating may replace ffmpeg, and with it the GPU encoders found. -->
+                <button onclick={() => run(api.installTools().then((t) => ((ui.tools = t), (encoders = null))))}>Update</button>
                 <button class="danger" onclick={removeTools}>Remove</button>
               </div>
             {:else}
@@ -467,6 +497,9 @@
   code {
     font-size: 0.82rem;
     user-select: text;
+  }
+  .warn-note {
+    color: var(--warn);
   }
   .small {
     font-size: 0.78rem;

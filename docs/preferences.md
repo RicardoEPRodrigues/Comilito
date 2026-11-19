@@ -87,6 +87,7 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 | Keep the video playing while the sound is paused (Space; Esc still blanks it) | on | this computer |
 | Video resolution when downloading | up to 1080p | this computer |
 | Videos that may not play | ask (other choices: always convert, never convert) | this computer |
+| Convert videos with | Automatic: the first GPU that works, else the CPU (other choices: a GPU found on this computer, CPU only) ([0051](decisions/0051-gpu-video-encoding.md)) | this computer |
 | Switch videos every | 5 min (0 = play each to its end) | default for new projects |
 | Coming back to a video | resume where it left off | default for new projects |
 | Shuffle videos | off | default for new projects |
@@ -152,7 +153,8 @@ App `preferences.json` (`src-tauri/src/prefs.rs`), with its defaults:
     "crossfadeMs": 1000,
     "downloadHeight": 1080,
     "convert": "ask",
-    "keepPlayingWhenPaused": true
+    "keepPlayingWhenPaused": true,
+    "encoder": "auto"
   },
   "newProjectDefaults": { "...": "masterVolume, categories, defaults and backups, as in a project" }
 }

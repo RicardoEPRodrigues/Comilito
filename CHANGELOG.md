@@ -13,6 +13,12 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Added
 
+- **Videos convert on the GPU** when it can: NVIDIA (RTX 40 and newer), recent Intel and AMD
+  GPUs encode AV1, which plays everywhere, many times faster than the CPU (a 30-second 1080p60
+  clip: about 3 s instead of 47 s on an RTX 5070 Ti). Preferences › Video › *Convert videos with*
+  picks Automatic, a GPU (with two, choose which) or CPU only. If the GPU fails, the CPU takes
+  over. The conversion list says when a video is being converted on the GPU.
+
 - **Projects:** one folder per campaign (`comilito.json` plus its `audio/` folder), saved
   automatically, with automatic backups, export and import as `.comilito` files (with or without
   audio), and a sample project to try things out.
@@ -111,6 +117,10 @@ Nothing has been released yet; everything below goes into the first release, 0.2
   to the full window, at its old size and place. Quitting in the mini player starts in it again.
 
 ### Changed
+
+- Comilito's ffmpeg now comes from BtbN's release builds (ffmpeg 8.1) instead of yt-dlp's nightly
+  ones, whose GPU encoders need the very newest NVIDIA drivers. *Update* in Preferences ›
+  Projects & tools › Download tools replaces an ffmpeg downloaded earlier.
 
 - Comilito now presents itself as a soundboard for game masters of any tabletop role-playing game
   (Dungeons & Dragons among them), on the home screen and in About, which also credits

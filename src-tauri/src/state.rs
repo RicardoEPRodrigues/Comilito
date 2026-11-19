@@ -61,6 +61,9 @@ pub struct AppState {
     /// Videos being converted to WebM (video_convert.rs), how to wake that worker, and its
     /// running ffmpeg (stopped on quit).
     pub conversions: Vec<crate::video_convert::ConversionJob>,
+    /// The GPU encoders that work on this computer (decision 0051), found the first time
+    /// they're needed. `None` until then, and again after ffmpeg is replaced.
+    pub video_encoders: Option<Vec<crate::video_encoders::Encoder>>,
     pub conversion_wakeup: Option<mpsc::Sender<()>>,
     pub conversion_process: Option<Arc<Mutex<Child>>>,
     /// Unfinished conversions waiting for their project to open (from the last run, or parked

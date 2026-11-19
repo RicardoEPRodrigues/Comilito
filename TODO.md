@@ -9,8 +9,11 @@
   "Later · Mobile" (Scenes / Tapestry / Effects tabs, the mixer bar on two rows). On the desktop
   a narrow window uses the mini player (decision 0049).
 - Middle clicking on a scene in the tapestry and draggin up or down, should disable or enable the scenes based on the state of the first clicked on scene. e.g., click on the a disabled scene and drag up, that scene and above scenes selected by the mouse, should now be enabled.
-- Support GPU encoding.
-- if two GPUs are available, add a video option for which to use.
+- Use the GPU for video and audio playback if it improves performance. Audio mixing is light
+  on the CPU and wouldn't gain anything. Videos decode on the CPU on purpose (decision 0047:
+  NVIDIA's GStreamer decoders froze after seeks), and 1080p60 VP9 and AV1 played with no dropped
+  frames when GPU encoding was added. Decision 0047 left room for an opt-in "decode on the GPU"
+  preference if software decoding turns out too slow somewhere (4K on a weak CPU); measure first.
 
 ## Bugs
 
@@ -33,6 +36,10 @@
 - macOS and Android are listed as planned in the README. Android also needs checking that kira's
   cpal backend works there (decision 0002).
 
+- GPU video encoding (decision 0051) was tested only with NVENC on Linux (RTX 5070 Ti). VA-API
+  (Intel and AMD on Linux), Quick Sync and AMF (Windows) are untested: their quality settings are
+  a bitrate for the picture size, and a failure falls back to the CPU.
+
 ## Left to do or to check (added by Claude)
 
 ### Documented but not built yet
@@ -40,6 +47,11 @@
 ### Docs out of date
 
 ### Other checks
+
+- ffmpeg is pinned to BtbN's 8.1 release branch (`FFMPEG_BRANCH` in tools.rs, decision 0051)
+  because the 9.0 builds' NVENC needs NVIDIA driver 610+. Raise it once that driver is common.
+- yt-dlp now runs with BtbN's ffmpeg instead of yt-dlp's own builds (decision 0051). Downloads
+  weren't retested after the switch; try a few (audio, video, part of a video).
 
 - Backups are filed by project name (decision 0026), so two projects with the same name (more
   likely now that projects can live outside the projects folder, decision 0042) share a backup
