@@ -53,12 +53,19 @@ For where the window's normal size is kept while small:
   No editing: menus to edit or rename scenes and presets stay in the full window.
 - Entering the mini player first leaves an in-place editor (asking about unsaved changes) and
   the Library workspace.
-- A window narrower than 860 CSS pixels (so the interface scale, decision 0048, counts) shows
-  the same layout, but doesn't go on top and has no pin or back button: widening it brings the
-  full layout back. Not while an editor or the Library workspace is open, whose unsaved work
-  would be lost; those stay until closed. The window's minimum size is now 360 × 420.
-- Between 860 and 1100 pixels the full layout stays, and the bottom bar drops its keyboard hint
-  and lets its sliders share the width (design J2).
+- The mini player follows the window's width: a window made narrower than 860 CSS pixels by
+  hand (so the interface scale, decision 0048, counts) turns it on, without going on top (the
+  pin is off) and without resizing; one widened past 860 turns it off and stays the size it was
+  made. `set_mini_player` takes `resize: false` for these. The back button of a mini player
+  turned on by hand has no earlier size to return to, and gives the window its default 1280 × 800.
+  Not while an editor or the Library workspace is open, whose unsaved work would be lost; those
+  stay until closed. The window's minimum size is now 360 × 420.
+- Between 860 and 1100 pixels the full layout stays, with the side columns at their narrow
+  width; the bottom bar drops its keyboard hint and lets its sliders share the width (design
+  J2), and the video and preview chips shrink, cutting their text. A narrow Tapestry (under
+  560 px, a CSS container query) hides the capitals and shows only the status pills' icons.
+- Dialogs scroll when taller than the window, and the "Save the current tapestry?" dialog stacks
+  its fields and buttons in a narrow window.
 - With no project open (started in the mini player with "open the last project" off), the
   window goes back to full size: the home screen has no way out of a small on-top window.
 
@@ -70,5 +77,4 @@ For where the window's normal size is kept while small:
 - Untested on Windows and macOS: always-on-top and restoring the placement go through Tauri's
   window API there too, but haven't been tried.
 - If the app is killed (not quit) in the mini player, the window-state plugin doesn't save the
-  small size; it then starts with the mini player layout in a big window, and the arrows button
-  still goes back normally.
+  small size; it then starts full-size, and the width rule turns the mini player off.

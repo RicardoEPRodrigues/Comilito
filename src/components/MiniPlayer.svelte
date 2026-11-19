@@ -1,8 +1,8 @@
 <script lang="ts">
   // The mini player (decision 0049; designs I–I3 in pencil/comilito.pen): the main window,
   // small and on top of other windows, for running a session next to something else (a
-  // virtual tabletop, notes). Also the layout of a window too narrow for the full one, but
-  // without going on top or the buttons below that only make sense in the mini player.
+  // virtual tabletop, notes). A window made too narrow for the full layout turns it on too,
+  // without going on top (the pin does that); widened again, it turns off.
   //
   //   title row: project, Video, pin (on top), back to the full window
   //   Tapestry | Effects tabs

@@ -107,10 +107,11 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Changed
 
-- **Narrow windows:** below about 860 px wide the window shows the mini player's layout (without
-  staying on top) instead of squeezing the three columns; the window can now be made as small
-  as 360 × 420. Below 1100 px the bottom bar drops its keyboard hint and its sliders share the
-  room, instead of squashing everything.
+- **Narrow windows:** making the window narrower than about 860 px turns on the mini player
+  (without keeping it on top; its pin does that), and widening it past that turns it off. The
+  window can now be made as small as 360 × 420. Below 1100 px the side columns narrow, the
+  Tapestry's entries get more compact, and the bottom bar drops its keyboard hint and shares
+  its room between the sliders and the "now showing" video, instead of overlapping.
 
 - **Backups** are kept in Comilito's data folder (`~/.local/share/com.comilito.app/backups` on
   Linux) instead of a `Backups` folder among your projects, so the projects folder holds only
@@ -134,6 +135,11 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 - The app icon is the plain horse-skull mark at every size; the decorated version was too busy.
 
 ### Fixed
+
+- The bottom bar's "now showing" video no longer lets its text spill out of its box; long names
+  and details end with "…".
+- Dialogs fit small windows: they scroll when taller than the window, and "Save the current
+  tapestry?" puts its fields and buttons one per line in a narrow window.
 
 - On Windows, opening the video window froze the app: the window stayed white and the main
   window stopped responding.

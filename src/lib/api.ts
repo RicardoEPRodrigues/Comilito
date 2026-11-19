@@ -39,7 +39,7 @@ export const api = {
   confirmQuit: () => invoke<void>("confirm_quit"),
   // The mini player (decision 0049): only the window's size and always-on-top live in Rust.
   miniPlayer: () => invoke<MiniPlayer>("mini_player"),
-  setMiniPlayer: (on: boolean) => invoke<MiniPlayer>("set_mini_player", { on }),
+  setMiniPlayer: (on: boolean, resize: boolean) => invoke<MiniPlayer>("set_mini_player", { on, resize }),
   setMiniOnTop: (onTop: boolean) => invoke<MiniPlayer>("set_mini_on_top", { onTop }),
   getState: () => invoke<Snapshot>("get_state"),
   getPreferences: () => invoke<Preferences>("get_preferences"),

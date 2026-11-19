@@ -82,9 +82,15 @@
     box-shadow: var(--shadow);
     padding: 1.4rem;
     width: min(32rem, 92vw);
+    max-height: calc(100vh - 2rem);
+    overflow: auto;
     display: flex;
     flex-direction: column;
     gap: 0.9rem;
+  }
+  /* Too tall for the window, the dialog scrolls; its parts keep their size instead of squashing. */
+  .dialog > :global(*) {
+    flex-shrink: 0;
   }
   h3 {
     font-size: 1.7rem;
@@ -108,5 +114,13 @@
   .buttons button:first-child:not(.primary) {
     margin-right: auto;
     border-color: transparent;
+  }
+  @media (max-width: 520px) {
+    .dialog {
+      padding: 1rem;
+    }
+    h3 {
+      font-size: 1.4rem;
+    }
   }
 </style>

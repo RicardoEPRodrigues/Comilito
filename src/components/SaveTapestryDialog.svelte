@@ -185,6 +185,9 @@
     box-shadow: var(--shadow);
     padding: 1.4rem;
     width: min(34rem, 92vw);
+    /* In a small window (the mini player, decision 0049) it scrolls rather than spill out. */
+    max-height: calc(100vh - 2rem);
+    overflow: auto;
     display: flex;
     flex-direction: column;
     gap: 0.9rem;
@@ -194,6 +197,10 @@
     align-items: center;
     gap: 0.6rem;
     color: var(--accent);
+  }
+  /* Too tall for the window, the dialog scrolls; its parts keep their size instead of squashing. */
+  .dialog > :global(*) {
+    flex-shrink: 0;
   }
   h3 {
     color: var(--text);
@@ -289,5 +296,43 @@
   }
   .spacer {
     flex: 1;
+  }
+  /* The mini player and other narrow windows: one field and one button per line, less padding. */
+  @media (max-width: 520px) {
+    .dialog {
+      padding: 0.9rem;
+      gap: 0.55rem;
+    }
+    h3 {
+      font-size: 1.4rem;
+    }
+    p {
+      font-size: 0.85rem;
+      line-height: 1.35;
+    }
+    .current {
+      max-height: 4.6rem;
+      padding: 0.5rem 0.7rem;
+    }
+    .option {
+      padding: 0.55rem 0.7rem;
+    }
+    .option.col,
+    .fields {
+      gap: 0.45rem;
+    }
+    .fields {
+      flex-direction: column;
+    }
+    .buttons {
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
+    .buttons button {
+      justify-content: center;
+    }
+    .spacer {
+      display: none;
+    }
   }
 </style>

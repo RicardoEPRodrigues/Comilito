@@ -310,22 +310,22 @@
             <span class="meta">{meta(entry, scene)}</span>
           </button>
           {#if music === "playing"}
-            <span class="status playing"><Music size={11} />Playing</span>
+            <span title="Its music is playing" class="status playing"><Music size={11} /><span class="label">Playing</span></span>
           {:else if music === "paused"}
-            <span class="status"><Pause size={11} />Paused</span>
+            <span title="Its music is paused" class="status"><Pause size={11} /><span class="label">Paused</span></span>
           {:else if music === "covered"}
-            <span class="status"><Pause size={11} />Covered</span>
+            <span title="A scene above plays its own music" class="status"><Pause size={11} /><span class="label">Covered</span></span>
           {:else if scene?.blocksMusic && entry.enabled && !scene.music?.tracks.length}
-            <span class="status"><VolumeX size={11} />Silence</span>
+            <span class="status" title="Silences the music of the scenes below"><VolumeX size={11} /><span class="label">Silence</span></span>
           {/if}
           {#if videoEnabled() && entry.enabled && scene}
             <!-- The video follows the same rule as music (decision 0035). -->
             {#if snapshot.mix.video?.entryId === entry.id}
-              <span class="status playing" title="Its video shows in the video window"><Film size={11} />Video</span>
+              <span class="status playing" title="Its video shows in the video window"><Film size={11} /><span class="label">Video</span></span>
             {:else if scene.video?.videos.length}
-              <span class="status" title="A scene above shows its own video, or hides it"><Film size={11} />Covered</span>
+              <span class="status" title="A scene above shows its own video, or hides it"><Film size={11} /><span class="label">Covered</span></span>
             {:else if scene.hidesVideo}
-              <span class="status" title="Hides the video of the scenes below"><Film size={11} />Hides video</span>
+              <span class="status" title="Hides the video of the scenes below"><Film size={11} /><span class="label">Hides video</span></span>
             {/if}
           {/if}
           <button class="icon" title={expanded.has(entry.id) ? "Collapse" : "Show sounds"} onclick={() => toggleExpanded(entry.id)}>
@@ -429,6 +429,8 @@
 
 <style>
   .tapestry {
+    /* Lets the rules at the end ask how wide the panel itself is (container queries). */
+    container-type: inline-size;
     flex: 1;
     min-height: 0;
     display: flex;
@@ -588,8 +590,13 @@
     color: var(--muted);
     font-size: 0.78rem;
     text-align: left;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .status {
+    flex: none;
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
@@ -719,5 +726,34 @@
     align-self: flex-start;
     margin-top: 0.2rem;
     padding: 0.3rem 0.65rem;
+  }
+  /* A narrow panel (a narrow window, before it turns into the mini player): less padding, no
+     capitals, and the status pills show only their icon, so the scene's name keeps its room. */
+  /* (A container query can't restyle the container itself, so its padding goes by the window.) */
+  @media (max-width: 1100px) {
+    .tapestry {
+      padding: 1.1rem 1rem 0.4rem;
+    }
+  }
+  @container (max-width: 560px) {
+    h2 {
+      font-size: 2rem;
+    }
+    .row {
+      gap: 0.5rem;
+      padding: 0.55rem 0.5rem;
+    }
+    .row :global(.capital) {
+      display: none;
+    }
+    .status {
+      padding: 0.3rem;
+    }
+    .status .label {
+      display: none;
+    }
+    .details {
+      padding-left: 1rem;
+    }
   }
 </style>

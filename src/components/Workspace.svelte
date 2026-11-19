@@ -28,12 +28,17 @@
   import MiniPlayer from "./MiniPlayer.svelte";
 
   /** Narrower than this (CSS pixels, so the interface scale counts), the three columns don't
-   *  fit and the window shows the mini player's layout instead. */
+   *  fit: the mini player turns on. Widened again, it turns off. */
   const NARROW = 860;
   let width = $state(window.innerWidth);
-  // Not while editing something in place or in the Library workspace: the mini player has
-  // neither, and switching would throw away unsaved edits. Those stay until they're closed.
-  const mini = $derived(ui.mini.on || (width < NARROW && !ui.focus && ui.view === "tapestry"));
+  const narrow = $derived(width < NARROW);
+  $effect(() => {
+    // Not while editing something in place or in the Library workspace: the mini player has
+    // neither, and switching would throw away unsaved edits. Those stay until they're closed.
+    if (narrow && !ui.mini.on && !ui.focus && ui.view === "tapestry") setMiniPlayer(true, false);
+    else if (!narrow && ui.mini.on) setMiniPlayer(false, false);
+  });
+  const mini = $derived(ui.mini.on);
 
   const snapshot = $derived(ui.snapshot!);
   const project = $derived(snapshot.project!);
@@ -244,6 +249,12 @@
     min-height: 0;
     display: grid;
     grid-template-columns: minmax(15rem, 19rem) 1fr minmax(13rem, 17rem);
+  }
+  /* Under 1100 px the side columns take their narrow size, leaving the Tapestry the room. */
+  @media (max-width: 1100px) {
+    main {
+      grid-template-columns: 14rem 1fr 12rem;
+    }
   }
   main.library {
     display: flex;

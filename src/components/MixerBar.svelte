@@ -79,10 +79,13 @@
 </footer>
 
 <style>
+  /* The chips give up width before the sliders do: they shrink and cut their text with "…". */
   .now-video {
     display: flex;
     align-items: center;
     gap: 0.55rem;
+    flex: 0 1 auto;
+    min-width: 5rem;
     max-width: 18rem;
     padding: 0.3rem 0.6rem;
     color: inherit;
@@ -90,24 +93,31 @@
     text-transform: none;
     letter-spacing: 0;
   }
+  .now-video :global(svg),
+  .preview :global(svg) {
+    flex: none;
+  }
   .now-video .text {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     min-width: 0;
+    overflow: hidden;
   }
-  .now-video .name {
-    font-size: 0.78rem;
-    font-weight: 600;
-    max-width: 15rem;
+  .now-video .name,
+  .now-video .meta {
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .now-video .name {
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
   .now-video .meta {
     font-size: 0.68rem;
     opacity: 0.7;
-    white-space: nowrap;
   }
   footer {
     display: flex;
@@ -120,6 +130,7 @@
     color: var(--mixer-text);
   }
   .play {
+    flex: none;
     width: 2.9rem;
     height: 2.9rem;
     border-radius: 50%;
@@ -133,6 +144,7 @@
     background: color-mix(in srgb, var(--accent) 85%, black) !important;
   }
   .stop {
+    flex: none;
     width: 2.2rem;
     height: 2.2rem;
     border-radius: 50%;
@@ -142,6 +154,7 @@
     color: var(--mixer-text);
   }
   .divider {
+    flex: none;
     width: 1px;
     height: 2.2rem;
     background: color-mix(in srgb, var(--mixer-text) 25%, transparent);
@@ -169,6 +182,8 @@
   }
   .preview {
     gap: 0.45rem;
+    flex: 0 1 auto;
+    min-width: 5rem;
     max-width: 16rem;
     border-color: var(--mixer-text);
     color: var(--mixer-text);
@@ -212,11 +227,13 @@
     .preview {
       max-width: 11rem;
     }
-    .now-video .name {
-      max-width: 8rem;
-    }
   }
   .hint {
+    flex: 0 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-size: 0.65rem;
     font-weight: 600;
     letter-spacing: 0.14em;

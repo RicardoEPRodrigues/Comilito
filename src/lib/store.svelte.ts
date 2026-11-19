@@ -259,12 +259,14 @@ export async function restartInterface() {
   location.reload();
 }
 
-/** Turns the mini player on or off (decision 0049). An in-place editor is left first (it may
- *  ask about unsaved changes), and the Library workspace closed: the mini player has neither. */
-export async function setMiniPlayer(on: boolean) {
+/** Turns the mini player on or off (decision 0049). `resize` (the buttons) shrinks the window
+ *  or puts it back; without it (the window was resized by hand) only the layout changes.
+ *  An in-place editor is left first (it may ask about unsaved changes), and the Library
+ *  workspace closed: the mini player has neither. */
+export async function setMiniPlayer(on: boolean, resize = true) {
   if (on && !(await leaveFocus())) return;
   if (on) ui.view = "tapestry";
-  const mini = await run(api.setMiniPlayer(on));
+  const mini = await run(api.setMiniPlayer(on, resize));
   if (mini) ui.mini = mini;
 }
 

@@ -9,7 +9,9 @@
 //! it was left in the mini player, starts in it again, and can still grow back to the size
 //! from before.
 //!
-//! The frontend decides the layout; these commands only move and resize the window.
+//! The frontend decides the layout; these commands only move and resize the window. The mini
+//! player also follows the window's width: made narrow by hand it turns on, widened it turns off
+//! (`resize: false`: the user already sized the window, so it's left as it is).
 
 use std::path::{Path, PathBuf};
 
@@ -21,9 +23,13 @@ use crate::storage;
 
 const FILE: &str = ".mini-player.json";
 
-/// The mini player's size the first time, in logical pixels (CSS pixels at 100%).
+/// The mini player's size, in logical pixels (CSS pixels at 100%).
 const MINI_WIDTH: f64 = 380.0;
 const MINI_HEIGHT: f64 = 640.0;
+/// Going back to the full window when there's no size to go back to (the window was made
+/// narrow by hand): tauri.conf.json's first size.
+const FULL_WIDTH: f64 = 1280.0;
+const FULL_HEIGHT: f64 = 800.0;
 
 /// The normal window, in physical pixels (what the OS reports and accepts back unchanged).
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
@@ -40,8 +46,8 @@ struct Placement {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct Saved {
-    /// Where the window goes back to. `None` if it couldn't be read when the mini player
-    /// started; going back then only leaves the window where it is.
+    /// Where the window goes back to. `None` if the window was made narrow by hand, or its
+    /// placement couldn't be read; going back then gives it the default size.
     normal: Option<Placement>,
     on_top: bool,
 }
@@ -102,14 +108,22 @@ pub fn mini_player(window: WebviewWindow, state: AppStateRef) -> Result<MiniPlay
     Ok(MiniPlayer { on: true, on_top: saved.on_top })
 }
 
-/// Turns the mini player on (shrinks the window and keeps it on top) or off (back to the
-/// size and place from before). Turning it on while it's on changes nothing.
+/// Turns the mini player on or off.
+///
+/// With `resize` (the header's button, the back button): on shrinks the window and keeps it on
+/// top; off puts it back to the size and place from before. Without it (the window was resized
+/// by hand across the narrow width), only the mini player's state changes: the window keeps its
+/// size and doesn't go on top. Turning it on while it's on changes nothing.
 #[tauri::command]
-pub fn set_mini_player(on: bool, window: WebviewWindow, state: AppStateRef) -> Result<MiniPlayer, String> {
+pub fn set_mini_player(on: bool, resize: bool, window: WebviewWindow, state: AppStateRef) -> Result<MiniPlayer, String> {
     let config_dir = lock(&state)?.config_dir.clone();
     let err = |e: tauri::Error| e.to_string();
     match (on, read(&config_dir)) {
         (true, Some(saved)) => Ok(MiniPlayer { on: true, on_top: saved.on_top }),
+        (true, None) if !resize => {
+            write(&config_dir, &Saved { normal: None, on_top: false })?;
+            Ok(MiniPlayer { on: true, on_top: false })
+        }
         (true, None) => {
             // Saved before touching the window, so a failure below still leaves a way back.
             write(&config_dir, &Saved { normal: placement(&window), on_top: true })?;
@@ -122,13 +136,18 @@ pub fn set_mini_player(on: bool, window: WebviewWindow, state: AppStateRef) -> R
         }
         (false, saved) => {
             window.set_always_on_top(false).map_err(err)?;
-            if let Some(normal) = saved.and_then(|s| s.normal) {
-                window.set_size(PhysicalSize::new(normal.width, normal.height)).map_err(err)?;
-                // Wayland doesn't let apps place their windows; there the window stays where
-                // it is and only its size changes. Not an error worth reporting.
-                let _ = window.set_position(PhysicalPosition::new(normal.x, normal.y));
-                if normal.maximized {
-                    window.maximize().map_err(err)?;
+            if resize {
+                match saved.and_then(|s| s.normal) {
+                    Some(normal) => {
+                        window.set_size(PhysicalSize::new(normal.width, normal.height)).map_err(err)?;
+                        // Wayland doesn't let apps place their windows; there the window stays
+                        // where it is and only its size changes. Not an error worth reporting.
+                        let _ = window.set_position(PhysicalPosition::new(normal.x, normal.y));
+                        if normal.maximized {
+                            window.maximize().map_err(err)?;
+                        }
+                    }
+                    None => window.set_size(LogicalSize::new(FULL_WIDTH, FULL_HEIGHT)).map_err(err)?,
                 }
             }
             remove(&config_dir);
