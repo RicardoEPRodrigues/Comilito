@@ -256,18 +256,28 @@
   }
   .label {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.2rem 0.4rem;
   }
   .label :global(svg) {
+    flex: none;
     color: var(--accent);
   }
+  /* A long name, or a wide font, wraps between words, and the badge and check mark move to the
+     next line when there's no room beside it, rather than being pushed out of the card
+     (buttons don't wrap by default, see app.css). Only a word wider than the card breaks. */
   .tname {
-    flex: 1;
+    flex: 1 1 auto;
+    max-width: 100%;
     font-size: 1.15rem;
+    line-height: 1.1;
     text-align: left;
+    white-space: normal;
+    overflow-wrap: break-word;
   }
   .badge {
+    flex: none;
     font-size: 0.55rem;
     font-weight: 700;
     letter-spacing: 0.08em;

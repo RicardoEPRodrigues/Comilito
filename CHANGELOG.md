@@ -148,6 +148,9 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Fixed
 
+- In Preferences › Appearance, a theme's name wraps onto a second line when it's long or its font
+  is wide, instead of pushing the "Custom" badge out of its card.
+
 - A sound's page in the Library has its Duplicate and Remove buttons next to its name, as icons,
   like a video's page; on both, Remove is red.
 
