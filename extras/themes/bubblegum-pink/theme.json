@@ -1,0 +1,37 @@
+{
+  "id": "",
+  "name": "Bubblegum Pink",
+  "dark": false,
+  "colors": {
+    "accent": "#ff3d8f",
+    "bg": "#fff5f9",
+    "danger": "#d1193e",
+    "fx-bg": "#fff0f6",
+    "gold": "#ff8cc0",
+    "header-bg": "#ff8cc0",
+    "header-text": "#4b1d3f",
+    "mixer-bg": "#4b1d3f",
+    "mixer-text": "#ffe8f2",
+    "muted": "#9b6488",
+    "rule": "#f7c3da",
+    "side-bg": "#ffe4f0",
+    "side-muted": "#a06b8c",
+    "side-text": "#4b1d3f",
+    "surface": "#ffffff",
+    "text": "#4b1d3f",
+    "track": "#fcd3e4",
+    "warn": "#c25e00"
+  },
+  "fixedAccent": true,
+  "fonts": {
+    "display": "Sniglet",
+    "body": "Inter"
+  },
+  "watermark": "watermark.png",
+  "fontFiles": {
+    "Sniglet": "fonts/Sniglet-ExtraBold.ttf"
+  },
+  "licences": [
+    "fonts/OFL.txt"
+  ]
+}

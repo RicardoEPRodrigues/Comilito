@@ -8,13 +8,16 @@ Import theme file…**.
 | **Horde** (dark) | charred iron, blood-red header and accent, bronze ornaments | New Rocker | a tribal war sigil on a round iron shield |
 | **Alliance** (light) | parchment, navy header, royal-blue accent, gold ornaments | Cinzel Decorative | a roaring lion in a kite shield, with fleur-de-lis and sword |
 | **Hearth** (light) | parchment, dark header, side panel in the accent colour | Pirata One (bundled) | the skeletal horse |
+| **Bubblegum Pink** (light) | candy pink, plum text and mixer, hot pink accent; always keeps its own pink | Sniglet | a smiling heart with a big bow, hearts and sparkles |
+| **Bubblegum Pop** (light) | the same, but the header and highlights take the accent you choose | Sniglet | the same heart |
 
 Hearth was a built-in theme until [decision 0050](../../docs/decisions/0050-accent-following-themes.md);
 its side panel follows the accent (desktop or custom). Horde and Alliance keep their own accent
 whatever is chosen in Preferences (`"fixedAccent": true`), since their colours are built around
-one faction colour.
+one faction colour. The two Bubblegum themes are one look in both forms, to compare: Pink keeps
+its pink (`"fixedAccent": true`), Pop's header follows the accent (`"header-bg": "accent"`).
 
-The designs are in [pencil/extra-themes.pen](../../pencil/extra-themes.pen).
+The designs and woodcut sources are in [pencil/comilito.pen](../../pencil/comilito.pen).
 
 ## Building the packages
 
@@ -30,11 +33,14 @@ background: the app only uses its shape and paints it in the theme's gold.
 
 ## Credits and licences
 
-- **New Rocker** by Pablo Impallari, Brenda Gallo and Rodrigo Fuenzalida, and **Cinzel
-  Decorative** by Natanael Gama. Both are under the SIL Open Font License 1.1; the licence travels
-  with each theme (`fonts/OFL.txt`).
+- **New Rocker** by Pablo Impallari, Brenda Gallo and Rodrigo Fuenzalida, **Cinzel
+  Decorative** by Natanael Gama, and **Sniglet** (ExtraBold) by Haley Fiege, Brenda Gallo and
+  Pablo Impallari. All are under the SIL Open Font License 1.1; the licence travels with each
+  theme (`fonts/OFL.txt`).
 - The **woodcuts** were generated for this project in Pencil (pen.dev) and cleaned up to one
   colour on a transparent background.
 - These are unofficial fan themes. *Warcraft*, the Horde and the Alliance are trademarks of
   Blizzard Entertainment; the woodcuts are interpretations of the faction emblems, not the
   official artwork. Keep these themes out of public releases of Comilito.
+- The Bubblegum heart is an original mascot (not based on any existing character), so the
+  Bubblegum themes carry no such restriction.
