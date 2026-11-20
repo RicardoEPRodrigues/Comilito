@@ -14,7 +14,8 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 ### Added
 
 - **Videos decode on the GPU** (Linux, NVIDIA): NVIDIA's GStreamer decoders play videos again,
-  taking work off the CPU, in the AppImage too. A switch in Preferences › Video turns this off
+  taking work off the CPU, in the AppImage too. On older GStreamer (Ubuntu 22.04, the AppImage)
+  Comilito picks NVIDIA's newer decoders, which don't lag or stop after a jump. A switch in Preferences › Video turns this off
   (it applies the next time Comilito starts) if videos freeze after a jump. (Intel and AMD GPUs,
   and Windows and macOS, already decoded on the GPU.)
 - **Videos convert on the GPU** when it can: NVIDIA (RTX 40 and newer), recent Intel and AMD

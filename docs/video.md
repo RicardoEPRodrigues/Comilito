@@ -112,7 +112,9 @@ pixels). Conversions put the WebM's seek index (Cues) at the front, so jumps don
 of the file first.
 
 On Linux, GStreamer uses NVIDIA's hardware video decoders when there are any
-([0054](decisions/0054-gpu-video-decoding-by-default.md)). With Preferences › Video › "Decode
+([0054](decisions/0054-gpu-video-decoding-by-default.md)). On GStreamer before 1.22, Comilito
+makes it pick the newer ones (`nvvp9sldec`, `nvvp8sldec`) over the older `nvvp9dec`, which lagged
+or stopped after jumps ([0057](decisions/0057-newer-nvidia-decoders.md)). With Preferences › Video › "Decode
 videos on the GPU" off ([0052](decisions/0052-gpu-video-decoding-preference.md)), Comilito keeps
 GStreamer from picking them (`GST_PLUGIN_FEATURE_RANK`, set at startup), as it did for everyone
 when they froze after jumps ([0047](decisions/0047-no-nvidia-video-decoding.md)). The AppImage carries

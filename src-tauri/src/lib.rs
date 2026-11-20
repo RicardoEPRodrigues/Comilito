@@ -60,28 +60,62 @@ fn private_gstreamer_registry() {
     unsafe { std::env::set_var("GST_REGISTRY_1_0", dir.join("gstreamer-registry.bin")) };
 }
 
-/// Keeps WebKit from playing videos with NVIDIA's hardware decoders (GStreamer's nvcodec
-/// plugin, decision 0047). When they're installed, GStreamer ranks them as high as the usual
-/// software decoders, and WebKit picks them; but after a jump to the middle of a video (resuming
-/// it, a thumbnail, a seek) they often freeze on the first frame, or never show one. The
-/// software decoders (libvpx, aom) don't, and are fast enough for our videos.
-///
-/// `GST_PLUGIN_FEATURE_RANK` lists `element:rank` pairs; rank 0 means "never pick it on your
-/// own". Child processes (WebKit's web process) inherit it. Any value the user set is kept
+/// Chooses which of NVIDIA's hardware video decoders (GStreamer's nvcodec plugin) WebKit may
+/// use, through `GST_PLUGIN_FEATURE_RANK`: a list of `element:rank` pairs, inherited by WebKit's
+/// web process. Rank 0 means "never pick it on your own"; 257 is one above the software
+/// decoders (libvpx's `vp9dec` is 256), so GStreamer prefers it. Any value the user set is kept
 /// after ours, so it wins where both name the same element.
 ///
-/// Preferences › Video › "Decode videos on the GPU" (decision 0052) skips this, so the NVIDIA
-/// decoders are used again. Retested in November 2026 (GStreamer 1.20, driver 595, the
-/// current video streaming), they no longer froze; but they stay opt-in until tried more widely.
+/// - GPU decoding off (Preferences › Video, decision 0052): all of them ranked out, as in
+///   decision 0047.
+/// - On, with GStreamer before 1.22 (Ubuntu 22.04, the AppImage): nvcodec has two decoders per
+///   codec. The older `nvvp9dec` ranks highest, and froze or lagged after jumps into a video
+///   (resuming it when a scene comes back). The newer `nvvp9sldec`, built on GStreamer's common
+///   decoder code, ranks below the software decoders and was never used. So the older ones are
+///   ranked out and the newer ones in (decision 0057).
+/// - On, with GStreamer 1.22 or newer: the newer decoders took over the plain names
+///   (`nvvp9dec`) and the old ones are gone, so GStreamer's own ranks are right.
 #[cfg(target_os = "linux")]
-fn no_nvidia_video_decoders() {
-    const OURS: &str = "nvvp8dec:0,nvvp8sldec:0,nvvp9dec:0,nvvp9sldec:0,nvav1dec:0,nvav1sldec:0";
+fn nvidia_decoder_ranks(gpu_decode: bool) {
+    let ours = if !gpu_decode {
+        "nvvp8dec:0,nvvp8sldec:0,nvvp9dec:0,nvvp9sldec:0,nvav1dec:0,nvav1sldec:0"
+    } else if gstreamer_version().is_some_and(|v| v < (1, 22)) {
+        "nvvp8dec:0,nvvp9dec:0,nvvp8sldec:257,nvvp9sldec:257"
+    } else {
+        return;
+    };
     let value = match std::env::var("GST_PLUGIN_FEATURE_RANK") {
-        Ok(theirs) if !theirs.is_empty() => format!("{OURS},{theirs}"),
-        _ => OURS.to_string(),
+        Ok(theirs) if !theirs.is_empty() => format!("{ours},{theirs}"),
+        _ => ours.to_string(),
     };
     // See private_gstreamer_registry for why this is `unsafe` and why it's fine here.
     unsafe { std::env::set_var("GST_PLUGIN_FEATURE_RANK", value) };
+}
+
+/// The (major, minor) version of the GStreamer WebKit will use, or None if it can't be loaded.
+/// WebKitGTK links GStreamer, so it's the library the dynamic loader finds first: the system's,
+/// or inside the AppImage the bundled one (its library folder comes first in the search path).
+#[cfg(target_os = "linux")]
+fn gstreamer_version() -> Option<(u32, u32)> {
+    // `dlopen` loads a shared library at run time and `dlsym` finds a function in it by name,
+    // like LoadLibrary/GetProcAddress on Windows. Both are C calls, hence `unsafe`: Rust can't
+    // check that the function really has the signature we give it. `gst_version` is
+    // `void gst_version(guint *major, guint *minor, guint *micro, guint *nano)` and works before
+    // GStreamer is initialised. The library stays loaded (WebKit loads it anyway).
+    unsafe {
+        let lib = libc::dlopen(c"libgstreamer-1.0.so.0".as_ptr(), libc::RTLD_LAZY);
+        if lib.is_null() {
+            return None;
+        }
+        let symbol = libc::dlsym(lib, c"gst_version".as_ptr());
+        if symbol.is_null() {
+            return None;
+        }
+        let gst_version: extern "C" fn(*mut u32, *mut u32, *mut u32, *mut u32) = std::mem::transmute(symbol);
+        let (mut major, mut minor, mut micro, mut nano) = (0, 0, 0, 0);
+        gst_version(&mut major, &mut minor, &mut micro, &mut nano);
+        Some((major, minor))
+    }
 }
 
 /// Whether this run lets NVIDIA's GStreamer decoders play videos (decision 0052), as read from
@@ -128,9 +162,7 @@ pub fn run() {
         private_gstreamer_registry();
         let gpu_decode = early_config_dir().is_some_and(|dir| prefs::load(&dir).video.gpu_decode);
         let _ = GPU_DECODE_ACTIVE.set(gpu_decode);
-        if !gpu_decode {
-            no_nvidia_video_decoders();
-        }
+        nvidia_decoder_ranks(gpu_decode);
     }
     // Before anything else, so a crash during startup leaves a trace (see logging.rs).
     #[cfg(target_os = "linux")]
@@ -705,5 +737,16 @@ fn ticker(app: AppHandle) {
             }
             None => {}
         }
+    }
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    /// GStreamer is a build requirement on Linux (WebKitGTK links it), so it's always there.
+    #[test]
+    fn reads_the_gstreamer_version() {
+        let (major, minor) = super::gstreamer_version().expect("libgstreamer-1.0 should load");
+        assert_eq!(major, 1);
+        assert!(minor >= 16, "got 1.{minor}");
     }
 }

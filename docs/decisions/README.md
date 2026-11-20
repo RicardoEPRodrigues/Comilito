@@ -62,6 +62,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0054](0054-gpu-video-decoding-by-default.md) | Decode videos on NVIDIA GPUs by default (Linux) | Accepted | 2026-11-20 |
 | [0055](0055-keyframes-for-gpu-conversions.md) | A keyframe every 60 frames in GPU conversions | Accepted | 2026-11-20 |
 | [0056](0056-file-urls-for-videos-on-linux.md) | Play videos from `file://` URLs on Linux | Accepted | 2026-11-20 |
+| [0057](0057-newer-nvidia-decoders.md) | Use nvcodec's newer decoders on GStreamer 1.20 | Accepted | 2026-11-20 |
 | [0053](0053-nvidia-decoders-in-the-appimage.md) | Carry NVIDIA's GStreamer decoders in the AppImage | Accepted | 2026-11-19 |
 
 ## Template
