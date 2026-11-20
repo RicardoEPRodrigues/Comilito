@@ -100,9 +100,9 @@ projects alone. To do it by hand:
 | | Linux | Windows |
 |---|---|---|
 | Preferences and your own themes | `~/.config/comilito/` | `%APPDATA%\comilito\` |
-| Window size and position | `~/.config/com.comilito.app/` | `%APPDATA%\com.comilito.app\` |
-| Backups, logs, downloaded tools, webview storage | `~/.local/share/com.comilito.app/` (backups in `backups/`) | `%APPDATA%\com.comilito.app\` and `%LOCALAPPDATA%\com.comilito.app\` |
-| Cache (may not exist) | `~/.cache/com.comilito.app/` | `%LOCALAPPDATA%\com.comilito.app\` |
+| Window size and position | `~/.config/me.colorcrow.comilito/` | `%APPDATA%\me.colorcrow.comilito\` |
+| Backups, logs, downloaded tools, webview storage | `~/.local/share/me.colorcrow.comilito/` (backups in `backups/`) | `%APPDATA%\me.colorcrow.comilito\` and `%LOCALAPPDATA%\me.colorcrow.comilito\` |
+| Cache (may not exist) | `~/.cache/me.colorcrow.comilito/` | `%LOCALAPPDATA%\me.colorcrow.comilito\` |
 
 On Linux, `~/.config`, `~/.local/share` and `~/.cache` are the defaults; if you've set
 `XDG_CONFIG_HOME`, `XDG_DATA_HOME` or `XDG_CACHE_HOME`, look there instead.

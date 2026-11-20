@@ -153,7 +153,7 @@ Backups are `.comilito` zips written to `<app data folder>/backups/<Project name
 `<id>` is the first 8 characters of the project's id after `prj-`
 ([0058](decisions/0058-backups-filed-by-project-id.md)); folders without the id hold backups from
 before it, and are left as they are
-(`~/.local/share/com.comilito.app/backups/` on Linux, `%APPDATA%\com.comilito.app\backups\` on
+(`~/.local/share/me.colorcrow.comilito/backups/` on Linux, `%APPDATA%\me.colorcrow.comilito\backups\` on
 Windows). Versions before 0026 wrote them to `<projects folder>/Backups/`; they're moved over the
 next time Comilito starts.
 

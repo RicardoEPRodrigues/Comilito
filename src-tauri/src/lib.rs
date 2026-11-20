@@ -1,3 +1,4 @@
+mod app_id;
 mod audio;
 mod bundle;
 mod commands;
@@ -50,7 +51,7 @@ fn private_gstreamer_registry() {
         .map(std::path::PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|home| std::path::PathBuf::from(home).join(".cache")));
     let Some(cache) = cache else { return };
-    let dir = cache.join("com.comilito.app");
+    let dir = cache.join(app_id::APP_ID);
     if std::fs::create_dir_all(&dir).is_err() {
         return;
     }
@@ -166,7 +167,7 @@ pub fn run() {
     }
     // Before anything else, so a crash during startup leaves a trace (see logging.rs).
     #[cfg(target_os = "linux")]
-    logging::capture_stderr("com.comilito.app");
+    logging::capture_stderr(app_id::APP_ID);
     logging::log_panics();
 
     let app = tauri::Builder::default()

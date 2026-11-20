@@ -305,7 +305,7 @@ mod tests {
         let home = std::env::var("HOME").unwrap();
         let ffmpeg = std::env::var("FFMPEG")
             .map(PathBuf::from)
-            .unwrap_or_else(|_| Path::new(&home).join(".local/share/com.comilito.app/tools/ffmpeg/ffmpeg"));
+            .unwrap_or_else(|_| Path::new(&home).join(".local/share/me.colorcrow.comilito/tools/ffmpeg/ffmpeg"));
         let found = detect(&ffmpeg);
         println!("{found:#?}");
     }

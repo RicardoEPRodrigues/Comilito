@@ -17,7 +17,7 @@ backups kept with the app's own files.
   uploads.
 - **The config folder (`~/.config/comilito`):** where preferences are, but config folders are
   meant for small settings files, and backups can include audio (hundreds of MB).
-- **The app data folder (`~/.local/share/com.comilito.app/backups`, `%APPDATA%\com.comilito.app\backups`):**
+- **The app data folder (`~/.local/share/me.colorcrow.comilito/backups`, `%APPDATA%\me.colorcrow.comilito\backups`):**
   meant for app-managed data, already holds logs and the downloaded tools.
 
 ## Decision

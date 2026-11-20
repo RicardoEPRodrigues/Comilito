@@ -113,7 +113,7 @@ kill %1                                                          # stop tauri-dr
 A full-screen screenshot (to see the video window, native dialogs, decorations):
 `cosmic-screenshot --interactive=false --modal=false --notify=false -s <dir>` (ask first).
 
-The app's stderr goes to `~/.local/share/com.comilito.app/logs/stderr.log` when it isn't a
+The app's stderr goes to `~/.local/share/me.colorcrow.comilito/logs/stderr.log` when it isn't a
 terminal, so GTK/WebKit messages (and `WAYLAND_DEBUG=1` output) end up there.
 
 ### X11

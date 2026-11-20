@@ -149,7 +149,7 @@ Nothing has been released yet; everything below goes into the first release, 0.2
   Tapestry's entries get more compact, and the bottom bar drops its keyboard hint and shares
   its room between the sliders and the "now showing" video, instead of overlapping.
 
-- **Backups** are kept in Comilito's data folder (`~/.local/share/com.comilito.app/backups` on
+- **Backups** are kept in Comilito's data folder (`~/.local/share/me.colorcrow.comilito/backups` on
   Linux) instead of a `Backups` folder among your projects, so the projects folder holds only
   projects. Existing backups are moved there automatically. *Remove all data and quit* asks
   whether to keep them.

@@ -42,7 +42,7 @@ Running the Tauri CLI directly (`npx tauri build`) skips the wrapper and bundles
 installed plugin.
 
 At startup inside an AppImage (`APPIMAGE` set), Comilito sets `GST_REGISTRY_1_0` to a file in
-`~/.cache/com.comilito.app/`, so its plugin list stays out of the shared registry.
+`~/.cache/me.colorcrow.comilito/`, so its plugin list stays out of the shared registry.
 
 The video streamer also gives up on a video once 32 MB have been appended without WebKit
 reading its metadata, instead of reading the whole file.

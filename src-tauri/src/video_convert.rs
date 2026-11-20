@@ -837,7 +837,7 @@ mod tests {
     }
 
     /// Converts a generated H.264 clip with the downloaded ffmpeg:
-    /// `COMILITO_TOOLS=~/.local/share/com.comilito.app/tools cargo test converts_ -- --ignored`
+    /// `COMILITO_TOOLS=~/.local/share/me.colorcrow.comilito/tools cargo test converts_ -- --ignored`
     #[test]
     #[ignore]
     fn converts_a_real_video_with_the_downloaded_ffmpeg() {
