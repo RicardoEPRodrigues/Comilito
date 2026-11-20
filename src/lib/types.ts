@@ -227,6 +227,8 @@ export interface BackupSettings {
 
 export interface Project {
   formatVersion: number;
+  /** Unique per project; its backups are filed by it (decision 0058). */
+  id?: string;
   name: string;
   masterVolume: number;
   categories: PerCategory<{ volume: number }>;

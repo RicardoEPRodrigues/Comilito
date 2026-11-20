@@ -98,15 +98,29 @@ pub fn import_zip(zip_path: &Path, root: &Path) -> Result<PathBuf, String> {
         let mut out = File::create(&target).map_err(|e| format!("could not write {}: {e}", target.display()))?;
         io::copy(&mut entry, &mut out).map_err(|e| format!("could not write {}: {e}", target.display()))?;
     }
+    // A copy, maybe next to the project it came from: a new id keeps their backups apart
+    // (decision 0058).
+    let mut imported = storage::load_project(&dir)?;
+    imported.id = crate::project::new_id("prj");
+    storage::save_project(&dir, &imported)?;
     Ok(dir)
 }
 
-/// Writes a backup zip to `backups_dir/<project name>/<project name> YYYY-MM-DD HH-MM.comilito`,
+/// The folder in `backups_dir` for `project`'s backups: its name, made safe for a file name,
+/// and the start of its id, e.g. `Curse of Strahd (3f2a9c1b)` (decision 0058). Two projects
+/// with the same name get different folders, so pruning one's backups never touches the other's.
+pub fn backup_folder(project: &Project, backups_dir: &Path) -> PathBuf {
+    let name = storage::safe_file_name(&project.name);
+    let short: String = project.id.trim_start_matches("prj-").chars().take(8).collect();
+    if short.is_empty() { backups_dir.join(name) } else { backups_dir.join(format!("{name} ({short})")) }
+}
+
+/// Writes a backup zip to `<backup_folder>/<project name> YYYY-MM-DD HH-MM.comilito`,
 /// checks it can be read back, and only then deletes the oldest backups beyond `keep`.
 /// There is never a moment with zero backups (decision 0007).
 pub fn write_backup(dir: &Path, project: &Project, backups_dir: &Path) -> Result<PathBuf, String> {
     let name = storage::safe_file_name(&project.name);
-    let folder = backups_dir.join(&name);
+    let folder = backup_folder(project, backups_dir);
     fs::create_dir_all(&folder).map_err(|e| format!("could not create {}: {e}", folder.display()))?;
 
     let stamp = chrono::Local::now().format("%Y-%m-%d %H-%M");
@@ -297,10 +311,39 @@ mod tests {
             // Make sure modification times differ even on coarse filesystems.
             std::thread::sleep(std::time::Duration::from_millis(20));
         }
-        let count = fs::read_dir(backups.join("Strahd")).unwrap().count();
+        let count = fs::read_dir(backup_folder(&project, &backups)).unwrap().count();
         assert_eq!(count, 2);
         assert!(!written[0].exists(), "the oldest is deleted");
         assert!(written[2].exists(), "the newest is kept");
+    }
+
+    /// Two projects with the same name (decision 0058): each keeps its own backups.
+    #[test]
+    fn same_named_projects_keep_their_own_backups() {
+        let root = TempDir::new();
+        let (dir, mut first) = project_with_sound(&root.0);
+        first.backups.keep = 1;
+        let mut second = first.clone();
+        second.id = crate::project::new_id("prj");
+        let backups = root.0.join("Backups");
+        let first_backup = write_backup(&dir, &first, &backups).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        write_backup(&dir, &second, &backups).unwrap();
+        assert!(first_backup.exists(), "the other project's backup survives the prune");
+        assert_ne!(backup_folder(&first, &backups), backup_folder(&second, &backups));
+        assert!(backup_folder(&first, &backups).ends_with(format!("Strahd ({})", &first.id[4..12])));
+    }
+
+    #[test]
+    fn importing_gives_a_new_id() {
+        let root = TempDir::new();
+        let (dir, project) = project_with_sound(&root.0);
+        let zip = root.0.join("copy.comilito");
+        export_zip(&dir, &project, &zip, false, false).unwrap();
+        let other = TempDir::new();
+        let imported = storage::load_project(&import_zip(&zip, &other.0).unwrap()).unwrap();
+        assert!(imported.id.starts_with("prj-"));
+        assert_ne!(imported.id, project.id);
     }
 
     #[test]

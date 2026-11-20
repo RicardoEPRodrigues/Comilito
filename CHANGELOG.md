@@ -172,6 +172,9 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Fixed
 
+- Two projects with the same name shared a backup folder, so keeping one's newest backups could
+  delete the other's. Each project now has an id in `comilito.json` and its own backup folder,
+  `<name> (<id>)`; backups from before stay where they were.
 - The AppImage no longer prints "WebKit wasn't able to find a WebVTT encoder" every time it
   shows a video.
 - *Update* in Preferences › Projects & tools › Download tools shows what it's doing (checking,

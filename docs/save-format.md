@@ -37,6 +37,7 @@ transferred. Avoid having the same project open on two devices at the same time.
 ```json
 {
   "formatVersion": 2,
+  "id": "prj-3f2a9c1b…",
   "name": "Curse of Strahd",
   "masterVolume": 1.0,
   "categories": {
@@ -106,6 +107,10 @@ On each scene (added 2026-11-14, still version 2):
 
 On the project:
 
+- `id` (added 2026-11-20, still version 2): unique to the project, `prj-` and a random UUID.
+  Backups are filed by it ([0058](decisions/0058-backups-filed-by-project-id.md)). Files without
+  one get one the first time they're opened (saved at once); a duplicated or imported project
+  gets a new one. Older versions of the app ignore it.
 - `presetGroups`: preset groups in display order, including empty ones; each preset may have a
   `group` (decision 0017).
 - `stackOrigin`: the preset the current stack was loaded from or last saved to, for
@@ -144,7 +149,10 @@ self-contained again.
 ## Backups
 
 See decisions [0007](decisions/0007-backups.md) and [0026](decisions/0026-backups-in-app-data.md).
-Backups are `.comilito` zips written to `<app data folder>/backups/<Project name>/`
+Backups are `.comilito` zips written to `<app data folder>/backups/<Project name> (<id>)/`, where
+`<id>` is the first 8 characters of the project's id after `prj-`
+([0058](decisions/0058-backups-filed-by-project-id.md)); folders without the id hold backups from
+before it, and are left as they are
 (`~/.local/share/com.comilito.app/backups/` on Linux, `%APPDATA%\com.comilito.app\backups\` on
 Windows). Versions before 0026 wrote them to `<projects folder>/Backups/`; they're moved over the
 next time Comilito starts.

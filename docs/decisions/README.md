@@ -32,7 +32,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0023](0023-home-screen-and-projects-folder.md) | Home screen, recent projects and moving the projects folder | Accepted | 2026-11-13 |
 | [0024](0024-background-move-and-window-state.md) | Move the projects folder in the background; remember the window size | Accepted | 2026-11-13 |
 | [0025](0025-theme-packages.md) | Themes can bring a watermark and fonts, shared as `.comilito-theme` packages | Accepted (editor: 0027) | 2026-11-13 |
-| [0026](0026-backups-in-app-data.md) | Keep backups in the app's data folder, not the projects folder | Accepted | 2026-11-13 |
+| [0026](0026-backups-in-app-data.md) | Keep backups in the app's data folder, not the projects folder | Accepted (folder name: 0058) | 2026-11-13 |
 | [0027](0027-theme-editor-files.md) | The theme editor can add a woodcut, font files and licences | Accepted | 2026-11-13 |
 | [0028](0028-scene-volumes.md) | Each scene has its own music, ambience and effects volumes | Accepted | 2026-11-14 |
 | [0029](0029-every-layer-has-a-role.md) | Every ambience layer has a role (Foreground by default) | Accepted (ducking everything: 0031) | 2026-11-14 |
@@ -63,6 +63,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0055](0055-keyframes-for-gpu-conversions.md) | A keyframe every 60 frames in GPU conversions | Accepted | 2026-11-20 |
 | [0056](0056-file-urls-for-videos-on-linux.md) | Play videos from `file://` URLs on Linux | Accepted | 2026-11-20 |
 | [0057](0057-newer-nvidia-decoders.md) | Use nvcodec's newer decoders on GStreamer 1.20 | Accepted | 2026-11-20 |
+| [0058](0058-backups-filed-by-project-id.md) | File backups by a project id, not only its name | Accepted | 2026-11-20 |
 | [0053](0053-nvidia-decoders-in-the-appimage.md) | Carry NVIDIA's GStreamer decoders in the AppImage | Accepted | 2026-11-19 |
 
 ## Template

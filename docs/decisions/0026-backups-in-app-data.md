@@ -1,6 +1,7 @@
 # 0026. Keep backups in the app's data folder, not the projects folder
 
-- Status: Accepted (changes where 0007 stores backups)
+- Status: Accepted (changes where 0007 stores backups; the folder name changes in
+  [0058](0058-backups-filed-by-project-id.md))
 - Date: 2026-11-13
 
 ## Context

@@ -137,6 +137,8 @@ pub fn duplicate_project(dir: &Path) -> Result<PathBuf, String> {
         let _ = fs::remove_dir_all(&target);
     })?;
     project.name = target.file_name().unwrap_or_default().to_string_lossy().into_owned();
+    // Its own backups, not the original's (decision 0058).
+    project.id = crate::project::new_id("prj");
     storage::save_project(&target, &project)?;
     Ok(target)
 }

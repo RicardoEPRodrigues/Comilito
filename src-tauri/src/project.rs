@@ -132,6 +132,11 @@ impl From<Category> for Shelf {
 #[serde(rename_all = "camelCase")]
 pub struct Project {
     pub format_version: u32,
+    /// Unique to this project, so its backups have a folder of their own even when another
+    /// project has the same name (decision 0058). Files from before it have none and get one
+    /// the first time they're opened; copies (duplicate, import) get a new one.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub id: String,
     pub name: String,
     pub master_volume: f32,
     pub categories: PerCategory<CategoryMix>,
@@ -610,6 +615,7 @@ impl Project {
     pub fn new(name: &str, defaults: ProjectDefaults) -> Self {
         Self {
             format_version: FORMAT_VERSION,
+            id: new_id("prj"),
             name: name.to_string(),
             master_volume: 1.0,
             categories: PerCategory {

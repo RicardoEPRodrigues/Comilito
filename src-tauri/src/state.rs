@@ -314,6 +314,15 @@ impl AppState {
             .inspect_err(|e| crate::logging::warn(&format!("could not sort the videos into their folders: {e}")))
             .unwrap_or(false);
 
+        // A project from before ids (decision 0058) gets one now, saved at once: its backups are
+        // filed by it, so it must be the same the next time the project opens.
+        if project.id.is_empty() {
+            project.id = crate::project::new_id("prj");
+            if let Err(e) = storage::save_project(&dir, &project) {
+                crate::logging::warn(&format!("could not save the project's new id: {e}"));
+            }
+        }
+
         let missing = all_missing(&dir, &project);
         let mix = target_mix(&project);
         self.engine.apply_levels(&project, &mix, Duration::ZERO);
