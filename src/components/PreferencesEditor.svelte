@@ -279,12 +279,13 @@
               {#if gpuDecode?.available}
                 <label class="switch">
                   <input type="checkbox" bind:checked={draft.video.gpuDecode} />
-                  <span>Decode videos on the GPU (NVIDIA, experimental)</span>
+                  <span>Decode videos on the GPU (NVIDIA)</span>
                 </label>
                 <p class="muted small">
                   Lets NVIDIA's GStreamer decoders play videos, which takes work off the CPU. Needs
                   <code>gstreamer1.0-plugins-bad</code>; VP8 and VP9 on GStreamer 1.20, AV1 too on newer
-                  ones. Intel and AMD GPUs are used without this setting.
+                  ones. Intel and AMD GPUs are used without this setting. Turn it off if videos freeze
+                  after jumping to another point or resuming.
                   {#if draft.video.gpuDecode !== gpuDecode.active}<strong class="warn-note">Applies the next time Comilito starts.</strong>{/if}
                 </p>
               {/if}

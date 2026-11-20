@@ -1,7 +1,8 @@
 # 0052. A preference to decode videos on NVIDIA GPUs (Linux)
 
 - Status: Accepted (adds an opt-out to [0047](0047-no-nvidia-video-decoding.md); the AppImage
-  gets it too in [0053](0053-nvidia-decoders-in-the-appimage.md))
+  gets it too in [0053](0053-nvidia-decoders-in-the-appimage.md); on by default since
+  [0054](0054-gpu-video-decoding-by-default.md))
 - Date: 2026-11-19
 
 ## Context

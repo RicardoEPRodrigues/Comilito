@@ -13,10 +13,10 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Added
 
-- **Decode videos on the GPU** (Linux, NVIDIA): a new, experimental switch in Preferences ›
-  Video lets NVIDIA's GStreamer decoders play videos, taking work off the CPU. Off by default;
-  it applies the next time Comilito starts, and works in the AppImage too. (Intel and AMD GPUs, and Windows and macOS, already
-  decode on the GPU.)
+- **Videos decode on the GPU** (Linux, NVIDIA): NVIDIA's GStreamer decoders play videos again,
+  taking work off the CPU, in the AppImage too. A switch in Preferences › Video turns this off
+  (it applies the next time Comilito starts) if videos freeze after a jump. (Intel and AMD GPUs,
+  and Windows and macOS, already decoded on the GPU.)
 - **Videos convert on the GPU** when it can: NVIDIA (RTX 40 and newer), recent Intel and AMD
   GPUs encode AV1, which plays everywhere, many times faster than the CPU (a 30-second 1080p60
   clip: about 3 s instead of 47 s on an RTX 5070 Ti). Preferences › Video › *Convert videos with*

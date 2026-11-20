@@ -1,6 +1,6 @@
 # 0047. Decode videos without NVIDIA's hardware decoders on Linux
 
-- Status: Accepted (made opt-out by a preference in 0052)
+- Status: Superseded by [0054](0054-gpu-video-decoding-by-default.md) (a preference since 0052)
 - Date: 2026-11-16
 
 ## Context

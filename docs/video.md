@@ -109,10 +109,11 @@ only WebM can be streamed that way. Seeks and starts in the middle use the WebM'
 buffered and resets the parser (`abort`), after which WebKitGTK needs the file's header again, so
 it's appended before the new cluster. On Windows and macOS a plain `src` is used.
 
-On Linux, Comilito keeps GStreamer from picking NVIDIA's hardware video decoders
-(`GST_PLUGIN_FEATURE_RANK`, set at startup): they freeze after jumps
-([0047](decisions/0047-no-nvidia-video-decoding.md)), unless Preferences › Video › "Decode videos
-on the GPU" is on ([0052](decisions/0052-gpu-video-decoding-preference.md)). The AppImage carries
+On Linux, GStreamer uses NVIDIA's hardware video decoders when there are any
+([0054](decisions/0054-gpu-video-decoding-by-default.md)). With Preferences › Video › "Decode
+videos on the GPU" off ([0052](decisions/0052-gpu-video-decoding-preference.md)), Comilito keeps
+GStreamer from picking them (`GST_PLUGIN_FEATURE_RANK`, set at startup), as it did for everyone
+when they froze after jumps ([0047](decisions/0047-no-nvidia-video-decoding.md)). The AppImage carries
 NVIDIA's decoder plugin too, which uses the system's NVIDIA driver
 ([0053](decisions/0053-nvidia-decoders-in-the-appimage.md)).
 
