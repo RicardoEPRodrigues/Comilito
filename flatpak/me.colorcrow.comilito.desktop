@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Comilito
+GenericName=Soundboard
+Comment=Play music, ambience and sound effects at the gaming table
+Exec=comilito
+Icon=me.colorcrow.comilito
+Terminal=false
+Categories=AudioVideo;Audio;Mixer;
+Keywords=soundboard;mixer;ambience;music;sound effects;RPG;tabletop;D&D;dungeons;game master;
+StartupNotify=true
+StartupWMClass=comilito

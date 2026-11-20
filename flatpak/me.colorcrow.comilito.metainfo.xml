@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- What software centres (and Flathub's page) show about Comilito. The id must equal the
+     Flatpak app ID and Tauri's identifier. Add a <release> for every version that ships. -->
+<component type="desktop-application">
+  <id>me.colorcrow.comilito</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <name>Comilito</name>
+  <summary>Soundboard and mixer for tabletop role-playing games</summary>
+  <developer id="me.colorcrow">
+    <name>Ricardo "Colorcrow" Rodrigues</name>
+  </developer>
+
+  <description>
+    <p>
+      Comilito lets a game master build a library of sounds for a campaign and play them live at
+      the table, for Dungeons &amp; Dragons, Pathfinder, Call of Cthulhu and other tabletop
+      role-playing games.
+    </p>
+    <p>Sounds come in three kinds:</p>
+    <ul>
+      <li>Music: background tracks, one at a time, with crossfades</li>
+      <li>Ambience: looping layers such as rain, tavern chatter or wind, stacked together</li>
+      <li>Effects: one-shot sounds such as a door slam or a dragon's roar</li>
+    </ul>
+    <p>
+      Scenes gather music, ambience and effects. Stack scenes to build up a moment: higher scenes
+      quiet the ambience below them, and the top one decides the music. Hotkeys, presets and a
+      mini player keep it quick to use during a session. Scenes can also show videos on a second
+      screen.
+    </p>
+    <p>
+      Each campaign is a plain folder with its own audio files, easy to back up, sync or share as
+      a single file.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">me.colorcrow.comilito.desktop</launchable>
+  <provides>
+    <binary>comilito</binary>
+  </provides>
+
+  <url type="homepage">https://comilito.colorcrow.me</url>
+  <url type="bugtracker">https://github.com/RicardoEPRodrigues/Comilito/issues</url>
+  <url type="vcs-browser">https://github.com/RicardoEPRodrigues/Comilito</url>
+  <url type="donation">https://liberapay.com/colorcrow/donate</url>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Three scenes stacked in the Tapestry, with the effects pad and the Library</caption>
+      <image>https://raw.githubusercontent.com/RicardoEPRodrigues/Comilito/main/docs/images/screenshot.png</image>
+    </screenshot>
+  </screenshots>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#f3c9bf</color>
+    <color type="primary" scheme_preference="dark">#dd4b2e</color>
+  </branding>
+
+  <content_rating type="oars-1.1" />
+
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+
+  <releases>
+  </releases>
+</component>
