@@ -68,6 +68,10 @@ libc = "0.2"
 # still compiles quickly and debugs well. Only the first build after this takes longer.
 [profile.dev.package."*"]
 opt-level = 2
+# No debug info for dependencies: it was two thirds of the 450 MB debug binary, and writing and
+# linking it made each rebuild after a change 2-3 times slower (6-12 s, now about 3 s). Our own
+# code keeps full debug info, so debuggers and panics still show our lines.
+debug = false
 
 # Smaller, faster release builds: https://v2.tauri.app/concept/size/
 [profile.release]
