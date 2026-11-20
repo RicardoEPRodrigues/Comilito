@@ -3,7 +3,7 @@ name = "comilito"
 version = "0.2.0"
 description = "A soundboard and mixer for tabletop role-playing game masters"
 authors = ["Ricardo Rodrigues"]
-license = "MIT"
+license = "GPL-3.0-only"
 edition = "2024"
 
 [lib]

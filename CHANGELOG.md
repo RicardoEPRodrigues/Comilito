@@ -128,6 +128,8 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Changed
 
+- **Licence:** Comilito is free software under the GNU GPL, version 3 (it was marked MIT,
+  without a licence file). The `LICENSE` file has the full text.
 - **The video preview in the Library** has its own play bar (play/pause, position, a seek bar,
   length) instead of the webview's built-in controls, whose buttons were empty on some systems.
   Click the picture to play or pause; while trimming, the bar shows the part being kept.

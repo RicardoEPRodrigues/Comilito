@@ -186,6 +186,16 @@ Code is welcome too: open a pull request with a fix or a feature (for anything b
 first so we can agree on the approach). [CLAUDE.md](CLAUDE.md) and [docs/](docs/) describe how
 the app is built and the rules it follows.
 
+## Licence
+
+Comilito is free software: you can use, study, share and change it under the terms of the
+[GNU General Public License, version 3](LICENSE) (GPL-3.0-only). Anyone who distributes Comilito,
+or a program made from it, must do so under the same licence, with its source code. Contributions
+are accepted under the same licence. See
+[decision 0062](docs/decisions/0062-gpl-3.0-licence.md).
+
+The bundled sample audio and fonts keep their own licences, listed in [CREDITS.md](CREDITS.md).
+
 ## Acknowledgements
 
 Inspired by [Ascapes Mixer](https://github.com/ilyaly/ascapes-mixer) by ilyaly (MIT) and
