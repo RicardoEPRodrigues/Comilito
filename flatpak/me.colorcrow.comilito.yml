@@ -64,7 +64,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/RicardoEPRodrigues/Comilito.git
-        tag: v0.2.0
-        commit: '0000000000000000000000000000000000000000'
+        tag: v1.0.0
+        commit: 'd4e4fb94e4833007641421c7cd4142fc0f1ac3cc'
       - cargo-sources.json
       - node-sources.json
