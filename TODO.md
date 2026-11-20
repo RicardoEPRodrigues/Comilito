@@ -5,6 +5,8 @@
 ### v1.0.0
 
 - flatpak version
+- A website at `comilito.colorcrow.me` (the metainfo's homepage), served by GitHub Pages,
+  perhaps from a separate branch. Needs designing.
 - Create a first time experience.
 
 ### After v1.0.0
@@ -15,6 +17,8 @@
   "Later · Mobile" (Scenes / Tapestry / Effects tabs, the mixer bar on two rows). On the desktop
   a narrow window uses the mini player (decision 0049).
 - Middle clicking on a scene in the tapestry and draggin up or down, should disable or enable the scenes based on the state of the first clicked on scene. e.g., click on the a disabled scene and drag up, that scene and above scenes selected by the mouse, should now be enabled.
+- Allow video effects to play audio. If they do, then there should be options to duck the music or to mute all audio while that is playing.
+- Allow scenes to completely mute underneath audio.
 
 ## Bugs
 
@@ -46,10 +50,21 @@
 
 ### Documented but not built yet
 
+- Flatpak (decision 0059, docs/flatpak.md): generate `flatpak/cargo-sources.json` and
+  `flatpak/node-sources.json` with flatpak-builder-tools; the manifest needs them and Claude
+  wasn't allowed to install the generators. Then check the offline build and run the manifest linter.
+- Flatpak: before submitting, make the GitHub repository public (the metainfo's links and the
+  screenshot don't load yet), set the metainfo's `<release>` to the real version and date, and
+  get `colorcrow.me` ready to serve Flathub's verification token over HTTPS.
+
 ### Docs out of date
 
 ### Other checks
 
-
+- Comilito crashes (segfault) when a file chooser returns no local path: rfd 0.17.2's GTK
+  backend passes GTK's result to `CStr::from_ptr` without checking for null
+  (`backend/gtk3/file_dialog/dialog_ffi.rs`). Seen in the Flatpak when the portal failed to
+  register a folder; a network location (gvfs, no local path) may do the same anywhere on Linux.
+  Report it upstream (rfd), or check whether a newer rfd fixes it.
 - ffmpeg is pinned to BtbN's 8.1 release branch (`FFMPEG_BRANCH` in tools.rs, decision 0051)
   because the 9.0 builds' NVENC needs NVIDIA driver 610+. Raise it once that driver is common.
