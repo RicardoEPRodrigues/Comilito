@@ -1,6 +1,7 @@
-// `npm run package`: builds Comilito's release packages (decision 0046).
+// `npm run package`: builds Comilito's release packages (decisions 0046, 0061).
 //
-// On Linux it makes an AppImage. glibc can't be bundled, and a program only runs where glibc is
+// On Linux it makes an AppImage, then a Flatpak of this folder (scripts/flatpak.mjs, the local
+// manifest). For the AppImage: glibc can't be bundled, and a program only runs where glibc is
 // at least as new as the one it was built against, so when Docker is available the build runs
 // in an Ubuntu 22.04 container (scripts/package/Dockerfile) and the AppImage runs on 22.04 and
 // anything newer. Without Docker it builds on this computer, and the AppImage then needs this
@@ -9,12 +10,15 @@
 //   npm run package            Docker if it's running, otherwise this computer
 //   npm run package -- --local always this computer
 //   npm run package -- --docker always Docker (fails if it isn't running)
+//   npm run package -- --no-flatpak     only the AppImage
+//   npm run package -- --no-appimage    only the Flatpak
 //
 // On other OSes it runs `tauri build` (Windows: the installers from tauri.conf.json).
 import { spawnSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { build as buildFlatpak } from "./flatpak.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -25,20 +29,36 @@ if (process.platform !== "linux") {
   process.exit(tauriBuild());
 }
 
-if (!forceLocal && dockerRunning()) {
-  process.exit(buildInDocker());
+if (!args.includes("--no-appimage")) {
+  const code = buildAppImage();
+  if (code !== 0) process.exit(code);
 }
-if (forceDocker) {
-  fail("Docker isn't available (is it installed and running? `docker info` should work)");
+if (!args.includes("--no-flatpak")) {
+  // Optional: without Flatpak set up, the AppImage is still made.
+  if (spawnSync("flatpak", ["--version"], { stdio: "ignore" }).status !== 0) {
+    console.warn("warning: Flatpak isn't installed, so no Flatpak was built (docs/flatpak.md).");
+  } else {
+    process.exit(buildFlatpak());
+  }
 }
-if (!forceLocal) {
-  console.warn("note: Docker isn't running, so building on this computer.");
+process.exit(0);
+
+function buildAppImage() {
+  if (!forceLocal && dockerRunning()) {
+    return buildInDocker();
+  }
+  if (forceDocker) {
+    fail("Docker isn't available (is it installed and running? `docker info` should work)");
+  }
+  if (!forceLocal) {
+    console.warn("note: Docker isn't running, so building on this computer.");
+  }
+  console.warn(
+    `warning: this AppImage needs glibc ${hostGlibc()} or newer to run. Start Docker and run ` +
+      "`npm run package` again to build one that runs on Ubuntu 22.04 and newer.",
+  );
+  return tauriBuild();
 }
-console.warn(
-  `warning: this AppImage needs glibc ${hostGlibc()} or newer to run. Start Docker and run ` +
-    "`npm run package` again to build one that runs on Ubuntu 22.04 and newer.",
-);
-process.exit(tauriBuild());
 
 function buildInDocker() {
   const image = "comilito-package";

@@ -2,16 +2,21 @@
 
 Comilito is packaged as a Flatpak for Flathub with the app ID `me.colorcrow.comilito`
 ([decision 0059](decisions/0059-flatpak-on-flathub.md)). This page covers building it, trying
-it, and getting it onto Flathub.
+it, releasing a version and getting it onto Flathub
+([decision 0061](decisions/0061-flatpak-builds-and-releases.md)).
 
 ## The pieces
 
 | File | What it is |
 |---|---|
-| `flatpak/me.colorcrow.comilito.yml` | The **manifest**: the runtime to run on, the sandbox's permissions (`finish-args`), and how to build Comilito from source |
+| `flatpak/me.colorcrow.comilito.yml` | The **Flathub manifest**: the runtime to run on, the sandbox's permissions (`finish-args`), and how to build Comilito from a release's git tag, offline |
+| `flatpak/me.colorcrow.comilito.local.yml` | The **local manifest**: the same, but builds this folder as it is, downloading crates and npm packages during the build |
 | `flatpak/me.colorcrow.comilito.desktop` | The launcher entry (name, icon, categories) |
 | `flatpak/me.colorcrow.comilito.metainfo.xml` | The **metainfo** (AppStream): the description, screenshot and releases software centres show |
-| `flatpak/cargo-sources.json`, `flatpak/node-sources.json` | Every crate and npm package, generated from the lock files, so the build runs offline |
+| `flatpak/cargo-sources.json`, `flatpak/node-sources.json` | Every crate and npm package, generated from the lock files, so the Flathub build runs offline |
+
+The two manifests must stay the same apart from where the sources come from: change the
+permissions or the build commands in both.
 
 Some Flatpak words:
 
@@ -45,34 +50,62 @@ python3 -m venv ~/src/flatpak-builder-tools/venv
 ~/src/flatpak-builder-tools/venv/bin/pip install aiohttp tomlkit ~/src/flatpak-builder-tools/node
 ```
 
-## Generating the sources
-
-Whenever `src-tauri/Cargo.lock` or `package-lock.json` changes (and before the first build):
-
-```bash
-T=~/src/flatpak-builder-tools
-$T/venv/bin/python $T/cargo/flatpak-cargo-generator.py src-tauri/Cargo.lock -o flatpak/cargo-sources.json
-$T/venv/bin/flatpak-node-generator npm package-lock.json -o flatpak/node-sources.json
-```
-
-Both files are committed: Flathub builds from them.
-
 ## Building and running
 
-From the project folder:
-
 ```bash
-flatpak run org.flatpak.Builder --user --install --force-clean \
-  --state-dir=flatpak/.flatpak-builder flatpak/build flatpak/me.colorcrow.comilito.yml
+npm run flatpak                  # builds this folder (the local manifest)
+npm run flatpak -- --install     # …and installs it for your user
 flatpak run me.colorcrow.comilito
 ```
 
+`npm run package` does the same build after the AppImage (`--no-flatpak` skips it,
+`--no-appimage` builds only the Flatpak). Either way the result is also a single file,
+`src-tauri/target/release/bundle/flatpak/Comilito_<version>_x86_64.flatpak`, which installs with
+`flatpak install Comilito_….flatpak` (the runtime comes from Flathub). The script
+(`scripts/flatpak.mjs`) uses Flathub's flatpak-builder, and installs the runtime, the SDK and its
+extensions the first time.
+
+`npm run flatpak -- --flathub` builds the Flathub manifest instead: the tagged release, offline,
+exactly as Flathub will. It needs the tag pushed to GitHub.
+
 The first build compiles everything (several minutes); later ones reuse what didn't change.
-`flatpak/build` and `flatpak/.flatpak-builder` are ignored by git.
+`flatpak/build`, `flatpak/repo` and `flatpak/.flatpak-builder` are ignored by git.
 
 - Logs: `~/.var/app/me.colorcrow.comilito/data/me.colorcrow.comilito/logs/`.
 - A shell inside the sandbox, to look around: `flatpak run --command=sh me.colorcrow.comilito`.
 - Uninstall, with its data: `flatpak uninstall --user --delete-data me.colorcrow.comilito`.
+
+## Generating the sources
+
+The Flathub manifest builds offline from `cargo-sources.json` and `node-sources.json`. `npm run
+release` regenerates them; to do it by hand (say, to try `--flathub` after a lock file changed):
+
+```bash
+npm run flatpak -- sources
+```
+
+It runs flatpak-builder-tools from `~/src/flatpak-builder-tools` (set `FLATPAK_BUILDER_TOOLS` if
+they're elsewhere).
+
+## Releasing a version
+
+```bash
+npm run release -- v1.1.0 --dry-run   # what it would do
+npm run release -- v1.1.0
+```
+
+`scripts/release.mjs` refuses to start if tracked files have uncommitted changes, the tag exists
+or the version isn't newer. Then it:
+
+1. sets the version in `package.json` and `package-lock.json`, `src-tauri/Cargo.toml` and
+   `Cargo.lock`, and `tauri.conf.json`; adds a `<release>` to the metainfo; and turns what's
+   under **Unreleased** in CHANGELOG.md into the version's section;
+2. commits that ("Release v1.1.0") and tags it `v1.1.0`;
+3. regenerates the sources, points the Flathub manifest at the tag and its commit, and commits
+   that ("Point the Flathub manifest at v1.1.0").
+
+It never pushes. Check the two commits, push (`git push origin HEAD v1.1.0`), then copy the
+Flathub manifest and the two source files to the Flathub repository.
 
 ## Checking it
 
@@ -91,17 +124,11 @@ Read Flathub's [requirements](https://docs.flathub.org/docs/for-app-authors/requ
 
 1. **Make the repository public and the website live**, so the metainfo's links and
    screenshot load (the homepage is `https://comilito.colorcrow.me`).
-2. **Tag a release** (`v1.0.0`), with a `<release>` for it in the metainfo.
-3. **Write the manifest for Flathub.** It builds from the tag, not from this folder:
-   ```yaml
-   - type: git
-     url: https://github.com/RicardoEPRodrigues/Comilito.git
-     tag: v1.0.0
-     commit: <the tag's full commit hash>
-   ```
-   Flathub doesn't accept manifests with AI-generated or AI-assisted content, so the submitted
-   manifest must be written by hand; the one in this repository is the reference that's
-   known to build.
+2. **Release a version** with `npm run release -- v1.0.0`, and push it.
+3. **Write the manifest for Flathub.** It builds from the tag, not from this folder.
+   Flathub doesn't accept manifests with AI-generated or AI-assisted content, and
+   `flatpak/me.colorcrow.comilito.yml` was drafted with Claude, so the submitted manifest must
+   be written by hand; the one in this repository is the reference that's known to build.
 4. **Submit**: fork [flathub/flathub](https://github.com/flathub/flathub), branch from
    `new-pr`, add the manifest and the two generated source files, and open a pull request
    against `new-pr`. Disclose the AI-written code in it, as Flathub requires. Opening the pull
@@ -111,4 +138,5 @@ Read Flathub's [requirements](https://docs.flathub.org/docs/for-app-authors/requ
    domain the ID names, `colorcrow.me`, not the `comilito.` subdomain the website is on; a DNS
    TXT record on `_flathub.colorcrow.me` works too.
 6. **Updates**: Flathub creates `flathub/me.colorcrow.comilito`; each release is a pull request
-   there that updates the tag, the commit and the generated sources.
+   there that updates the tag, the commit and the generated sources, as `npm run release` left
+   them here.

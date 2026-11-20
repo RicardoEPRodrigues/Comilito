@@ -145,7 +145,9 @@ Other commands:
 | Command | What it does |
 |---------|--------------|
 | `npm run check` | Type-check the Svelte/TypeScript code |
-| `npm run package` | Build the release packages. On Linux, an AppImage in `src-tauri/target/release/bundle/appimage/`, built in an Ubuntu 22.04 container when Docker is running (see below) |
+| `npm run package` | Build the release packages. On Linux, an AppImage in `src-tauri/target/release/bundle/appimage/`, built in an Ubuntu 22.04 container when Docker is running (see below), then a Flatpak in `…/bundle/flatpak/` |
+| `npm run flatpak` | Build only the Flatpak (`-- --install` installs it); see [docs/flatpak.md](docs/flatpak.md) |
+| `npm run release -- v1.1.0` | Set the version everywhere, commit, tag, and point the Flathub manifest at the tag (doesn't push) |
 | `cargo test --manifest-path src-tauri/Cargo.toml` | Run the Rust tests |
 | `python3 scripts/build-website.py` | Build the website into `build/website/`; preview it with `python3 -m http.server -d build/website` |
 
@@ -160,8 +162,8 @@ that changes it, the extra themes or the screenshot. See
 
 Use `npm run package` rather than `npm run tauri build` for anything you'll give to others.
 
-On Linux it makes an **AppImage** (there's no `.deb` or `.rpm`; the Flatpak is built separately, see
-[docs/flatpak.md](docs/flatpak.md)). An app built
+On Linux it makes an **AppImage** and then a **Flatpak** of this folder (there's no `.deb` or
+`.rpm`; for the Flatpak see [docs/flatpak.md](docs/flatpak.md)). An app built
 on Linux only runs where glibc is at least as new as on the computer that built it, and glibc
 can't be bundled. So when [Docker](https://docs.docker.com/engine/install/) is running, the build
 happens in an Ubuntu 22.04 container and the AppImage runs on Ubuntu 22.04 and newer, whatever

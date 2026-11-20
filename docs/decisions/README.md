@@ -64,8 +64,9 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0056](0056-file-urls-for-videos-on-linux.md) | Play videos from `file://` URLs on Linux | Accepted | 2026-11-20 |
 | [0057](0057-newer-nvidia-decoders.md) | Use nvcodec's newer decoders on GStreamer 1.20 | Accepted | 2026-11-20 |
 | [0058](0058-backups-filed-by-project-id.md) | File backups by a project id, not only its name | Accepted | 2026-11-20 |
-| [0059](0059-flatpak-on-flathub.md) | Distribute a Flatpak on Flathub, as `me.colorcrow.comilito` | Accepted | 2026-11-20 |
+| [0059](0059-flatpak-on-flathub.md) | Distribute a Flatpak on Flathub, as `me.colorcrow.comilito` | Accepted (manifests: 0061) | 2026-11-20 |
 | [0060](0060-website-on-github-pages.md) | A website in `website/`, published to GitHub Pages by a workflow | Accepted | 2026-11-20 |
+| [0061](0061-flatpak-builds-and-releases.md) | Two Flatpak manifests (local and Flathub), and a script for releases | Accepted | 2026-11-20 |
 | [0053](0053-nvidia-decoders-in-the-appimage.md) | Carry NVIDIA's GStreamer decoders in the AppImage | Accepted | 2026-11-19 |
 
 ## Template
