@@ -324,7 +324,7 @@ pub fn remove_video(id: String, permanently: bool, app: AppHandle, state: AppSta
         let result = if permanently {
             std::fs::remove_file(&path).map_err(|e| e.to_string())
         } else {
-            trash::delete(&path).map_err(|e| e.to_string())
+            crate::trash_bin::delete(&path)
         };
         if let Err(e) = result {
             problems.push(format!("could not remove {}: {e}", path.display()));

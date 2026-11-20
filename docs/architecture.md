@@ -173,7 +173,11 @@ src-tauri/
     sample.rs        Builds the sample project from the bundled audio
     loudness.rs      Measures a file's EBU R128 loudness and peak
     media_controls.rs  Registers with the OS as a media player (MPRIS, Windows, macOS)
+    app_id.rs        The app ID: Tauri's identifier and the Flatpak's (decision 0059)
+    trash_bin.rs     Moving files to the trash, through the portal inside the Flatpak
+    flatpak.rs       Inside the Flatpak: the NVIDIA renderer switch, refusing read-only portal folders
   resources/sample/  Sample audio, shipped with the app (`bundle.resources`), see CREDITS.md
+flatpak/             Flatpak manifest, .desktop file and metainfo (docs/flatpak.md)
 docs/
 ```
 

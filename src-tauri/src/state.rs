@@ -306,6 +306,7 @@ impl AppState {
 
     pub fn open_project(&mut self, dir: PathBuf) -> Result<(), String> {
         self.not_moving()?;
+        crate::flatpak::check_writable_folder(&dir)?;
         let mut project = storage::load_project(&dir)?;
         self.close_project()?;
         crate::video_convert::clean_leftovers(&dir);

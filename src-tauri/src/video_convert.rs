@@ -650,7 +650,7 @@ fn place(s: &mut AppState, work: &Work, working: &Path, tools_dir: &Path, proble
     // Replacing: the original goes first, so the new file can take its name (a trimmed WebM
     // keeps "gate.webm" instead of becoming "gate (2).webm").
     let replacing = !work.keep_original;
-    if replacing && let Err(e) = trash::delete(&original) {
+    if replacing && let Err(e) = crate::trash_bin::delete(&original) {
         problems.push(format!("could not move the original to the trash: {e}"));
     }
     let target = storage::unique_path(folder, Path::new(&format!("{stem}.webm")));

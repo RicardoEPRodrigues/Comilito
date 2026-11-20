@@ -20,3 +20,9 @@ Thumbs.db
 *.comilito
 /test-audio/
 extras/themes/dist/
+
+# Flatpak builds (docs/flatpak.md)
+flatpak/build/
+flatpak/repo/
+.flatpak-builder/
+flatpak/.flatpak-builder/

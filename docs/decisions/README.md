@@ -52,7 +52,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0043](0043-duplicating-sounds-and-videos.md) | Duplicating a sound or video copies its file | Accepted | 2026-11-16 |
 | [0044](0044-restarting-the-interface.md) | Restart the interface by reloading the webviews | Accepted | 2026-11-16 |
 | [0045](0045-video-window-screen-on-wayland.md) | Put the video window on its screen through fullscreen on Wayland | Accepted | 2026-11-16 |
-| [0046](0046-packaging-linux-in-a-container.md) | Package Linux builds as an AppImage, in an Ubuntu 22.04 container | Accepted | 2026-11-16 |
+| [0046](0046-packaging-linux-in-a-container.md) | Package Linux builds as an AppImage, in an Ubuntu 22.04 container | Accepted (Flatpak: 0059) | 2026-11-16 |
 | [0047](0047-no-nvidia-video-decoding.md) | Decode videos without NVIDIA's hardware decoders on Linux | Superseded by 0054 | 2026-11-16 |
 | [0048](0048-interface-scale.md) | Scale the interface with the webview's zoom | Accepted | 2026-11-18 |
 | [0049](0049-mini-player.md) | A mini player in the main window, also used by narrow windows | Accepted | 2026-11-19 |
@@ -64,6 +64,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0056](0056-file-urls-for-videos-on-linux.md) | Play videos from `file://` URLs on Linux | Accepted | 2026-11-20 |
 | [0057](0057-newer-nvidia-decoders.md) | Use nvcodec's newer decoders on GStreamer 1.20 | Accepted | 2026-11-20 |
 | [0058](0058-backups-filed-by-project-id.md) | File backups by a project id, not only its name | Accepted | 2026-11-20 |
+| [0059](0059-flatpak-on-flathub.md) | Distribute a Flatpak on Flathub, as `me.colorcrow.comilito` | Accepted | 2026-11-20 |
 | [0053](0053-nvidia-decoders-in-the-appimage.md) | Carry NVIDIA's GStreamer decoders in the AppImage | Accepted | 2026-11-19 |
 
 ## Template

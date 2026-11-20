@@ -95,6 +95,9 @@ pub fn get_preferences(state: AppStateRef) -> Result<Preferences, String> {
 
 #[tauri::command]
 pub fn set_preferences(mut prefs: Preferences, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    if let Some(folder) = &prefs.projects_folder {
+        crate::flatpak::check_writable_folder(folder)?;
+    }
     let mut s = lock(&state)?;
     // Rust keeps the project lists (see Preferences::recent_projects).
     prefs.recent_projects = std::mem::take(&mut s.prefs.recent_projects);
@@ -316,6 +319,7 @@ struct MoveFinished {
 /// only held briefly at the start and the end, so the app stays responsive meanwhile.
 #[tauri::command]
 pub fn move_projects_folder(to: PathBuf, app: AppHandle, state: AppStateRef) -> Result<(), String> {
+    crate::flatpak::check_writable_folder(&to)?;
     let mut s = lock(&state)?;
     s.not_moving()?;
     let from = s.projects_root();
@@ -399,7 +403,7 @@ pub fn delete_project(
         s.close_project()?;
     }
     let target = if delete_audio { &path } else { &project_file };
-    trash::delete(target).map_err(|e| format!("could not move {} to the trash: {e}", target.display()))?;
+    crate::trash_bin::delete(target).map_err(|e| format!("could not move {} to the trash: {e}", target.display()))?;
     // Either way it's no longer a project: drop it from the lists.
     s.prefs.forget_project(&path);
     if let Err(e) = s.save_prefs() {
@@ -759,7 +763,7 @@ pub fn remove_sound(
         let result = if permanently {
             std::fs::remove_file(&path).map_err(|e| e.to_string())
         } else {
-            trash::delete(&path).map_err(|e| e.to_string())
+            crate::trash_bin::delete(&path)
         };
         if let Err(e) = result {
             problems.push(format!("could not remove {}: {e}", path.display()));
@@ -1039,7 +1043,7 @@ pub fn crop_sound(
     s.waveforms.clear();
     let open = s.open_mut()?;
     let result_id = if overwrite {
-        trash::delete(&input).map_err(|e| format!("could not move the original to the trash: {e}"))?;
+        crate::trash_bin::delete(&input).map_err(|e| format!("could not move the original to the trash: {e}"))?;
         std::fs::rename(&tmp, &input).map_err(|e| format!("could not replace the file: {e}"))?;
         let relative = input.strip_prefix(&open.dir).map_err(|e| e.to_string())?.to_path_buf();
         let info = storage::file_info(&open.dir, &relative)?;

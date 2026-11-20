@@ -62,7 +62,7 @@ See [docs/save-format.md](docs/save-format.md).
 
 ## Platforms
 
-- Linux (primary)
+- Linux (primary): a Flatpak (on Flathub, coming) and an AppImage
 - Windows
 - macOS and Android (planned, not yet supported)
 
@@ -85,6 +85,8 @@ videos for scenes in a window of their own (docs/video.md).
 
 Removing Comilito itself depends on how you installed it:
 
+- **Flatpak:** remove it from your software centre, or `flatpak uninstall me.colorcrow.comilito`
+  (add `--delete-data` to remove its data too).
 - **AppImage:** delete the `.AppImage` file. If AppImageLauncher (or a similar tool) added it to
   your app menu, remove it from there too, or delete its entry in `~/.local/share/applications/`.
 - **Windows installer:** Settings › Apps › Comilito › Uninstall.
@@ -105,7 +107,9 @@ projects alone. To do it by hand:
 | Cache (may not exist) | `~/.cache/me.colorcrow.comilito/` | `%LOCALAPPDATA%\me.colorcrow.comilito\` |
 
 On Linux, `~/.config`, `~/.local/share` and `~/.cache` are the defaults; if you've set
-`XDG_CONFIG_HOME`, `XDG_DATA_HOME` or `XDG_CACHE_HOME`, look there instead.
+`XDG_CONFIG_HOME`, `XDG_DATA_HOME` or `XDG_CACHE_HOME`, look there instead. The Flatpak keeps
+all of these in `~/.var/app/me.colorcrow.comilito/` (`config/`, `data/`, `cache/`), and
+`flatpak uninstall --delete-data me.colorcrow.comilito` removes them.
 
 **Your projects**, only if you want them gone too: the projects folder, `~/Documents/Comilito/` by
 default (Preferences › Projects & tools shows where yours is). It holds one folder per project. Delete single projects from the home screen (⋯ › Delete), or the whole
@@ -148,7 +152,8 @@ Other commands:
 
 Use `npm run package` rather than `npm run tauri build` for anything you'll give to others.
 
-On Linux it makes an **AppImage** (Flatpak is planned; there's no `.deb` or `.rpm`). An app built
+On Linux it makes an **AppImage** (there's no `.deb` or `.rpm`; the Flatpak is built separately, see
+[docs/flatpak.md](docs/flatpak.md)). An app built
 on Linux only runs where glibc is at least as new as on the computer that built it, and glibc
 can't be bundled. So when [Docker](https://docs.docker.com/engine/install/) is running, the build
 happens in an Ubuntu 22.04 container and the AppImage runs on Ubuntu 22.04 and newer, whatever

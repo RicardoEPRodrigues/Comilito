@@ -5,6 +5,7 @@ mod commands;
 mod crop;
 mod desktop;
 mod downloads;
+mod flatpak;
 mod logging;
 mod media_controls;
 mod mini_player;
@@ -17,6 +18,7 @@ mod sample;
 mod state;
 mod storage;
 mod themes;
+mod trash_bin;
 mod tools;
 mod video;
 mod video_convert;
@@ -161,6 +163,7 @@ pub fn run() {
     #[cfg(target_os = "linux")]
     {
         private_gstreamer_registry();
+        flatpak::webkit_renderer_workaround();
         let gpu_decode = early_config_dir().is_some_and(|dir| prefs::load(&dir).video.gpu_decode);
         let _ = GPU_DECODE_ACTIVE.set(gpu_decode);
         nvidia_decoder_ranks(gpu_decode);
