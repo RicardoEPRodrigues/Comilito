@@ -71,7 +71,7 @@ impl Encoder {
             v
         };
         let s = |list: &[&str]| list.iter().map(|a| a.to_string()).collect::<Vec<_>>();
-        match &self.kind {
+        let mut args = match &self.kind {
             Kind::Nvenc { gpu } => {
                 let mut v = s(&["-c:v", "av1_nvenc", "-gpu"]);
                 v.push(gpu.to_string());
@@ -95,7 +95,14 @@ impl Encoder {
                 v.extend(s(&["-rc", "vbr_peak", "-pix_fmt", "nv12"]));
                 v
             }
-        }
+        };
+        // A keyframe at least every 60 frames. A jump into a video (resuming a scene) decodes
+        // from the keyframe before it, and GPU encoders space them far apart by default (NVENC:
+        // 250 frames). Their AV1 decodes on the CPU where there's no hardware AV1 decoder
+        // (GStreamer before 1.22 with NVIDIA), at about 100 fps for 1080p: up to 2.5 s before the
+        // picture moved. With 60 frames it's under a second, for about 2% more bytes.
+        args.extend(s(&["-g", "60"]));
+        args
     }
 }
 
@@ -282,6 +289,7 @@ mod tests {
         let nvenc = nv(1).output_args(1920, 1080);
         assert!(nvenc.windows(2).any(|w| w == ["-gpu", "1"]));
         assert!(nvenc.contains(&"av1_nvenc".to_string()));
+        assert!(nvenc.windows(2).any(|w| w == ["-g", "60"]), "keyframes close enough for jumps");
         let vaapi = Encoder { id: "x".into(), label: "x".into(), kind: Kind::Vaapi { device: "/dev/dri/renderD129".into(), codec: "av1" } };
         assert_eq!(vaapi.input_args(), ["-vaapi_device", "/dev/dri/renderD129"]);
         let args = vaapi.output_args(1920, 1080);

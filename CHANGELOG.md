@@ -21,7 +21,9 @@ Nothing has been released yet; everything below goes into the first release, 0.2
   GPUs encode AV1, which plays everywhere, many times faster than the CPU (a 30-second 1080p60
   clip: about 3 s instead of 47 s on an RTX 5070 Ti). Preferences › Video › *Convert videos with*
   picks Automatic, a GPU (with two, choose which) or CPU only. If the GPU fails, the CPU takes
-  over. The conversion list says when a video is being converted on the GPU.
+  over. The conversion list says when a video is being converted on the GPU. Their keyframes
+  come every 60 frames, so a scene that resumes a video partway in shows it moving within a
+  second on Linux too, where AV1 decodes on the CPU.
 
 - **Projects:** one folder per campaign (`comilito.json` plus its `audio/` folder), saved
   automatically, with automatic backups, export and import as `.comilito` files (with or without

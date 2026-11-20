@@ -47,7 +47,8 @@ whole feature can be turned off in Preferences › Video.
   together in the Convert dialog (or converted, or left, per Preferences › Video).
 - Conversions run one at a time with ffmpeg, no sound, same size. On a GPU when one works
   ([decision 0051](decisions/0051-gpu-video-encoding.md)): AV1 through NVENC (constant quality
-  36), VA-API, Quick Sync or AMF. Otherwise, or when the GPU fails (the CPU then redoes it), on the
+  36), VA-API, Quick Sync or AMF, with a keyframe every 60 frames so jumps into the video are
+  quick ([0055](decisions/0055-keyframes-for-gpu-conversions.md)). Otherwise, or when the GPU fails (the CPU then redoes it), on the
   CPU: VP9, constant quality (crf 32). Preferences › Video › *Convert videos with* picks
   Automatic, a GPU, or CPU only. The GPUs are found the first time they're needed, by a tiny test
   encode with each candidate, and logged.
