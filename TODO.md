@@ -5,11 +5,12 @@
 ### v1.0.0
 
 - flatpak version
-- A website at `comilito.colorcrow.me` (the metainfo's homepage), served by GitHub Pages,
-  perhaps from a separate branch. Needs designing.
+
+### v1.1.0
+
 - Create a first time experience.
 
-### After v1.0.0
+### After v1.1.0
 
 - Add ability to have plugins (not now)
 - Add sound post-effects to make sounds appear as if they are in a certain environment. Echo for caves, reverb for churches, etc.
@@ -50,12 +51,9 @@
 
 ### Documented but not built yet
 
-- Flatpak (decision 0059, docs/flatpak.md): generate `flatpak/cargo-sources.json` and
-  `flatpak/node-sources.json` with flatpak-builder-tools; the manifest needs them and Claude
-  wasn't allowed to install the generators. Then check the offline build and run the manifest linter.
-- Flatpak: before submitting, make the GitHub repository public (the metainfo's links and the
-  screenshot don't load yet), set the metainfo's `<release>` to the real version and date, and
-  get `colorcrow.me` ready to serve Flathub's verification token over HTTPS.
+- Flatpak (decisions 0059, 0061, docs/flatpak.md): the Flathub manifest's offline build hasn't
+  been tried yet. Once a release tag is pushed, run `npm run flatpak -- --flathub`.
+- Flatpak: before submitting, get `colorcrow.me` ready to serve Flathub's verification token over HTTPS.
 
 ### Docs out of date
 
