@@ -9,6 +9,8 @@
 ### v1.1.0
 
 - Create a first time experience.
+- Scroll on the volume bars should increase/decrease volume.
+- Allow scenes to completely mute underneath audio.
 
 ### After v1.1.0
 
@@ -19,7 +21,6 @@
   a narrow window uses the mini player (decision 0049).
 - Middle clicking on a scene in the tapestry and draggin up or down, should disable or enable the scenes based on the state of the first clicked on scene. e.g., click on the a disabled scene and drag up, that scene and above scenes selected by the mouse, should now be enabled.
 - Allow video effects to play audio. If they do, then there should be options to duck the music or to mute all audio while that is playing.
-- Allow scenes to completely mute underneath audio.
 
 ## Bugs
 
