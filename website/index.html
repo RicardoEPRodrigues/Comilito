@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Comilito — a soundboard for game masters</title>
+  <meta name="description" content="Comilito is a free desktop soundboard and mixer for game masters of tabletop role-playing games: music, ambience and effects, stacked in scenes." />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="icon" href="assets/icon.png" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="site.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand display" href="#top">Comilito</a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#themes">Themes</a>
+      <a href="#download">Download</a>
+      <a href="https://github.com/RicardoEPRodrigues/Comilito">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <img class="woodcut" src="assets/skeletal-horse.svg" alt="" aria-hidden="true" />
+      <div class="hero-text">
+        <p class="caps accent-text">For tabletop game masters</p>
+        <h1 class="display">The sound of your table, at your fingertips</h1>
+        <p class="lead">
+          Comilito is a free desktop soundboard and mixer for Dungeons &amp; Dragons, Pathfinder,
+          Call of Cthulhu and every other table. Build scenes from music, ambience and effects, then
+          stack them live as the story turns.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="#download">Download</a>
+          <a class="button" href="https://github.com/RicardoEPRodrigues/Comilito">View on GitHub</a>
+        </div>
+      </div>
+      <img class="screenshot" src="assets/screenshot.png" width="1440" height="900"
+        alt="Comilito with three scenes stacked in the Tapestry, the effects pad on the right and the Library underneath" />
+    </section>
+
+    <div class="rule" aria-hidden="true"><span></span></div>
+
+    <section id="features" class="section">
+      <h2 class="display">Three kinds of sound</h2>
+      <div class="cards three">
+        <article class="card">
+          <span class="capital display" aria-hidden="true">M</span>
+          <div>
+            <h3 class="caps accent-text">Music</h3>
+            <p>Background tracks, one at a time, with crossfades between them.</p>
+          </div>
+        </article>
+        <article class="card">
+          <span class="capital display" aria-hidden="true">A</span>
+          <div>
+            <h3 class="caps accent-text">Ambience</h3>
+            <p>Looping layers — rain, tavern chatter, wind — stacked as deep as you like.</p>
+          </div>
+        </article>
+        <article class="card">
+          <span class="capital display" aria-hidden="true">E</span>
+          <div>
+            <h3 class="caps accent-text">Effects</h3>
+            <p>One-shots on a pad: a door slam, a dragon's roar, a spell going off.</p>
+          </div>
+        </article>
+      </div>
+
+      <h2 class="display">Built for running a session</h2>
+      <div class="cards two">
+        <article class="card plain">
+          <h3 class="caps">The Tapestry</h3>
+          <p>
+            Stack scenes on top of each other. Higher scenes duck the ambience below them, and the
+            top scene with music plays its music. A fight breaks out over the rainy night; when it
+            ends, the rain is still there.
+          </p>
+        </article>
+        <article class="card plain">
+          <h3 class="caps">Hotkeys and presets</h3>
+          <p>
+            <kbd>Space</kbd> starts and pauses, <kbd>Esc</kbd> stops everything, and each scene can have
+            its own key. Save a stack you reuse as a preset and bring it back in one move.
+          </p>
+        </article>
+        <article class="card plain">
+          <h3 class="caps">Videos for the players</h3>
+          <p>
+            Give a scene a video and it plays in a window of its own, ready for a second screen or
+            a TV at the table.
+          </p>
+        </article>
+        <article class="card plain">
+          <h3 class="caps">Your files, your folders</h3>
+          <p>
+            Each campaign is a plain folder with its audio inside. Sync it, back it up, or export it
+            as a single <code>.comilito</code> file to share with another game master.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <div class="rule" aria-hidden="true"><span></span></div>
+
+    <section id="themes" class="section">
+      <h2 class="display">Themes</h2>
+      <p class="lead">
+        Comilito comes with three themes — Codex, Ironwood and Birch — and lets you make your own.
+        These extra themes are ready to download: in Comilito, open
+        <strong>Preferences › Appearance › Import theme file…</strong> and pick the file.
+      </p>
+      <div id="theme-list" class="themes">
+        <p class="muted">Loading themes…</p>
+      </div>
+    </section>
+
+    <div class="rule" aria-hidden="true"><span></span></div>
+
+    <section id="download" class="section">
+      <h2 class="display">Download</h2>
+      <div class="cards three">
+        <article class="card plain">
+          <h3 class="caps">Linux · AppImage</h3>
+          <p>One file that runs on Ubuntu 22.04 and newer, and most other distributions.</p>
+          <a class="button primary" href="https://github.com/RicardoEPRodrigues/Comilito/releases/latest">Get the AppImage</a>
+        </article>
+        <article class="card plain">
+          <h3 class="caps">Linux · Flatpak</h3>
+          <p>Coming to Flathub, so it installs and updates from your software centre.</p>
+          <span class="button disabled" aria-disabled="true">Coming soon</span>
+        </article>
+        <article class="card plain">
+          <h3 class="caps">Windows</h3>
+          <p>An installer for Windows 10 and 11.</p>
+          <a class="button primary" href="https://github.com/RicardoEPRodrigues/Comilito/releases/latest">Get the installer</a>
+        </article>
+      </div>
+      <p class="muted small">
+        Every version is on the <a href="https://github.com/RicardoEPRodrigues/Comilito/releases">releases page</a>,
+        with what changed in the <a href="https://github.com/RicardoEPRodrigues/Comilito/blob/main/CHANGELOG.md">changelog</a>.
+        macOS and Android are planned.
+      </p>
+    </section>
+
+    <section id="support" class="section support">
+      <h2 class="display">Support Comilito</h2>
+      <p>
+        Comilito is free and made in spare time. If it livens up your table, you can support it on
+        <a href="https://liberapay.com/colorcrow/donate">Liberapay</a> or
+        <a href="https://ko-fi.com/N8Q82AYC2B">buy me a mead on Ko-fi</a>.
+        Code is welcome too: <a href="https://github.com/RicardoEPRodrigues/Comilito">open a pull request</a>.
+      </p>
+    </section>
+  </main>
+
+  <footer class="mixer">
+    <p>
+      Comilito was made mostly with AI (Claude, through Claude Code); the author directs the design
+      and the decisions and tests the app.
+    </p>
+    <p class="caps">
+      <a href="https://github.com/RicardoEPRodrigues/Comilito/blob/main/CREDITS.md">Credits</a>
+      · <a href="https://github.com/RicardoEPRodrigues/Comilito">Source</a>
+      · Fonts under the <a href="fonts/OFL-Inter.txt">SIL Open Font License</a>
+    </p>
+  </footer>
+</body>
+</html>

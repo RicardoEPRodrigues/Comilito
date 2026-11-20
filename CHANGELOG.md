@@ -13,6 +13,8 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Added
 
+- **A website** (GitHub Pages) with what Comilito does, where to download it, and the extra
+  themes (Hearth, Bubblegum Pink, Starship) to download, each with a preview.
 - **Videos decode on the GPU** (Linux, NVIDIA): NVIDIA's GStreamer decoders play videos again,
   taking work off the CPU, in the AppImage too. On older GStreamer (Ubuntu 22.04, the AppImage)
   Comilito picks NVIDIA's newer decoders, which don't lag or stop after a jump. A switch in Preferences › Video turns this off

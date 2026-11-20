@@ -147,6 +147,14 @@ Other commands:
 | `npm run check` | Type-check the Svelte/TypeScript code |
 | `npm run package` | Build the release packages. On Linux, an AppImage in `src-tauri/target/release/bundle/appimage/`, built in an Ubuntu 22.04 container when Docker is running (see below) |
 | `cargo test --manifest-path src-tauri/Cargo.toml` | Run the Rust tests |
+| `python3 scripts/build-website.py` | Build the website into `build/website/`; preview it with `python3 -m http.server -d build/website` |
+
+### Website
+
+The website's pages are in [website/](website/). A GitHub Actions workflow
+(`.github/workflows/website.yml`) builds and publishes it to GitHub Pages on every push to `main`
+that changes it, the extra themes or the screenshot. See
+[decision 0060](docs/decisions/0060-website-on-github-pages.md).
 
 ### Packaging
 

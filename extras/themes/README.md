@@ -28,7 +28,12 @@ Each folder is a theme package unzipped (the format is described in
 extras/themes/build.sh        # writes extras/themes/dist/<Name>.comilito-theme for each folder
 ```
 
-`dist/` is not committed. After changing a woodcut, keep it a single colour with a transparent
+`dist/` is not committed.
+
+The website offers every theme here for download, except Horde and Alliance
+(`NOT_ON_WEBSITE` in [scripts/build-website.py](../../scripts/build-website.py)); a theme's
+"Look" in the table above is its description there. See
+[decision 0060](../../docs/decisions/0060-website-on-github-pages.md). After changing a woodcut, keep it a single colour with a transparent
 background: the app only uses its shape and paints it in the theme's gold.
 
 ## Credits and licences
