@@ -9,7 +9,7 @@ version number and date.
 
 ## Unreleased
 
-Nothing has been released yet; everything below goes into the first release, 0.2.0.
+## [1.0.0] - 2026-11-20
 
 ### Added
 

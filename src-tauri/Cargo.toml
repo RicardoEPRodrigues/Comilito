@@ -1,6 +1,6 @@
 [package]
 name = "comilito"
-version = "0.2.0"
+version = "1.0.0"
 description = "A soundboard and mixer for tabletop role-playing game masters"
 authors = ["Ricardo Rodrigues"]
 license = "GPL-3.0-only"
