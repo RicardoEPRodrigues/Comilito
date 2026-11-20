@@ -1,10 +1,3 @@
-# Flatpak manifest for Flathub (decisions 0059, 0061): builds a released version, from its git
-# tag. For builds of the working folder, see me.colorcrow.comilito.local.yml; docs/flatpak.md
-# says how to build either.
-#
-# Flathub builds without network access, so every Rust crate and npm package is listed as a
-# source: cargo-sources.json and node-sources.json, generated from the lock files with
-# flatpak-builder-tools. `npm run release` regenerates them and sets the tag and commit below.
 id: me.colorcrow.comilito
 # GNOME's runtime carries WebKitGTK 4.1 (Tauri's webview) and GStreamer with the plugins its
 # <video> needs (VP8/VP9, Matroska/WebM, AV1, NVIDIA's decoders).
@@ -17,7 +10,6 @@ sdk-extensions:
 command: comilito
 
 finish-args:
-  # The window: Wayland, with X11 only where there's no Wayland. `ipc` is needed by X11.
   - --socket=wayland
   - --socket=fallback-x11
   - --share=ipc
@@ -27,20 +19,17 @@ finish-args:
   - --socket=pulseaudio
   # Downloading audio and videos from links, and the yt-dlp and ffmpeg tools (decision 0019).
   - --share=network
-  # Projects are folders with relative paths inside, in ~/Documents/Comilito by default but
-  # anywhere the user chooses (decision 0042). The file chooser portal would hand back
-  # per-file paths under /run/user/…, which a project folder can't work with. Other disks and
-  # removable drives too, where many keep their campaigns: /media (Debian, Ubuntu), /run/media
-  # (Fedora, Arch), /mnt (by hand). A folder the app can reach comes back from the file chooser
-  # as its real path; anywhere else, as a read-only copy Comilito refuses (flatpak.rs).
+  # Comilito Projects are folders with relative paths inside, in ~/Documents/Comilito by default but
+  # anywhere the user chooses. The file chooser portal would hand back per-file paths under 
+  # /run/user/…, which a project folder can't work with. Other disks and removable drives too.
+  # The app needs access to the real path; anywhere else, as a read-only copy Comilito refuses.
   - --filesystem=home
   - --filesystem=/media
   - --filesystem=/run/media
   - --filesystem=/mnt
-  # The OS media controls (MPRIS, decision 0030): souvlaki registers this name.
+  # The OS media controls (MPRIS).
   - --own-name=org.mpris.MediaPlayer2.comilito
-  # "Show in folder" selects the file in the file manager; without this it falls back to the
-  # portal, which tauri-plugin-opener calls in a way that fails.
+  # Required for "Show in folder" to correctly open the file manager
   - --talk-name=org.freedesktop.FileManager1
 
 build-options:
@@ -51,7 +40,6 @@ modules:
     buildsystem: simple
     build-options:
       env:
-        # Where the generated sources put the vendored crates and the npm cache.
         CARGO_HOME: /run/build/comilito/cargo
         CARGO_NET_OFFLINE: 'true'
         npm_config_cache: /run/build/comilito/flatpak-node/npm-cache
@@ -61,11 +49,9 @@ modules:
       # The frontend (Vite builds the Svelte app into dist/).
       - npm ci --offline
       - npm run build
-      # The app, with the frontend built in. `tauri build` would add this feature itself; plain
-      # Cargo avoids needing the Tauri CLI's native binary. `--locked`: exactly Cargo.lock.
+      # The app, with the frontend built in.
       - cargo build --release --locked --features tauri/custom-protocol --manifest-path src-tauri/Cargo.toml
       - install -Dm755 src-tauri/target/release/comilito /app/bin/comilito
-      # Tauri looks for bundled resources in ../lib/<productName> next to the binary.
       - mkdir -p /app/lib/Comilito
       - cp -r src-tauri/resources/sample /app/lib/Comilito/sample
       - install -Dm644 flatpak/me.colorcrow.comilito.desktop /app/share/applications/me.colorcrow.comilito.desktop
@@ -79,7 +65,6 @@ modules:
       - type: git
         url: https://github.com/RicardoEPRodrigues/Comilito.git
         tag: v0.2.0
-        # Quoted: YAML would read a hash made only of digits (or like 1e5…) as a number.
         commit: '0000000000000000000000000000000000000000'
       - cargo-sources.json
       - node-sources.json
