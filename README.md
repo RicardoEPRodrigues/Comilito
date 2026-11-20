@@ -145,9 +145,9 @@ Other commands:
 | Command | What it does |
 |---------|--------------|
 | `npm run check` | Type-check the Svelte/TypeScript code |
-| `npm run package` | Build the release packages. On Linux, an AppImage in `src-tauri/target/release/bundle/appimage/`, built in an Ubuntu 22.04 container when Docker is running (see below), then a Flatpak in `…/bundle/flatpak/` |
-| `npm run flatpak` | Build only the Flatpak (`-- --install` installs it); see [docs/flatpak.md](docs/flatpak.md) |
-| `npm run release -- v1.1.0` | Set the version everywhere, commit, tag, and point the Flathub manifest at the tag (doesn't push) |
+| `npm run package` | Build the release packages. On Linux, an AppImage in `src-tauri/target/release/bundle/appimage/`, built in an Ubuntu 22.04 container when Docker is running (see below), then a Flatpak in `…/bundle/flatpak/`. On Windows, the MSI installer in `…/bundle/msi/` |
+| `npm run flatpak` | Build only the Flatpak (`-- --install` installs it, `-- uninstall` removes it); see [docs/flatpak.md](docs/flatpak.md) |
+| `npm run release -- v1.1.0` | Release a version: set it everywhere, build this OS's package (AppImage or MSI), commit, tag, and point the Flathub manifest at the tag (doesn't push). For a version already tagged, only builds this OS's package; see [docs/flatpak.md](docs/flatpak.md) |
 | `cargo test --manifest-path src-tauri/Cargo.toml` | Run the Rust tests |
 | `python3 scripts/build-website.py` | Build the website into `build/website/`; preview it with `python3 -m http.server -d build/website` |
 

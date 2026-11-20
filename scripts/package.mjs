@@ -13,7 +13,7 @@
 //   npm run package -- --no-flatpak     only the AppImage
 //   npm run package -- --no-appimage    only the Flatpak
 //
-// On other OSes it runs `tauri build` (Windows: the installers from tauri.conf.json).
+// On Windows it builds the MSI installer only; on other OSes it runs `tauri build`.
 import { spawnSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -93,7 +93,9 @@ function buildInDocker() {
 // Through scripts/tauri.mjs, which picks the GStreamer plugins (decision 0041). Called with
 // Node itself rather than `npm` so it works on Windows, where npm is a .cmd file.
 function tauriBuild() {
-  return run(process.execPath, [join(root, "scripts", "tauri.mjs"), "build"]);
+  // Windows: only the MSI. tauri.conf.json's "all" would add the NSIS installer too.
+  const bundles = process.platform === "win32" ? ["--bundles", "msi"] : [];
+  return run(process.execPath, [join(root, "scripts", "tauri.mjs"), "build", ...bundles]);
 }
 
 function dockerRunning() {

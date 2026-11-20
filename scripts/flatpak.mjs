@@ -4,6 +4,8 @@
 //   npm run flatpak -- --install       …and install it for your user (`flatpak run me.colorcrow.comilito`)
 //   npm run flatpak -- --flathub       build the Flathub manifest instead (the tagged release, offline)
 //   npm run flatpak -- sources         regenerate cargo-sources.json and node-sources.json
+//   npm run flatpak -- uninstall       remove the installed Flatpak (your user's); its data stays
+//   npm run flatpak -- uninstall --delete-data   …and its data too (~/.var/app/me.colorcrow.comilito)
 //
 // `npm run package` runs the first one after the AppImage. Building needs Flathub's
 // flatpak-builder (`flatpak install --user flathub org.flatpak.Builder`); the runtime, the SDK
@@ -22,11 +24,36 @@ const dir = join(root, "flatpak");
 
 // Run directly (not imported by package.mjs or release.mjs).
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const args = process.argv.slice(2);
-  if (args[0] === "sources") {
-    process.exit(generateSources());
+  process.exit(main(process.argv.slice(2)));
+}
+
+/** Picks the command from the arguments. Anything it doesn't know stops with the usage instead
+ *  of falling through to a build, which takes minutes. */
+function main(args) {
+  const usage =
+    "usage: npm run flatpak -- [--install] [--flathub]\n" +
+    "       npm run flatpak -- sources\n" +
+    "       npm run flatpak -- uninstall [--delete-data]";
+  // The command is the one word without dashes; `--uninstall` and `--sources` work too.
+  const words = args.filter((a) => !a.startsWith("--"));
+  const flags = args.filter((a) => a.startsWith("--"));
+  let command = words[0] ?? "build";
+  for (const c of ["sources", "uninstall"]) {
+    if (flags.includes(`--${c}`)) command = c;
   }
-  process.exit(build({ flathub: args.includes("--flathub"), install: args.includes("--install") }));
+  const allowed = {
+    build: ["--install", "--flathub"],
+    sources: ["--sources"],
+    uninstall: ["--uninstall", "--delete-data"],
+  }[command];
+  const unknown = [...words.slice(1), ...flags.filter((f) => !allowed?.includes(f))];
+  if (!allowed || unknown.length > 0) {
+    console.error(`error: don't know ${!allowed ? `"${command}"` : unknown.join(" ")}\n${usage}`);
+    return 1;
+  }
+  if (command === "sources") return generateSources();
+  if (command === "uninstall") return uninstall({ deleteData: flags.includes("--delete-data") });
+  return build({ flathub: flags.includes("--flathub"), install: flags.includes("--install") });
 }
 
 /** Builds a manifest into flatpak/repo and exports it as a single .flatpak file. Returns an exit code. */
@@ -75,6 +102,30 @@ export function build({ flathub = false, install = false } = {}) {
   if (bundled !== 0) return bundled;
   console.log(`\nFlatpak: ${file}${install ? `\nInstalled: flatpak run ${APP_ID}` : ""}`);
   return 0;
+}
+
+/** Removes the Flatpak `--install` (or `flatpak install`) put in the user's installation. Its
+ *  data (settings, backups, downloaded tools) stays for a later install, unless `deleteData`.
+ *  Your projects are never touched: they're in your own folders. Returns an exit code. */
+export function uninstall({ deleteData = false } = {}) {
+  const installed = spawnSync("flatpak", ["info", "--user", APP_ID], { stdio: "ignore" });
+  if (installed.error) {
+    console.error("error: Flatpak isn't installed.");
+    return 1;
+  }
+  if (installed.status !== 0) {
+    console.log(`${APP_ID} isn't installed for your user; nothing to do.`);
+    return 0;
+  }
+  const code = run("flatpak", ["uninstall", "--user", "--noninteractive", ...(deleteData ? ["--delete-data"] : []), APP_ID]);
+  if (code === 0) {
+    console.log(
+      deleteData
+        ? `Uninstalled ${APP_ID} and deleted its data.`
+        : `Uninstalled ${APP_ID}. Its data is kept in ~/.var/app/${APP_ID}/ (--delete-data removes it).`,
+    );
+  }
+  return code;
 }
 
 /** Regenerates the crate and npm package lists the Flathub manifest builds from. */

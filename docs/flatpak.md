@@ -73,7 +73,9 @@ The first build compiles everything (several minutes); later ones reuse what did
 
 - Logs: `~/.var/app/me.colorcrow.comilito/data/me.colorcrow.comilito/logs/`.
 - A shell inside the sandbox, to look around: `flatpak run --command=sh me.colorcrow.comilito`.
-- Uninstall, with its data: `flatpak uninstall --user --delete-data me.colorcrow.comilito`.
+- Uninstall: `npm run flatpak -- uninstall`. Its data (settings, backups, downloaded tools in
+  `~/.var/app/me.colorcrow.comilito/`) stays for the next install; add `--delete-data` to remove
+  it too. Projects are never touched.
 
 ## Generating the sources
 
@@ -94,18 +96,29 @@ npm run release -- v1.1.0 --dry-run   # what it would do
 npm run release -- v1.1.0
 ```
 
-`scripts/release.mjs` refuses to start if tracked files have uncommitted changes, the tag exists
-or the version isn't newer. Then it:
+`scripts/release.mjs` refuses to start if tracked files have uncommitted changes. For a new
+version (no tag `v1.1.0` yet, and newer than the current one) it:
 
 1. sets the version in `package.json` and `package-lock.json`, `src-tauri/Cargo.toml` and
    `Cargo.lock`, and `tauri.conf.json`; adds a `<release>` to the metainfo; and turns what's
    under **Unreleased** in CHANGELOG.md into the version's section;
-2. commits that ("Release v1.1.0") and tags it `v1.1.0`;
-3. regenerates the sources, points the Flathub manifest at the tag and its commit, and commits
-   that ("Point the Flathub manifest at v1.1.0").
+2. builds this computer's package: the **AppImage** on Linux (as `npm run package`, in Docker
+   when it runs), the **MSI** on Windows. If the build fails, the version changes are undone and
+   nothing is committed;
+3. commits ("Release v1.1.0") and tags it `v1.1.0`;
+4. on Linux, regenerates the sources, points the Flathub manifest at the tag and its commit,
+   and commits that ("Point the Flathub manifest at v1.1.0").
 
-It never pushes. Check the two commits, push (`git push origin HEAD v1.1.0`), then copy the
-Flathub manifest and the two source files to the Flathub repository.
+If the tag already exists, the version is released: a tag never moves, so it only builds this
+computer's package for it (and on Linux points the Flathub manifest at it, if it doesn't yet).
+The working copy must be the tagged one, apart from the Flathub manifest and sources; otherwise
+it says to `git checkout v1.1.0` first. That's how both packages get made:
+
+- release on Linux (AppImage, Flathub manifest), pull on Windows and run the same command (MSI);
+- or release on Windows (MSI), pull on Linux and run the same command (AppImage, Flathub manifest).
+
+It never pushes. Check the commits, push (`git push origin HEAD v1.1.0`), then copy the Flathub
+manifest and the two source files to the Flathub repository.
 
 ## Checking it
 
@@ -125,10 +138,9 @@ Read Flathub's [requirements](https://docs.flathub.org/docs/for-app-authors/requ
 1. **Make the repository public and the website live**, so the metainfo's links and
    screenshot load (the homepage is `https://comilito.colorcrow.me`).
 2. **Release a version** with `npm run release -- v1.0.0`, and push it.
-3. **Write the manifest for Flathub.** It builds from the tag, not from this folder.
-   Flathub doesn't accept manifests with AI-generated or AI-assisted content, and
-   `flatpak/me.colorcrow.comilito.yml` was drafted with Claude, so the submitted manifest must
-   be written by hand; the one in this repository is the reference that's known to build.
+3. **The Flathub manifest** is `flatpak/me.colorcrow.comilito.yml`, written by hand (Flathub
+   doesn't accept manifests with AI-generated or AI-assisted content). It builds from the tag,
+   not from this folder; `npm run release` has pointed it at the new one.
 4. **Submit**: fork [flathub/flathub](https://github.com/flathub/flathub), branch from
    `new-pr`, add the manifest and the two generated source files, and open a pull request
    against `new-pr`. Disclose the AI-written code in it, as Flathub requires. Opening the pull

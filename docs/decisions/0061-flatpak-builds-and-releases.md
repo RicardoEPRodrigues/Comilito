@@ -12,8 +12,9 @@ after each lock-file change, and left the Flathub form to be redone by hand at e
 
 A release also touches many places: the version in `package.json` and its lock file,
 `Cargo.toml` and `Cargo.lock`, `tauri.conf.json`, a `<release>` in the metainfo, the
-CHANGELOG's sections, a tag, and the Flathub manifest's tag and commit. Done by hand, one is
-easily missed.
+CHANGELOG's sections, a tag, the Flathub manifest's tag and commit, and the packages: the
+AppImage, built on Linux, and the MSI, built on Windows. Done by hand, one is easily missed.
+The two packages can't be built on the same computer, so a release spans two runs.
 
 ## Options considered
 
@@ -38,10 +39,19 @@ easily missed.
   Flathub manifest, `sources` regenerates the source lists with flatpak-builder-tools.
   **`npm run package`** builds the AppImage and then this Flatpak on Linux.
 - **`npm run release -- vX.Y.Z`** (`scripts/release.mjs`) checks first (no uncommitted changes to
-  tracked files, a new tag, a newer version, the Flatpak files committed), then sets the version
-  everywhere, adds the metainfo `<release>` and the CHANGELOG section, commits ("Release
-  vX.Y.Z") and tags. It then regenerates the sources and points the Flathub manifest at the tag
-  and its commit, in a second commit. It never pushes. `--dry-run` lists the steps.
+  tracked files, a newer version, the Flatpak files committed), then sets the version
+  everywhere, adds the metainfo `<release>` and the CHANGELOG section, and builds this
+  computer's package (the AppImage on Linux, the MSI on Windows). Only if that builds does it
+  commit ("Release vX.Y.Z") and tag; a failed build undoes the version changes. On Linux it then
+  regenerates the sources and points the Flathub manifest at the tag and its commit, in a second
+  commit. It never pushes. `--dry-run` lists the steps.
+- **An existing tag means a released version.** Tags never move once pushed, so the script never
+  re-tags. If the working copy is the tagged one (apart from the Flathub manifest and sources,
+  updated after tagging), it builds this computer's package, and on Linux points the Flathub
+  manifest at the tag if it doesn't yet. That's how the other OS gets its package: the same
+  command, run there. Otherwise it stops and says to check the tag out. Refusing would have
+  needed a separate command for the second package; replacing the tag is only safe before it's
+  pushed.
 - The commit hash is written quoted in the manifest: YAML would read a hash of only digits, or
   one like `1e5…`, as a number.
 
@@ -50,9 +60,12 @@ easily missed.
 - Local builds work right after a lock-file change; only releases (and `--flathub` builds) need
   the generated sources.
 - The two manifests can drift apart; changes to permissions or build commands go in both.
-- A release is one command plus a push, and the Flathub manifest in the repository always names
-  the latest release.
-- The manifest submitted to Flathub must still be written by hand (decision 0059's AI policy);
-  the script only changes its `tag` and `commit` lines.
+- A release is one command per OS plus a push, and the Flathub manifest in the repository always
+  names the latest release. Running it again for a released version is harmless: it rebuilds the
+  package.
+- On Windows, `npm run package` (and so the release) builds only the MSI, not the NSIS installer
+  tauri.conf.json's `"all"` would add. That path hasn't been run yet.
+- The Flathub manifest is written by hand (decision 0059's AI policy); the script only changes
+  its `tag` and `commit` lines.
 - The version lives in three files (`package.json`, `Cargo.toml`, `tauri.conf.json`); the script
   keeps them equal.
