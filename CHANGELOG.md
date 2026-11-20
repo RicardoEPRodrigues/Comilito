@@ -172,6 +172,8 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Fixed
 
+- The AppImage no longer prints "WebKit wasn't able to find a WebVTT encoder" every time it
+  shows a video.
 - *Update* in Preferences › Projects & tools › Download tools shows what it's doing (checking,
   downloading with progress, unpacking) and then what was updated, or that everything was up to
   date. It no longer downloads yt-dlp again when it's already the newest.

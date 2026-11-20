@@ -40,6 +40,10 @@ const OPTIONAL = [
   "alpha", "alphacolor", "videocrop", "videobox", "imagefreeze",
   // plugins-bad, only ones without patent trouble
   "videoparsersbad", "aom", "codecalpha",
+  // plugins-bad: the WebVTT encoder (`webvttenc`). We have no subtitles, but WebKit looks for it
+  // whenever it sets up a video and, without it, prints "WebKit wasn't able to find a WebVTT
+  // encoder" each time. 23 KB, needing only GStreamer's core.
+  "subenc",
   // plugins-bad: NVIDIA's decoders, for Preferences › Video › "Decode videos on the GPU"
   // (decision 0053). The plugin carries no codec of its own: it loads CUDA and NVDEC from the
   // system's NVIDIA driver when it starts, and registers nothing where there's no NVIDIA GPU.
