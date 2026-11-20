@@ -52,6 +52,10 @@ zbus = "5"
 # `set_fullscreen` doesn't expose (decision 0045). Tauri already builds on this exact crate
 # (`WebviewWindow::gtk_window` returns its type), so it adds nothing to the build.
 gtk = "0.18"
+# WebKitGTK's own calls, to let our pages play videos from `file://` URLs (decision 0056): its
+# <video> can't load from Tauri's custom schemes. Same story as gtk: Tauri (wry) already builds
+# this exact crate, so it adds nothing to the build.
+webkit2gtk = "2.0.2"
 # The cpal kira plays through, with its PulseAudio host on, to list and open the outputs the
 # desktop shows (decision 0032). Same version as kira's, so it's the same crate. Pure Rust.
 cpal = { version = "0.18", features = ["pulseaudio"] }

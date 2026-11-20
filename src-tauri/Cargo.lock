@@ -583,6 +583,7 @@ dependencies = [
  "trash",
  "ureq",
  "uuid",
+ "webkit2gtk",
  "zbus",
  "zip",
 ]

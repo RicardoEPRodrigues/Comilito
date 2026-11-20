@@ -102,13 +102,14 @@ whole feature can be turned off in Preferences › Video.
 
 ## Loading videos into the webview
 
-`src/lib/videoStream.ts` (`loadVideo`, and the `videoSource` action for the Library). On
-Linux, WebKitGTK won't play `<video src="asset://…">`, so the file is streamed into a
-MediaSource with `fetch` range requests over the asset protocol ([0037](decisions/0037-streaming-videos-on-linux.md));
-only WebM can be streamed that way. Seeks and starts in the middle use the WebM's seek index
-(`src/lib/webmIndex.ts`), which conversions put at the front of the file. A jump drops what's
-buffered and resets the parser (`abort`), after which WebKitGTK needs the file's header again, so
-it's appended before the new cluster. On Windows and macOS a plain `src` is used.
+`src/lib/videoSource.ts` (`loadVideo`, and the `videoSource` action for the Library) sets the
+`<video>`'s `src`. On Windows and macOS it's the file's asset URL. WebKitGTK's `<video>` loads
+only http(s), blob and file URLs, so on Linux it's the file's `file://` URL, which GStreamer reads
+straight from disk ([0056](decisions/0056-file-urls-for-videos-on-linux.md)). WebKit lets a page
+show local files only when the page's scheme is registered as "local", which Rust does for each
+window (`allow_local_media` in `video.rs`); the page still can't read them (`fetch`, canvas
+pixels). Conversions put the WebM's seek index (Cues) at the front, so jumps don't read the end
+of the file first.
 
 On Linux, GStreamer uses NVIDIA's hardware video decoders when there are any
 ([0054](decisions/0054-gpu-video-decoding-by-default.md)). With Preferences › Video › "Decode

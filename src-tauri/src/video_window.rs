@@ -181,6 +181,7 @@ pub fn open(app: &AppHandle, state: &mut AppState) -> Result<(), String> {
         .disable_drag_drop_handler()
         .build()
         .map_err(|e| format!("could not open the video window: {e}"))?;
+    crate::video::allow_local_media(&window);
     drop(window);
     place(app, state.prefs.video.screen.as_deref(), state.prefs.video.fullscreen);
     state.video_window_open = true;

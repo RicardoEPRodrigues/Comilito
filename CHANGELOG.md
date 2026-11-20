@@ -124,6 +124,9 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Changed
 
+- **Videos on Linux** play straight from their files, as on Windows and macOS, instead of being
+  read in pieces by the window. Switching scenes shows the next video sooner, and the Library's
+  thumbnails load faster.
 - Comilito's ffmpeg now comes from BtbN's release builds (ffmpeg 8.1) instead of yt-dlp's nightly
   ones, whose GPU encoders need the very newest NVIDIA drivers. *Update* in Preferences ›
   Projects & tools › Download tools replaces an ffmpeg downloaded earlier.

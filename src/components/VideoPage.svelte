@@ -8,7 +8,7 @@
   import { askText, formatBytes, formatDuration, run, ui } from "../lib/store.svelte";
   import type { Video, VideoKind } from "../lib/types";
   import { describeVideo, duplicateVideo, folderOfVideo, kindOf, moveVideos, relinkVideo, removeVideo, scenesUsingVideo, shelfOfKind, videoById } from "../lib/video";
-  import { videoSource } from "../lib/videoStream";
+  import { videoSource } from "../lib/videoSource";
   import TimeInput from "./TimeInput.svelte";
 
   let { id }: { id: string } = $props();

@@ -41,9 +41,9 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0032](0032-choosing-the-audio-output.md) | Choosing the audio output | Accepted | 2026-11-14 |
 | [0033](0033-resuming-downloads-and-quit-warning.md) | Resuming downloads after a restart, and warning when quitting while busy | Accepted | 2026-11-14 |
 | [0034](0034-dropping-files-on-a-library-folder.md) | Dropping files on a Library folder imports them there | Accepted | 2026-11-15 |
-| [0035](0035-video.md) | Videos for scenes, in a window of their own | Accepted (loading on Linux: 0037; Space: 0038; kinds: 0039) | 2026-11-15 |
+| [0035](0035-video.md) | Videos for scenes, in a window of their own | Accepted (loading on Linux: 0037, then 0056; Space: 0038; kinds: 0039) | 2026-11-15 |
 | [0036](0036-ui-testing-with-webdriver.md) | Test the running app with WebDriver, on the real Wayland desktop | Accepted | 2026-11-15 |
-| [0037](0037-streaming-videos-on-linux.md) | Streaming videos into a MediaSource on Linux | Accepted | 2026-11-15 |
+| [0037](0037-streaming-videos-on-linux.md) | Streaming videos into a MediaSource on Linux | Superseded by 0056 | 2026-11-15 |
 | [0038](0038-video-keeps-playing-on-pause.md) | The video keeps playing while the sound is paused | Accepted | 2026-11-15 |
 | [0039](0039-ambience-videos-and-video-effects.md) | Ambience videos and video effects are kept apart, with Library tabs | Accepted | 2026-11-15 |
 | [0040](0040-crossfading-video-loops.md) | Videos crossfade back to their start unless marked as seamless loops | Accepted | 2026-11-15 |
@@ -61,6 +61,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0052](0052-gpu-video-decoding-preference.md) | A preference to decode videos on NVIDIA GPUs (Linux) | Accepted (AppImage in 0053, default in 0054) | 2026-11-19 |
 | [0054](0054-gpu-video-decoding-by-default.md) | Decode videos on NVIDIA GPUs by default (Linux) | Accepted | 2026-11-20 |
 | [0055](0055-keyframes-for-gpu-conversions.md) | A keyframe every 60 frames in GPU conversions | Accepted | 2026-11-20 |
+| [0056](0056-file-urls-for-videos-on-linux.md) | Play videos from `file://` URLs on Linux | Accepted | 2026-11-20 |
 | [0053](0053-nvidia-decoders-in-the-appimage.md) | Carry NVIDIA's GStreamer decoders in the AppImage | Accepted | 2026-11-19 |
 
 ## Template

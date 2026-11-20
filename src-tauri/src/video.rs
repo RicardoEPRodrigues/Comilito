@@ -166,13 +166,41 @@ pub fn move_into_kind_folders(dir: &Path, project: &mut Project) -> Result<bool,
 
 // ---- Commands -------------------------------------------------------------------------------
 
-/// Whether the webviews must stream videos into a MediaSource themselves (decision 0037):
-/// true on Linux, where WebKitGTK won't play `<video src="asset://…">` (and stalls on
-/// `http://` media too). Elsewhere a plain `src` works.
+/// Whether the webviews give `<video>` a `file://` URL rather than an asset one (decision 0056):
+/// true on Linux, where WebKitGTK's <video> loads only http(s), blob and file URLs. Elsewhere
+/// the asset URL plays.
 #[tauri::command]
-pub fn video_streaming() -> bool {
+pub fn video_file_urls() -> bool {
     cfg!(target_os = "linux")
 }
+
+/// Lets `window`'s pages play videos from `file://` URLs (decision 0056). WebKitGTK refuses
+/// local files to pages from other schemes; registering the page's scheme as "local" lifts that
+/// for showing them (`<video>`, `<img>`), while reading them (`fetch`, canvas pixels) stays
+/// blocked. The setting belongs to the window's WebContext, which Tauri shares between windows,
+/// so doing it again for another window is harmless.
+#[cfg(target_os = "linux")]
+pub fn allow_local_media(window: &tauri::WebviewWindow) {
+    let result = window.with_webview(|webview| {
+        use webkit2gtk::{SecurityManagerExt, WebContextExt, WebViewExt};
+        let Some(manager) = webview.inner().context().and_then(|c| c.security_manager()) else {
+            crate::logging::warn("can't let the window play local videos: no WebKit security manager");
+            return;
+        };
+        // The built app's pages are tauri://localhost; under `tauri dev` they come from the
+        // Vite server (http://localhost:1420), so debug builds need http too.
+        manager.register_uri_scheme_as_local("tauri");
+        if cfg!(debug_assertions) {
+            manager.register_uri_scheme_as_local("http");
+        }
+    });
+    if let Err(e) = result {
+        crate::logging::warn(&format!("can't let the window play local videos: {e}"));
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+pub fn allow_local_media(_window: &tauri::WebviewWindow) {}
 
 /// Copies video files into `video/<kind>/<folder>/` and adds them to the library. Returns
 /// their ids.

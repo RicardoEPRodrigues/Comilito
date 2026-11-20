@@ -1,6 +1,6 @@
 # 0037. Streaming videos into a MediaSource on Linux
 
-- Status: Accepted (amends how [0035](0035-video.md) loads videos)
+- Status: Superseded by [0056](0056-file-urls-for-videos-on-linux.md)
 - Date: 2026-11-15
 
 ## Context

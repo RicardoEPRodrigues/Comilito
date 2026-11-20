@@ -156,8 +156,8 @@ export const ui = $state({
   conversions: [] as ConversionJob[],
   /** What the video window last said it's showing (for the bottom bar). */
   videoStatus: null as VideoStatus | null,
-  /** Videos are streamed into a MediaSource (Linux) instead of a plain `src` (decision 0037). */
-  videoStreaming: false,
+  /** Videos play from `file://` URLs (Linux) instead of asset ones (decision 0056). */
+  videoFileUrls: false,
   convertOffer: null as ConvertOffer | null,
   tools: null as ToolsStatus | null,
   toolsProgress: null as InstallProgress | null,
@@ -356,8 +356,8 @@ export async function init() {
     });
     if (answer?.choice === "quit") await run(api.confirmQuit());
   });
-  // Before the first snapshot: videos shown at start need to know how to load (decision 0037).
-  ui.videoStreaming = await api.videoStreaming();
+  // Before the first snapshot: videos shown at start need to know how to load (decision 0056).
+  ui.videoFileUrls = await api.videoFileUrls();
   const [snapshot, prefs, desktop, downloads, conversions] = await Promise.all([
     api.getState(),
     api.getPreferences(),

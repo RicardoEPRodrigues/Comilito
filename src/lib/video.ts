@@ -37,7 +37,7 @@ export function folderOfVideo(video: Video): string {
   return parts.length <= 3 ? "" : parts.slice(2, -1).join("/");
 }
 
-// Loading a video into a <video> element is in videoStream.ts (decision 0037).
+// Loading a video into a <video> element is in videoSource.ts (decision 0056).
 
 /** Scenes that show a video, in their playlist or as a video effect. */
 export function scenesUsingVideo(id: string): Scene[] {

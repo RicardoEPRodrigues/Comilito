@@ -17,7 +17,7 @@
   import { formatDuration, ui } from "../lib/store.svelte";
   import type { Preferences, Screen, Snapshot, VideoTarget } from "../lib/types";
   import { videoById } from "../lib/video";
-  import { loadVideo, type Playback } from "../lib/videoStream";
+  import { loadVideo, type Playback } from "../lib/videoSource";
 
   const win = getCurrentWebviewWindow();
 
@@ -337,8 +337,8 @@
   }
 
   // ---- The watchdog: a video that should be moving but isn't ----
-  // If the shown video's time stands still while it should play (a stream that stopped
-  // feeding, a decoder error), it's logged and started again where it was. If a video being
+  // If the shown video's time stands still while it should play (a read that stalled,
+  // a decoder error), it's logged and started again where it was. If a video being
   // loaded never gets to its first frame, it's logged and started from the beginning. At most
   // a few times in a row.
   const STUCK_MS = 4000;
@@ -482,12 +482,12 @@
       // The main window's "Restart the interface" (decision 0044) restarts this one too.
       listen("restart-interface", () => location.reload()),
     ];
-    Promise.all([api.getState(), api.getPreferences(), api.videoPositions(), api.listScreens(), api.videoStreaming()]).then(
-      ([s, p, pos, sc, streaming]) => {
+    Promise.all([api.getState(), api.getPreferences(), api.videoPositions(), api.listScreens(), api.videoFileUrls()]).then(
+      ([s, p, pos, sc, fileUrls]) => {
         positions = pos;
         prefs = p;
         screens = sc;
-        ui.videoStreaming = streaming;
+        ui.videoFileUrls = fileUrls;
         ui.snapshot = s;
       },
     );

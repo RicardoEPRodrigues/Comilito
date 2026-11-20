@@ -28,7 +28,7 @@
   import { api } from "../lib/api";
   import { addSoundFiles, foldersOf } from "../lib/actions";
   import { addVideoFiles, findVideos, folderOfVideo, kindOf, shelfOfKind, VIDEO_SHELVES, videoById, videoEnabled } from "../lib/video";
-  import { videoSource } from "../lib/videoStream";
+  import { videoSource } from "../lib/videoSource";
   import { findSounds, topTags, type Filter } from "../lib/library";
   import { fold, pop } from "../lib/motion";
   import { folderOf, remember, run, showView, ui } from "../lib/store.svelte";
@@ -324,7 +324,7 @@
             ondragend={() => (ui.drag = null)}
             ondblclick={() => openVideo(v.id)}
           >
-            <span class="vthumb">{#if !snapshot.missing.includes(v.id)}<video use:videoSource={{ video: v, at: 3, preview: true }} muted tabindex="-1"></video>{/if}</span>
+            <span class="vthumb">{#if !snapshot.missing.includes(v.id)}<video use:videoSource={{ video: v, at: 3 }} muted tabindex="-1"></video>{/if}</span>
             <span class="vname">{v.name}</span>
           </div>
         {/snippet}

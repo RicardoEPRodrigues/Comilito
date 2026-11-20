@@ -155,6 +155,10 @@ pub fn run() {
         )
         // `setup` runs once the app exists, so we can ask Tauri for OS folders.
         .setup(|app| {
+            // Before its page can ask for a video (decision 0056).
+            if let Some(main) = app.get_webview_window("main") {
+                video::allow_local_media(&main);
+            }
             let data_dir = app.path().app_data_dir()?;
             logging::init(&data_dir.join("logs"));
 
@@ -293,7 +297,7 @@ pub fn run() {
             video::reveal_video,
             video::relink_video,
             video::add_video_to_scene,
-            video::video_streaming,
+            video::video_file_urls,
             video_convert::convert_videos,
             video_convert::trim_video,
             video_convert::cancel_conversion,
