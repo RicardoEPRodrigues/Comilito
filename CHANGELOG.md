@@ -126,6 +126,9 @@ Nothing has been released yet; everything below goes into the first release, 0.2
 
 ### Changed
 
+- **The video preview in the Library** has its own play bar (play/pause, position, a seek bar,
+  length) instead of the webview's built-in controls, whose buttons were empty on some systems.
+  Click the picture to play or pause; while trimming, the bar shows the part being kept.
 - **Videos on Linux** play straight from their files, as on Windows and macOS, instead of being
   read in pieces by the window. Switching scenes shows the next video sooner, and the Library's
   thumbnails load faster.

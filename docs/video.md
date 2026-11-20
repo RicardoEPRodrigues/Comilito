@@ -121,6 +121,15 @@ when they froze after jumps ([0047](decisions/0047-no-nvidia-video-decoding.md))
 NVIDIA's decoder plugin too, which uses the system's NVIDIA driver
 ([0053](decisions/0053-nvidia-decoders-in-the-appimage.md)).
 
+## The preview on a video's page
+
+A video's page in the Library previews it muted, with Comilito's own bar below it
+(`VideoPlayerBar.svelte`): play/pause, the position, a seek bar (click or drag; arrow keys step
+5 s) and the length. Clicking the picture plays or pauses too. It replaces WebKit's built-in
+controls, whose icons come from inside WebKit and are drawn empty by some versions (2.54, in the
+Flatpak's runtime). There's no volume, since videos are never heard, and no full screen: that's
+the video window. While trimming, the bar shades the part being kept.
+
 ## Trimming
 
 A video's page has *Trim…*: choose the part to keep (typed, or taken from the preview's

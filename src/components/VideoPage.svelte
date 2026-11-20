@@ -10,6 +10,7 @@
   import { describeVideo, duplicateVideo, folderOfVideo, kindOf, moveVideos, relinkVideo, removeVideo, scenesUsingVideo, shelfOfKind, videoById } from "../lib/video";
   import { videoSource } from "../lib/videoSource";
   import TimeInput from "./TimeInput.svelte";
+  import VideoPlayerBar from "./VideoPlayerBar.svelte";
 
   let { id }: { id: string } = $props();
 
@@ -22,6 +23,7 @@
 
   // ---- Trimming: keep only a part, re-encoded in the background so the cut is exact ----
   let playerEl = $state<HTMLVideoElement>();
+  let playerBar = $state<VideoPlayerBar>();
   let trimming = $state(false);
   let trimStart = $state(0);
   let trimEnd = $state(0);
@@ -29,7 +31,10 @@
   let trimError = $state("");
   /** Playing the selection from the panel: stop at its end. */
   let previewingTrim = false;
-  const lengthMs = $derived(video?.info?.durationMs ?? (playerEl ? playerEl.duration * 1000 : 0));
+  /** The length the <video> reports once it has loaded (NaN before), for videos whose info
+   *  isn't known yet. Kept in state: reading `playerEl.duration` directly isn't reactive. */
+  let loadedLengthMs = $state(0);
+  const lengthMs = $derived(video?.info?.durationMs ?? loadedLengthMs);
   const here = () => Math.round((playerEl?.currentTime ?? 0) * 1000);
 
   function openTrim() {
@@ -112,13 +117,19 @@
         <!-- Muted: a video's sound is never played (decision 0035). -->
         <!-- svelte-ignore a11y_media_has_caption -->
         <!-- Sized by its own proportions (known from the file before it loads), within the
-             page's width and 42% of the window's height. -->
+             page's width and 42% of the window's height. No `controls`: the bar below is ours
+             (VideoPlayerBar.svelte says why). A click on the picture plays or pauses. -->
+        <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
         <video
           bind:this={playerEl}
           use:videoSource={{ video }}
           ontimeupdate={stopAtTrimEnd}
           onpause={() => (previewingTrim = false)}
-          controls
+          onclick={() => playerBar?.toggle()}
+          ondurationchange={(e) => {
+            const d = e.currentTarget.duration;
+            loadedLengthMs = Number.isFinite(d) ? d * 1000 : 0;
+          }}
           muted
           style:aspect-ratio={video.info ? `${video.info.width} / ${video.info.height}` : "16 / 9"}
         ></video>
@@ -131,6 +142,7 @@
     </div>
 
     {#if !missing}
+      <VideoPlayerBar bind:this={playerBar} player={playerEl} {lengthMs} kept={trimming ? { start: trimStart, end: trimEnd } : null} />
       <div class="trim-bar">
         {#if trimming}
           <div class="trim">
@@ -361,6 +373,7 @@
      proportions (its file's, or `aspect-ratio` until it loads) while fitting both limits. */
   .player video {
     display: block;
+    cursor: pointer;
     width: auto;
     height: auto;
     max-width: 100%;
