@@ -24,7 +24,7 @@ THEMES = ROOT / "extras" / "themes"
 
 # Fan themes based on trademarks we don't own: kept in the repository for personal use, never
 # published (see extras/themes/README.md). Anything not listed here goes on the website.
-NOT_ON_WEBSITE = {"horde", "alliance"}
+NOT_ON_WEBSITE = {}
 
 
 def theme_descriptions() -> dict[str, str]:
