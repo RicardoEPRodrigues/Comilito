@@ -9,6 +9,12 @@ version number and date.
 
 ## Unreleased
 
+### Changed
+
+- **Downloads:** the website's buttons download the latest AppImage, Flatpak and Windows
+  installer directly. The Flatpak is a file to install from the releases page, as Flathub
+  didn't accept Comilito; it doesn't update itself yet.
+
 ## [1.0.0] - 2026-11-20
 
 ### Added
