@@ -5,8 +5,8 @@
 //   1. sets the version in package.json (and its lock file), src-tauri/Cargo.toml (and
 //      Cargo.lock) and tauri.conf.json, adds a <release> to the metainfo, and starts the
 //      version's section in CHANGELOG.md (everything under Unreleased goes into it);
-//   2. builds this computer's package: the AppImage on Linux, the MSI on Windows. If that fails,
-//      the version changes are undone and nothing is committed;
+//   2. builds this computer's packages: the AppImage and the Flatpak on Linux, the MSI on
+//      Windows. If that fails, the version changes are undone and nothing is committed;
 //   3. commits ("Release v1.1.0") and tags the commit v1.1.0;
 //   4. on Linux: regenerates the Flathub sources (cargo-sources.json, node-sources.json), points
 //      the Flathub manifest at the tag and its commit, and commits that.
@@ -17,8 +17,8 @@
 // manifest at the tag if it doesn't yet. So: release on one OS, then run the same command on
 // the other to build its package.
 //
-// It never pushes: check the commits, then `git push origin HEAD v1.1.0`, and copy the
-// Flathub manifest and the two source files to the Flathub repository (docs/flatpak.md).
+// It never pushes: check the commits, then `git push origin HEAD v1.1.0`, and put the packages
+// on the GitHub release with `npm run publish-release -- v1.1.0` (decision 0063).
 //
 //   npm run release -- v1.1.0 --dry-run    says what it would do, changes nothing
 import { spawnSync } from "node:child_process";
@@ -140,13 +140,13 @@ function setVersion() {
 /** This computer's package, through the same scripts as `npm run package`. Returns an exit code. */
 function buildPackage() {
   const node = process.execPath;
-  // On Linux the AppImage only, in the Ubuntu 22.04 container when Docker runs (decision 0046):
-  // the Flatpak of a release is Flathub's to build, from the manifest. On Windows, the MSI.
-  return run(node, [join(root, "scripts", "package.mjs"), ...(linux ? ["--no-flatpak"] : [])]);
+  // On Linux the AppImage (in the Ubuntu 22.04 container when Docker runs, decision 0046) and
+  // the Flatpak, both published on the GitHub release (decision 0063). On Windows, the MSI.
+  return run(node, [join(root, "scripts", "package.mjs")]);
 }
 
 function packageName() {
-  return linux ? "AppImage" : windows ? "MSI installer" : "packages";
+  return linux ? "AppImage and Flatpak" : windows ? "MSI installer" : "packages";
 }
 
 /** Step 4 (Linux): the Flathub manifest names the tag and its commit, with fresh sources.
@@ -179,14 +179,15 @@ function pointFlathubAtTag() {
 
 function summary() {
   const out = linux
-    ? "src-tauri/target/release/bundle/appimage/"
+    ? "src-tauri/target/release/bundle/appimage/ and …/flatpak/"
     : "src-tauri/target/release/bundle/msi/";
-  const lines = [`${released ? "Built" : "Released"} ${tag}. The ${packageName()} is in ${out}`];
+  const lines = [`${released ? "Built" : "Released"} ${tag}. The ${packageName()}: ${out}`];
   if (!released) lines.push(`Check the commits (git log -p), then: git push origin HEAD ${tag}`);
+  lines.push(`Then put the ${packageName()} on the GitHub release: npm run publish-release -- ${tag}`);
   if (flathubReady) {
     lines.push(`For Flathub, copy ${flathubFiles.join(", ")} to the Flathub repository.`);
   } else if (!linux) {
-    lines.push(`On Linux, run \`npm run release -- ${tag}\` too: it builds the AppImage and points the Flathub manifest at ${tag}.`);
+    lines.push(`On Linux, run \`npm run release -- ${tag}\` too: it builds the AppImage and the Flatpak.`);
   }
   return lines.join("\n");
 }

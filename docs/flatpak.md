@@ -1,15 +1,17 @@
 # Flatpak
 
-Comilito is packaged as a Flatpak for Flathub with the app ID `me.colorcrow.comilito`
-([decision 0059](decisions/0059-flatpak-on-flathub.md)). This page covers building it, trying
-it, releasing a version and getting it onto Flathub
+Comilito is packaged as a Flatpak with the app ID `me.colorcrow.comilito`
+([decision 0059](decisions/0059-flatpak-on-flathub.md)). Flathub refused it, so each release
+publishes a single `.flatpak` file on its GitHub page, next to the AppImage and the MSI
+([decision 0063](decisions/0063-flatpak-on-github-releases.md)). This page covers building it,
+trying it, releasing a version and publishing it
 ([decision 0061](decisions/0061-flatpak-builds-and-releases.md)).
 
 ## The pieces
 
 | File | What it is |
 |---|---|
-| `flatpak/me.colorcrow.comilito.yml` | The **Flathub manifest**: the runtime to run on, the sandbox's permissions (`finish-args`), and how to build Comilito from a release's git tag, offline |
+| `flatpak/me.colorcrow.comilito.yml` | The **Flathub manifest**: the runtime to run on, the sandbox's permissions (`finish-args`), and how to build Comilito from a release's git tag, offline. Unused since Flathub refused Comilito (decision 0063), kept in case it's tried again |
 | `flatpak/me.colorcrow.comilito.local.yml` | The **local manifest**: the same, but builds this folder as it is, downloading crates and npm packages during the build |
 | `flatpak/me.colorcrow.comilito.desktop` | The launcher entry (name, icon, categories) |
 | `flatpak/me.colorcrow.comilito.metainfo.xml` | The **metainfo** (AppStream): the description, screenshot and releases software centres show |
@@ -102,9 +104,9 @@ version (no tag `v1.1.0` yet, and newer than the current one) it:
 1. sets the version in `package.json` and `package-lock.json`, `src-tauri/Cargo.toml` and
    `Cargo.lock`, and `tauri.conf.json`; adds a `<release>` to the metainfo; and turns what's
    under **Unreleased** in CHANGELOG.md into the version's section;
-2. builds this computer's package: the **AppImage** on Linux (as `npm run package`, in Docker
-   when it runs), the **MSI** on Windows. If the build fails, the version changes are undone and
-   nothing is committed;
+2. builds this computer's packages: the **AppImage** and the **Flatpak** on Linux (as
+   `npm run package`, the AppImage in Docker when it runs), the **MSI** on Windows. If the build
+   fails, the version changes are undone and nothing is committed;
 3. commits ("Release v1.1.0") and tags it `v1.1.0`;
 4. on Linux, regenerates the sources, points the Flathub manifest at the tag and its commit,
    and commits that ("Point the Flathub manifest at v1.1.0").
@@ -117,8 +119,7 @@ it says to `git checkout v1.1.0` first. That's how both packages get made:
 - release on Linux (AppImage, Flathub manifest), pull on Windows and run the same command (MSI);
 - or release on Windows (MSI), pull on Linux and run the same command (AppImage, Flathub manifest).
 
-It never pushes. Check the commits, push (`git push origin HEAD v1.1.0`), then copy the Flathub
-manifest and the two source files to the Flathub repository.
+It never pushes. Check the commits, push (`git push origin HEAD v1.1.0`), then publish.
 
 ## Checking it
 
@@ -130,25 +131,38 @@ flatpak run --command=desktop-file-validate org.flatpak.Builder flatpak/me.color
 
 The linter's rules are Flathub's; see <https://docs.flathub.org/linter>.
 
-## Publishing on Flathub
+## Publishing a release
 
-Read Flathub's [requirements](https://docs.flathub.org/docs/for-app-authors/requirements) and
-[submission guide](https://docs.flathub.org/docs/for-app-authors/submission) first. In short:
+```bash
+npm run publish-release -- v1.1.0 --dry-run   # which files it would upload
+npm run publish-release -- v1.1.0
+```
 
-1. **Make the repository public and the website live**, so the metainfo's links and
-   screenshot load (the homepage is `https://comilito.colorcrow.me`).
-2. **Release a version** with `npm run release -- v1.0.0`, and push it.
-3. **The Flathub manifest** is `flatpak/me.colorcrow.comilito.yml`, written by hand (Flathub
-   doesn't accept manifests with AI-generated or AI-assisted content). It builds from the tag,
-   not from this folder; `npm run release` has pointed it at the new one.
-4. **Submit**: fork [flathub/flathub](https://github.com/flathub/flathub), branch from
-   `new-pr`, add the manifest and the two generated source files, and open a pull request
-   against `new-pr`. Disclose the AI-written code in it, as Flathub requires. Opening the pull
-   request and answering the reviewers must be done by hand, not by an AI tool.
-5. **Verify the app ID**: once accepted, Flathub's website gives a token to publish at
-   `https://colorcrow.me/.well-known/org.flathub.VerifiedApps.txt` (HTTPS required). It's the
-   domain the ID names, `colorcrow.me`, not the `comilito.` subdomain the website is on; a DNS
-   TXT record on `_flathub.colorcrow.me` works too.
-6. **Updates**: Flathub creates `flathub/me.colorcrow.comilito`; each release is a pull request
-   there that updates the tag, the commit and the generated sources, as `npm run release` left
-   them here.
+`scripts/publish-release.mjs` puts this computer's packages for the version on its GitHub
+release, with the [GitHub CLI](https://cli.github.com) (`gh`, logged in with `gh auth login`).
+Run it on Linux (AppImage, Flatpak) and on Windows (MSI); the first run creates the release,
+with the version's CHANGELOG section as its notes, and the other adds its files to it.
+
+- The tag must be pushed first, and be the same commit on GitHub as here; otherwise it stops.
+- It uploads the files without their version (`Comilito_amd64.AppImage`,
+  `Comilito_x86_64.flatpak`, `Comilito_x64_en-US.msi`), so the website's buttons can link to
+  `…/releases/latest/download/<name>`, the newest release's file. Don't rename them.
+- Running it again replaces the files of the same name (a rebuilt package).
+- Until both OSes have published, the newest release lacks one OS's file and its website
+  button gives "Not Found"; publish both close together.
+
+Users install the Flatpak by opening the file in their software centre, or with
+`flatpak install --user Comilito_x86_64.flatpak`; the GNOME runtime comes from Flathub. It
+doesn't update itself: they install the next version's file over it.
+
+## Flathub (refused)
+
+Flathub refused Comilito: the repository was too new, and much of it was written with AI
+([decision 0063](decisions/0063-flatpak-on-github-releases.md)). The Flathub manifest and its
+sources are kept, and `npm run release` still points the manifest at each tag, in case it's tried
+again. Flathub's [requirements](https://docs.flathub.org/docs/for-app-authors/requirements) and
+[submission guide](https://docs.flathub.org/docs/for-app-authors/submission) say what that
+takes: the manifest written by hand (no AI-generated or AI-assisted content), the AI-written
+code disclosed, the pull request opened and answered by hand, and the app ID verified with a
+token at `https://colorcrow.me/.well-known/org.flathub.VerifiedApps.txt` (or a DNS TXT record on
+`_flathub.colorcrow.me`).

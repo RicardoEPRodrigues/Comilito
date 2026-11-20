@@ -1,6 +1,6 @@
 # 0059. Distribute a Flatpak on Flathub, as `me.colorcrow.comilito`
 
-- Status: Accepted
+- Status: Flathub superseded by [0063](0063-flatpak-on-github-releases.md) (the app ID and the sandbox still apply)
 - Date: 2026-11-20
 
 ## Context

@@ -8,6 +8,7 @@
 
 ### v1.1.0
 
+- auto updates on flatpak and update notice on the others.
 - Create a first time experience.
 - Scroll on the volume bars should increase/decrease volume.
 - Allow scenes to completely mute underneath audio.
@@ -21,6 +22,8 @@
   a narrow window uses the mini player (decision 0049).
 - Middle clicking on a scene in the tapestry and draggin up or down, should disable or enable the scenes based on the state of the first clicked on scene. e.g., click on the a disabled scene and drag up, that scene and above scenes selected by the mouse, should now be enabled.
 - Allow video effects to play audio. If they do, then there should be options to duck the music or to mute all audio while that is playing.
+
+- Flathub refused the submission for 2 reasons: too new (they expect a repo to be at least 1 or 2 months) and the biggest issue is due to it being created with AI. Unfortunately, the second point, although not made clear in the documentation is what made the rejection final. https://github.com/flathub/flathub/pull/11289
 
 ## Bugs
 
@@ -53,8 +56,15 @@
 ### Documented but not built yet
 
 - Flatpak (decisions 0059, 0061, docs/flatpak.md): the Flathub manifest's offline build hasn't
-  been tried yet. Once a release tag is pushed, run `npm run flatpak -- --flathub`.
-- Flatpak: before submitting, get `colorcrow.me` ready to serve Flathub's verification token over HTTPS.
+  been tried yet. Once a release tag is pushed, run `npm run flatpak -- --flathub`. Only matters
+  if Flathub is tried again (decision 0063).
+- Flatpak: before submitting, get `colorcrow.me` ready to serve Flathub's verification token over
+  HTTPS. Only matters if Flathub is tried again.
+- Releases (decision 0063): `npm run publish-release` hasn't been run for real yet, nor on
+  Windows. v1.0.0 has no GitHub release: publish it on Linux and on Windows, so the website's
+  download buttons work.
+- `npm run release` still points the Flathub manifest at each tag (needs flatpak-builder-tools
+  and makes a commit) though Flathub refused Comilito; drop that step if Flathub won't be tried again.
 
 ### Docs out of date
 
