@@ -9,6 +9,8 @@ version number and date.
 
 ## Unreleased
 
+## [1.0.0] - 2026-11-21
+
 ### Added
 
 - **App menu (AppImage, Linux):** Comilito offers to add itself to your desktop's app menu,
@@ -20,19 +22,6 @@ version number and date.
 - **New version notice:** at start, Comilito checks GitHub for a newer release and, if there is
   one, says so with a button to the website's downloads. Nothing is downloaded. Turn it off in
   Preferences › Behaviour.
-
-### Changed
-
-- **Closing windows with Esc** closes only the top one, when one opened over another (like
-  Preferences).
-- **Downloads:** the website offers two downloads, Linux (the AppImage) and Windows (the
-  installer), and its buttons download the latest version directly. There's no Flatpak:
-  Flathub didn't accept Comilito, and the website says why.
-
-## [1.0.0] - 2026-11-20
-
-### Added
-
 - **A website** (GitHub Pages) with what Comilito does, where to download it, and the extra
   themes (Hearth, Bubblegum Pink, Starship) to download, each with a preview.
 - **Videos decode on the GPU** (Linux, NVIDIA): NVIDIA's GStreamer decoders play videos again,
@@ -148,6 +137,11 @@ version number and date.
 
 ### Changed
 
+- **Closing windows with Esc** closes only the top one, when one opened over another (like
+  Preferences).
+- **Downloads:** the website offers two downloads, Linux (the AppImage) and Windows (the
+  installer), and its buttons download the latest version directly. There's no Flatpak:
+  Flathub didn't accept Comilito, and the website says why.
 - **Licence:** Comilito is free software under the GNU GPL, version 3 (it was marked MIT,
   without a licence file). The `LICENSE` file has the full text.
 - **The video preview in the Library** has its own play bar (play/pause, position, a seek bar,
@@ -292,3 +286,4 @@ version number and date.
 - When Comilito is started without a terminal (for example by double-clicking the AppImage), its
   error messages and crashes are now written to `stderr.log` and `comilito.log` in the logs
   folder instead of being lost.
+
