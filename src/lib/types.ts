@@ -371,6 +371,8 @@ export interface Preferences {
     replaceUnsavedTapestry: "ask" | "replace";
     /** Ask before quitting while downloads, fingerprinting, a backup or a move are running. */
     warnOnQuit: boolean;
+    /** At start, offer to add the AppImage to the app menu or update its entry (decision 0065). */
+    askAppMenu: boolean;
   };
   /** `KeyboardEvent.key` values; "" means the shortcut is off. */
   shortcuts: { removeTopScene: string; restartInterface: string };
@@ -514,4 +516,18 @@ export interface CutOptions {
 export interface MiniPlayer {
   on: boolean;
   onTop: boolean;
+}
+
+/** What the desktop's app menu holds for this AppImage (app_menu.rs, decision 0065). */
+export interface AppMenuStatus {
+  /** unavailable: not an AppImage. missing: not in the menu. current: our entry, up to date.
+   *  elsewhere: another tool's entry starts it. moved: our entry starts a file that's gone.
+   *  otherCopy: our entry starts another copy. changed: this version writes the entry or icons differently. */
+  state: "unavailable" | "missing" | "current" | "elsewhere" | "moved" | "otherCopy" | "changed";
+  appimage: string | null;
+  pointsAt: string | null;
+  otherEntry: string | null;
+  applicationsDir: string;
+  inApplicationsDir: boolean;
+  replacesInApplicationsDir: boolean;
 }

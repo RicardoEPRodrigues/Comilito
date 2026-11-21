@@ -161,6 +161,10 @@ pub struct Behaviour {
     /// a backup or moving the projects folder.
     #[serde(default = "yes")]
     pub warn_on_quit: bool,
+    /// At start, offer to add the AppImage to the desktop's app menu, or to update its entry
+    /// (decision 0065). Handled by the UI.
+    #[serde(default = "yes")]
+    pub ask_app_menu: bool,
 }
 
 fn ask() -> String {
@@ -260,6 +264,7 @@ impl Default for Behaviour {
             unsaved_changes: ask(),
             replace_unsaved_tapestry: ask(),
             warn_on_quit: true,
+            ask_app_menu: true,
         }
     }
 }

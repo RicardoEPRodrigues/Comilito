@@ -1,9 +1,15 @@
+<script module lang="ts">
+  /** The open modals, newest last. A `module` script runs once and is shared by every Modal
+   *  (like a `static` field in C#). */
+  const openModals: symbol[] = [];
+</script>
+
 <script lang="ts">
   // A centred window over the app, used by the settings windows. The content goes between
   // the tags:  <Modal title="Project settings" onclose={...}> ...content... </Modal>
   // `children` and `footer` are "snippets": chunks of markup passed in by the parent.
   import { X } from "@lucide/svelte";
-  import type { Snippet } from "svelte";
+  import { onMount, type Snippet } from "svelte";
   import { backdrop, rise } from "../lib/motion";
   import { ui } from "../lib/store.svelte";
 
@@ -20,9 +26,16 @@
   }
   let { title, onclose, children, footer, wide = false, tall = false, bare = false }: Props = $props();
 
+  // Escape closes only the top modal (one opened over Preferences, say), not every one open.
+  const me = Symbol("modal");
+  onMount(() => {
+    openModals.push(me);
+    return () => void openModals.splice(openModals.indexOf(me), 1);
+  });
+
   function onKeydown(e: KeyboardEvent) {
     // A question dialog on top gets Escape first.
-    if (e.key === "Escape" && !e.defaultPrevented && !ui.question) {
+    if (e.key === "Escape" && !e.defaultPrevented && !ui.question && openModals.at(-1) === me) {
       e.preventDefault();
       onclose();
     }

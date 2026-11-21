@@ -11,6 +11,7 @@
 import { emit, listen } from "@tauri-apps/api/event";
 import { api } from "./api";
 import type {
+  AppMenuStatus,
   Appearance,
   Category,
   Shelf,
@@ -159,6 +160,10 @@ export const ui = $state({
   /** Videos play from `file://` URLs (Linux) instead of asset ones (decision 0056). */
   videoFileUrls: false,
   convertOffer: null as ConvertOffer | null,
+  /** The app menu entry's state (decision 0065), and whether the offer to add or update it
+   *  is showing: "start" when Comilito asked by itself, "preferences" when asked from there. */
+  appMenu: null as AppMenuStatus | null,
+  appMenuOffer: null as null | "start" | "preferences",
   tools: null as ToolsStatus | null,
   toolsProgress: null as InstallProgress | null,
   /** Registered by an in-place editor with unsaved changes; see `leaveFocus`. */

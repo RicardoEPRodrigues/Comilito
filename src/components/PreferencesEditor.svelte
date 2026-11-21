@@ -122,6 +122,26 @@
 
   /** Removes preferences, themes, tools, logs, caches and (if asked) backups, never projects,
    *  then quits. Backups live in the app's data folder (decision 0026), so they're asked about. */
+  // The app menu entry (decision 0065), looked at when this window opens.
+  $effect(() => {
+    api.appMenuStatus().then((s) => (ui.appMenu = s)).catch(() => {});
+  });
+
+  async function removeFromAppMenu() {
+    const answer = await ask({
+      title: "Remove Comilito from the app menu?",
+      message: "Removes its launcher and icons. The AppImage itself stays where it is, and still runs.",
+      choices: [
+        { label: "Cancel", value: "cancel" },
+        { label: "Remove", value: "remove", danger: true, primary: true },
+      ],
+    });
+    if (answer?.choice === "remove") {
+      const s = await run(api.removeFromAppMenu());
+      if (s) ui.appMenu = s;
+    }
+  }
+
   async function forgetEverything() {
     const answer = await ask({
       title: "Remove all Comilito data from this computer?",
@@ -378,6 +398,35 @@
               <ToolsInstall />
             {/if}
           </section>
+          {#if ui.appMenu && ui.appMenu.state !== "unavailable"}
+            {@const m = ui.appMenu}
+            <section>
+              <div class="section-head"><span class="caps">App menu</span><span class="hint">Start the AppImage from your desktop's menu</span></div>
+              <div class="row">
+                <span class="grow">
+                  {#if m.state === "current"}In the app menu.
+                  {:else if m.state === "missing"}Not in the app menu.
+                  {:else if m.state === "elsewhere"}In the app menu, added by another tool (<code>{m.otherEntry}</code>).
+                  {:else if m.state === "moved"}In the app menu, but its launcher starts a file that isn't there any more.
+                  {:else if m.state === "otherCopy"}In the app menu, starting another copy (<code>{m.pointsAt}</code>).
+                  {:else}In the app menu; this version brings a different launcher or icon.{/if}
+                </span>
+                {#if m.state === "missing"}
+                  <button onclick={() => (ui.appMenuOffer = "preferences")}>Add…</button>
+                {:else if m.state !== "current" && m.state !== "elsewhere"}
+                  <button onclick={() => (ui.appMenuOffer = "preferences")}>Update…</button>
+                {/if}
+                {#if m.state !== "missing" && m.state !== "elsewhere"}
+                  <button class="danger" onclick={removeFromAppMenu}>Remove…</button>
+                {/if}
+              </div>
+              <p class="muted small">This copy: <code>{m.appimage}</code></p>
+              <label class="switch">
+                <input type="checkbox" bind:checked={draft.behaviour.askAppMenu} />
+                <span>At start, offer to add Comilito to the app menu, or to update it</span>
+              </label>
+            </section>
+          {/if}
           <section>
             <div class="section-head"><span class="caps">Troubleshooting</span><span class="hint">Logs, and a fresh start for the interface</span></div>
             <div class="row">

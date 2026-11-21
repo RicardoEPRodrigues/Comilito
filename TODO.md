@@ -58,6 +58,9 @@
   if Flathub is tried again (decision 0063).
 - Flatpak: before submitting, get `colorcrow.me` ready to serve Flathub's verification token over
   HTTPS. Only matters if Flathub is tried again.
+- App menu (decision 0065): tested only headless with a fake AppImage. Check with a real one on
+  GNOME, KDE and COSMIC (X11 and Wayland) that the entry appears, its icon shows, and the dock
+  groups the window under it.
 - Releases (decision 0063): `npm run publish-release` hasn't been run for real yet, nor on
   Windows. v1.0.0 has no GitHub release: publish it on Linux and on Windows, so the website's
   download buttons work.

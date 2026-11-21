@@ -7,6 +7,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  AppMenuStatus,
   BackupSettings,
   Category,
   CutOptions,
@@ -40,6 +41,9 @@ export const api = {
   confirmQuit: () => invoke<void>("confirm_quit"),
   /** Decoding videos on the GPU (Linux, decision 0052): whether it applies here, and whether this run uses it. */
   gpuDecode: () => invoke<{ available: boolean; active: boolean }>("gpu_decode"),
+  appMenuStatus: () => invoke<AppMenuStatus>("app_menu_status"),
+  addToAppMenu: (moveToApplications: boolean) => invoke<AppMenuStatus>("add_to_app_menu", { moveToApplications }),
+  removeFromAppMenu: () => invoke<AppMenuStatus>("remove_from_app_menu"),
   // The mini player (decision 0049): only the window's size and always-on-top live in Rust.
   miniPlayer: () => invoke<MiniPlayer>("mini_player"),
   setMiniPlayer: (on: boolean, resize: boolean) => invoke<MiniPlayer>("set_mini_player", { on, resize }),

@@ -1,4 +1,5 @@
 mod app_id;
+mod app_menu;
 mod audio;
 mod bundle;
 mod commands;
@@ -321,6 +322,9 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::confirm_quit,
+            app_menu::app_menu_status,
+            app_menu::add_to_app_menu,
+            app_menu::remove_from_app_menu,
             gpu_decode,
             mini_player::mini_player,
             mini_player::set_mini_player,

@@ -14,6 +14,7 @@
   import FileDropImport from "./components/FileDropImport.svelte";
   import MovingProjects from "./components/MovingProjects.svelte";
   import ConvertVideos from "./components/ConvertVideos.svelte";
+  import AppMenuOffer from "./components/AppMenuOffer.svelte";
 
   let ready = $state(false);
   /** Bumped when the OS light/dark preference changes, to re-run the theme effect. */
@@ -22,7 +23,8 @@
   onMount(() => {
     init()
       .then(openLastProject)
-      .then(() => (ready = true));
+      .then(() => (ready = true))
+      .then(offerAppMenu);
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => systemScheme++;
     media.addEventListener("change", onChange);
@@ -89,6 +91,18 @@
     } catch (e) {
       notify(`Couldn't open the last project: ${e}`);
     }
+  }
+
+  /** The AppImage not in the app menu, or its entry out of date: ask (decision 0065), unless
+   *  that's turned off. Only looks; anything changes only if the user says yes. */
+  async function offerAppMenu() {
+    try {
+      ui.appMenu = await api.appMenuStatus();
+    } catch {
+      return;
+    }
+    const asks = ["missing", "moved", "otherCopy", "changed"].includes(ui.appMenu.state);
+    if (asks && ui.prefs?.behaviour.askAppMenu) ui.appMenuOffer = "start";
   }
 
   /** True if `e` is the key set for `shortcut` (letters match either case). */
@@ -166,6 +180,7 @@
   {#key ui.convertOffer.ids[0]}<ConvertVideos />{/key}
 {/if}
 <MovingProjects />
+{#if ui.appMenuOffer && ui.appMenu}<AppMenuOffer />{/if}
 <Dialog />
 <ContextMenu />
 <Notices />

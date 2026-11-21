@@ -70,6 +70,7 @@ They're never rewritten: if a decision changes, a new record supersedes the old 
 | [0062](0062-gpl-3.0-licence.md) | License Comilito under the GPL-3.0 | Accepted | 2026-11-20 |
 | [0063](0063-flatpak-on-github-releases.md) | Publish the Flatpak ourselves, with every package, on GitHub releases | Flatpak superseded by 0064 (GitHub releases still apply) | 2026-11-20 |
 | [0064](0064-drop-flatpak-for-now.md) | Drop the Flatpak for now; the AppImage is Linux's package | Accepted | 2026-11-21 |
+| [0065](0065-appimage-in-the-app-menu.md) | The AppImage adds itself to the app menu, always asking first | Accepted | 2026-11-21 |
 | [0053](0053-nvidia-decoders-in-the-appimage.md) | Carry NVIDIA's GStreamer decoders in the AppImage | Accepted | 2026-11-19 |
 
 ## Template

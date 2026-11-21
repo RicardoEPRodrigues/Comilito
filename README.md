@@ -88,8 +88,11 @@ Removing Comilito itself depends on how you installed it:
 
 - **Flatpak:** remove it from your software centre, or `flatpak uninstall me.colorcrow.comilito`
   (add `--delete-data` to remove its data too).
-- **AppImage:** delete the `.AppImage` file. If AppImageLauncher (or a similar tool) added it to
-  your app menu, remove it from there too, or delete its entry in `~/.local/share/applications/`.
+- **AppImage:** if Comilito added itself to your app menu, first use Preferences › Projects &
+  tools › App menu › *Remove…*, then delete the `.AppImage` file (usually in `~/Applications`).
+  (Deleted first, the menu hides its entry anyway; its launcher and icons stay in
+  `~/.local/share` until removed by hand.) If AppImageLauncher or a similar tool added it, remove
+  it there.
 - **Windows installer:** Settings › Apps › Comilito › Uninstall.
 
 That leaves your **projects** and Comilito's own **data** on the computer, on purpose: projects

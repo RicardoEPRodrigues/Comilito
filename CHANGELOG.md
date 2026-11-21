@@ -9,8 +9,19 @@ version number and date.
 
 ## Unreleased
 
+### Added
+
+- **App menu (AppImage, Linux):** Comilito offers to add itself to your desktop's app menu,
+  with its icon, and to move the AppImage out of Downloads into `~/Applications`. If the entry
+  later needs updating (the file was moved, you're running another copy, or a new version brings
+  a new icon), it asks again. *Don't ask again* turns the question off; Preferences › Projects &
+  tools › App menu adds, updates or removes the entry at any time. Nothing is changed without
+  asking.
+
 ### Changed
 
+- **Closing windows with Esc** closes only the top one, when one opened over another (like
+  Preferences).
 - **Downloads:** the website offers two downloads, Linux (the AppImage) and Windows (the
   installer), and its buttons download the latest version directly. There's no Flatpak:
   Flathub didn't accept Comilito, and the website says why.

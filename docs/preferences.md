@@ -59,6 +59,8 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 |---|---|---|
 | Projects folder | `~/Documents/Comilito`. *Move to…* moves every project to another folder (backups stay in the app data folder, decision 0026); *Choose…* only changes where Comilito looks (decision 0023) | this computer |
 | Open the last project at start | off (also a switch on the home screen) | this computer |
+| App menu (AppImage on Linux only) | *Add…*, *Update…* or *Remove…* the launcher and icons that put Comilito in the desktop's app menu; each asks first ([0065](decisions/0065-appimage-in-the-app-menu.md)) | this computer |
+| At start, offer to add Comilito to the app menu, or to update it (`behaviour.askAppMenu`) | on. The offer's *Don't ask again* turns it off | this computer |
 | Window size, position and maximised state | remembered from the last run (1280×800, centred, the first time) | this computer, in `.window-state.json` next to `preferences.json` |
 | Mini player | off. Left on when quitting, the app starts in it again; `.mini-player.json` next to `preferences.json` keeps the full window's size and place (and the pin) meanwhile ([0049](decisions/0049-mini-player.md)) | this computer |
 | Backup interval | 30 min | default for new projects |
@@ -130,7 +132,8 @@ App `preferences.json` (`src-tauri/src/prefs.rs`), with its defaults:
     "removeSound": "ask",
     "unsavedChanges": "ask",
     "replaceUnsavedTapestry": "ask",
-    "warnOnQuit": true
+    "warnOnQuit": true,
+    "askAppMenu": true
   },
   "shortcuts": { "removeTopScene": "Backspace", "restartInterface": "F5" },
   "appearance": {
