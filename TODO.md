@@ -53,11 +53,6 @@
 
 ### Documented but not built yet
 
-- Flatpak (decisions 0059, 0061, docs/flatpak.md): the Flathub manifest's offline build hasn't
-  been tried yet. Once a release tag is pushed, run `npm run flatpak -- --flathub`. Only matters
-  if Flathub is tried again (decision 0063).
-- Flatpak: before submitting, get `colorcrow.me` ready to serve Flathub's verification token over
-  HTTPS. Only matters if Flathub is tried again.
 - App menu (decision 0065): tested only headless with a fake AppImage. Check with a real one on
   GNOME, KDE and COSMIC (X11 and Wayland) that the entry appears, its icon shows, and the dock
   groups the window under it.
