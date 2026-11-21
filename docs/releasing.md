@@ -41,6 +41,24 @@ computer's package for it. The working copy must be the tagged one; otherwise it
 
 It never pushes. Check the commits, push (`git push origin HEAD v1.1.0`), then publish.
 
+### Releasing a version again (`--force`)
+
+```bash
+npm run release -- v1.1.0 --force
+```
+
+For a release that was withdrawn (its tag and GitHub release deleted) or needs redoing: the
+version is released as if it were new, even though it isn't newer than the current one.
+
+- A local tag `v1.1.0` is deleted, and made again on the new release commit.
+- The version's metainfo `<release>` and CHANGELOG section, if they exist, get today's date,
+  and what's under **Unreleased** moves into that section, each entry under its heading
+  (### Added, ### Changed…), before the ones already there.
+- With nothing new to commit, the tag goes on the current commit.
+- A tag still on GitHub isn't touched: it warns, and then either delete it
+  (`git push origin :refs/tags/v1.1.0`) or replace it (`git push --force origin v1.1.0`). Delete
+  the GitHub release on it too, then publish again.
+
 ## Publishing a release
 
 ```bash

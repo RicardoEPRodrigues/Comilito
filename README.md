@@ -151,7 +151,7 @@ Other commands:
 | `npm run check` | Type-check the Svelte/TypeScript code |
 | `npm run package` | Build the release packages. On Linux, an AppImage in `src-tauri/target/release/bundle/appimage/`, built in an Ubuntu 22.04 container when Docker is running (see below); `-- --flatpak` also builds a Flatpak in `…/bundle/flatpak/`. On Windows, the MSI installer in `…/bundle/msi/` |
 | `npm run flatpak` | Build only the Flatpak (`-- --install` installs it, `-- uninstall` removes it); see [docs/flatpak.md](docs/flatpak.md) |
-| `npm run release -- v1.1.0` | Release a version: set it everywhere, build this OS's package (AppImage or MSI), commit and tag (doesn't push). `--flatpak` also builds the Flatpak and points the Flathub manifest at the tag. For a version already tagged, only builds this OS's package; see [docs/releasing.md](docs/releasing.md) |
+| `npm run release -- v1.1.0` | Release a version: set it everywhere, build this OS's package (AppImage or MSI), commit and tag (doesn't push). `--flatpak` also builds the Flatpak and points the Flathub manifest at the tag. For a version already tagged, only builds this OS's package; `--force` releases it again (after deleting its release). See [docs/releasing.md](docs/releasing.md) |
 | `npm run publish-release -- v1.1.0` | Upload this OS's package to the version's GitHub release (creating it the first time), with the GitHub CLI; needs the tag pushed. `--flatpak` uploads the Flatpak too. See [docs/releasing.md](docs/releasing.md#publishing-a-release) |
 | `cargo test --manifest-path src-tauri/Cargo.toml` | Run the Rust tests |
 | `python3 scripts/build-website.py` | Build the website into `build/website/`; preview it with `python3 -m http.server -d build/website` |

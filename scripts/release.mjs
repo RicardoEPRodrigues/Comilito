@@ -21,6 +21,15 @@
 // It never pushes: check the commits, then `git push origin HEAD v1.1.0`, and put the packages
 // on the GitHub release with `npm run publish-release -- v1.1.0` (decision 0063).
 //
+// --force releases the version again, as if it were new: for a release that was withdrawn (its
+// tag and GitHub release deleted) or needs redoing. It allows a version that isn't newer,
+// deletes the local tag if there is one, and, when the version already has a CHANGELOG section
+// and a metainfo <release>, gives them today's date and moves what's under Unreleased into
+// that section instead of adding new ones. A tag already on GitHub stays there: delete it
+// (git push origin :refs/tags/v1.1.0) or push the new one with --force.
+//
+//   npm run release -- v1.1.0 --force      release v1.1.0 again
+//
 //   npm run release -- v1.1.0 --flatpak    the Flatpak and the Flathub manifest too (Linux)
 //
 //   npm run release -- v1.1.0 --dry-run    says what it would do, changes nothing
@@ -33,6 +42,7 @@ import { APP_ID, generateSources } from "./flatpak.mjs";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
+const force = args.includes("--force");
 // Flatpak was dropped (decision 0064), but kept working for whenever it comes back.
 const withFlatpak = args.includes("--flatpak") && process.platform === "linux";
 const input = args.find((a) => !a.startsWith("--"));
@@ -61,7 +71,9 @@ const versionFiles = ["package.json", "package-lock.json", files.cargoToml, file
 const flathubFiles = [files.flathubManifest, files.cargoSources, files.nodeSources];
 
 // ---- Checks first, so a release never stops halfway ----
-const released = git(["tag", "--list", tag]).trim() !== "";
+const tagged = git(["tag", "--list", tag]).trim() !== "";
+// With --force, a tagged version is released again rather than only built.
+const released = tagged && !force;
 // Only tracked files: the release commits exactly the files it changes, so untracked ones are
 // left alone, but a file with changes of its own would end up half in the release.
 const dirty = git(["status", "--porcelain", "--untracked-files=no"]).trim();
@@ -77,12 +89,18 @@ if (released) {
   console.log(`${tag} is already released: building this computer's package for it${dryRun ? " — dry run, nothing changes" : ""}`);
 } else {
   const current = JSON.parse(read(files.tauriConf)).version;
-  if (!isNewer(version, current)) fail(`${version} isn't newer than the current version, ${current}`);
+  if (!force && !isNewer(version, current)) {
+    fail(`${version} isn't newer than the current version, ${current}. To release it again, add --force.`);
+  }
   // Flathub builds from the tag, so everything its manifest installs must be in git by then.
   for (const f of [`flatpak/${APP_ID}.desktop`, files.metainfo, files.flathubManifest]) {
     if (!git(["ls-files", f]).trim()) fail(`${f} isn't committed; Flathub builds from the tag, so it must be`);
   }
-  console.log(`Releasing ${current} → ${version} (${tag}, ${today})${dryRun ? " — dry run, nothing changes" : ""}`);
+  console.log(
+    `${force && !isNewer(version, current) ? "Releasing again" : "Releasing"} ${current} → ${version} (${tag}, ${today})` +
+      `${dryRun ? " — dry run, nothing changes" : ""}`,
+  );
+  if (force) warnIfTagOnGitHub();
   setVersion();
 }
 
@@ -99,7 +117,15 @@ step(`build the ${packageName()}`, () => {
 if (!released) {
   step(`commit "Release ${tag}" and tag it ${tag}`, () => {
     runOrFail("git", ["add", ...versionFiles]);
-    runOrFail("git", ["commit", "-m", `Release ${tag}`]);
+    // Released again with nothing new: the version files are already as they should be, so
+    // there's nothing to commit and the tag goes on the current commit.
+    if (spawnSync("git", ["diff", "--cached", "--quiet"], { cwd: root }).status !== 0) {
+      runOrFail("git", ["commit", "-m", `Release ${tag}`]);
+    } else {
+      console.log("  (nothing changed since the last release commit: tagging this one)");
+    }
+    // The old tag (--force): moved to the new commit, never kept beside it.
+    if (tagged) runOrFail("git", ["tag", "-d", tag]);
     runOrFail("git", ["tag", "-a", tag, "-m", `Comilito ${version}`]);
   });
 }
@@ -122,24 +148,97 @@ function setVersion() {
     edit(files.cargoLock, /(\[\[package\]\]\nname = "comilito"\nversion = )"[^"]*"/, `$1"${version}"`),
   );
   step(files.tauriConf, () => edit(files.tauriConf, /"version": "[^"]*"/, `"version": "${version}"`));
-  step(`${files.metainfo} (a <release> for ${version})`, () =>
-    edit(
-      files.metainfo,
-      /<releases>\n/,
-      `<releases>\n    <release version="${version}" date="${today}">\n` +
-        `      <url type="details">https://github.com/RicardoEPRodrigues/Comilito/blob/${tag}/CHANGELOG.md</url>\n` +
-        `    </release>\n`,
-    ),
-  );
+  const existing = new RegExp(`<release version="${version.replaceAll(".", "\\.")}" date="[^"]*"`);
+  if (existing.test(read(files.metainfo))) {
+    // Released before (--force): the same entry, with today's date.
+    step(`${files.metainfo} (the <release> for ${version} gets today's date)`, () =>
+      edit(files.metainfo, existing, `<release version="${version}" date="${today}"`),
+    );
+  } else {
+    step(`${files.metainfo} (a <release> for ${version})`, () =>
+      edit(
+        files.metainfo,
+        /<releases>\n/,
+        `<releases>\n    <release version="${version}" date="${today}">\n` +
+          `      <url type="details">https://github.com/RicardoEPRodrigues/Comilito/blob/${tag}/CHANGELOG.md</url>\n` +
+          `    </release>\n`,
+      ),
+    );
+  }
   step(`${files.changelog} (Unreleased becomes ${version})`, () => {
     let text = read(files.changelog);
     // The note that only made sense before the first release.
     text = text.replace(/\nNothing has been released yet;[^\n]*\n/, "");
     if (!text.includes("\n## Unreleased\n")) fail(`${files.changelog} has no "## Unreleased" heading`);
-    // Everything that was under Unreleased now sits under the new version's heading.
-    text = text.replace("\n## Unreleased\n", `\n## Unreleased\n\n## [${version}] - ${today}\n`);
+    if (text.includes(`\n## [${version}]`)) {
+      // Released before (--force): Unreleased joins the version's existing section.
+      text = mergeIntoReleased(text);
+    } else {
+      // Everything that was under Unreleased now sits under the new version's heading.
+      text = text.replace("\n## Unreleased\n", `\n## Unreleased\n\n## [${version}] - ${today}\n`);
+    }
     write(files.changelog, text);
   });
+}
+
+/** CHANGELOG.md with what's under Unreleased moved into the version's existing section, each
+ *  entry under the same heading (### Added, ### Changed…), newest first, and the section dated
+ *  today. Unreleased is left empty. */
+function mergeIntoReleased(text) {
+  // "## " starts a section; parts[0] is the text before the first one.
+  const parts = text.split(/^(?=## )/m);
+  const unreleasedAt = parts.findIndex((p) => p.startsWith("## Unreleased\n"));
+  const versionAt = parts.findIndex((p) => p.startsWith(`## [${version}]`));
+  const unreleased = subsections(parts[unreleasedAt].slice(parts[unreleasedAt].indexOf("\n") + 1));
+  const released = subsections(parts[versionAt].slice(parts[versionAt].indexOf("\n") + 1));
+
+  // Keep a Changelog's order for the headings, then any others.
+  const order = ["", "Added", "Changed", "Deprecated", "Removed", "Fixed", "Security"];
+  const names = [...new Set([...order, ...released.keys(), ...unreleased.keys()])];
+  let body = "";
+  for (const name of names) {
+    const entries = [unreleased.get(name), released.get(name)].filter(Boolean).join("\n");
+    if (!entries) continue;
+    body += name ? `### ${name}\n\n${entries}\n\n` : `${entries}\n\n`;
+  }
+  parts[unreleasedAt] = "## Unreleased\n\n";
+  parts[versionAt] = `## [${version}] - ${today}\n\n${body}`;
+  return parts.join("");
+}
+
+/** A section's body as heading → its text (trimmed); "" holds text before the first heading. */
+function subsections(body) {
+  const map = new Map();
+  let name = "";
+  let lines = [];
+  const flush = () => {
+    const text = lines.join("\n").trim();
+    if (text) map.set(name, text);
+  };
+  for (const line of body.split("\n")) {
+    const heading = /^### (.+)$/.exec(line);
+    if (heading) {
+      flush();
+      name = heading[1].trim();
+      lines = [];
+    } else {
+      lines.push(line);
+    }
+  }
+  flush();
+  return map;
+}
+
+/** --force: a tag left on GitHub would clash with the new one when pushing. */
+function warnIfTagOnGitHub() {
+  const r = spawnSync("git", ["ls-remote", "--tags", "origin", `refs/tags/${tag}`], { cwd: root, encoding: "utf8" });
+  if (r.status === 0 && r.stdout.trim()) {
+    console.warn(
+      `warning: ${tag} is still on GitHub. After this, replace it with\n` +
+        `  git push --force origin ${tag}\n` +
+        `or delete it first (git push origin :refs/tags/${tag}). A GitHub release on it may need deleting too.`,
+    );
+  }
 }
 
 /** This computer's package, through the same scripts as `npm run package`. Returns an exit code. */
