@@ -41,10 +41,11 @@ if (spawnSync("gh", ["auth", "status"], { stdio: "ignore" }).status !== 0) {
 // would release the wrong code. So the tag must be pushed, and be the same as here.
 const localTag = capture("git", ["rev-parse", "--verify", "--quiet", `refs/tags/${tag}^{commit}`]);
 if (!localTag) fail(`there's no tag ${tag}; make the release first: npm run release -- ${tag}`);
-const remote = capture("git", ["ls-remote", "--tags", "origin", `refs/tags/${tag}^{}`, `refs/tags/${tag}`]);
-// An annotated tag is listed twice: the tag object, and (with ^{}) the commit it points at.
-const remoteCommit = (remote.split("\n").find((l) => l.endsWith("^{}")) ?? remote.split("\n")[0] ?? "").split("\t")[0];
-if (!remoteCommit) fail(`${tag} isn't on GitHub yet: git push origin HEAD ${tag}`);
+// Asked through gh, not `git ls-remote origin`: the remote may be an SSH URL that only works on
+// some computers (no key or known_hosts on this one), while gh is already logged in. The API
+// resolves the tag (annotated or not) to its commit.
+const remoteCommit = capture("gh", ["api", `repos/{owner}/{repo}/commits/refs/tags/${tag}`, "--jq", ".sha"]);
+if (!remoteCommit) fail(`${tag} isn't on GitHub yet (or gh can't reach it): git push origin HEAD ${tag}`);
 if (remoteCommit !== localTag) fail(`${tag} on GitHub isn't the same commit as here (${remoteCommit} vs ${localTag})`);
 
 const packages = findPackages();
