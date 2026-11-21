@@ -254,6 +254,7 @@ fn add(p: &Places) -> Result<(), String> {
         }
         fs::copy(&from, &to).map_err(|e| format!("couldn't copy the icon to {}: {e}", to.display()))?;
     }
+    icons_changed(p);
     fs::create_dir_all(&p.apps_dir).map_err(|e| format!("couldn't create {}: {e}", p.apps_dir.display()))?;
     // Written whole and then renamed, so the menu never reads half a file.
     let entry = p.entry();
@@ -277,7 +278,20 @@ fn remove(p: &Places) -> Result<(), String> {
             }
         }
     }
+    icons_changed(p);
     Ok(())
+}
+
+/// Tells the desktop the icons changed. GTK (and so GNOME Shell) only looks for new icons when
+/// the theme folder's (`hicolor`'s) modification time changes; a file added to an existing size
+/// folder (`128x128/apps`) doesn't change it, so the menu would show no icon until the next
+/// login. Touching the folder is what `gtk-update-icon-cache` and package installers trigger
+/// too. A stale `icon-theme.cache` in it is then ignored, as GTK does with any cache older than
+/// its folder. Best effort: a failure only delays the icon.
+fn icons_changed(p: &Places) {
+    if let Ok(dir) = fs::File::open(&p.icons_dir) {
+        let _ = dir.set_modified(std::time::SystemTime::now());
+    }
 }
 
 /// Moves the AppImage into ~/Applications and returns where it is now.
@@ -503,9 +517,16 @@ mod tests {
         let p = places(&root.0, "home/Downloads/Comilito_amd64.AppImage");
         assert_eq!(status(&p).state, MenuState::Missing);
 
+        // The size folders exist already (other apps' icons), as on most desktops.
+        fs::create_dir_all(p.icons_dir.join("32x32/apps")).unwrap();
+        let old = std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_000_000);
+        fs::File::open(&p.icons_dir).unwrap().set_modified(old).unwrap();
+
         add(&p).unwrap();
         assert_eq!(status(&p).state, MenuState::Current);
         assert!(p.icons_dir.join("32x32/apps").join(format!("{APP_ID}.png")).is_file());
+        // The theme folder looks changed, so the desktop picks the new icons up.
+        assert!(fs::metadata(&p.icons_dir).unwrap().modified().unwrap() > old);
         assert!(!p.icons_dir.join("256x256@2").exists());
 
         // A new version with a different icon.
