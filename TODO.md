@@ -4,11 +4,9 @@
 
 ### v1.0.0
 
-- flatpak version
-
 ### v1.1.0
 
-- auto updates on flatpak and update notice on the others.
+- In-app auto updates.
 - Create a first time experience.
 - Scroll on the volume bars should increase/decrease volume.
 - Allow scenes to completely mute underneath audio.
@@ -63,8 +61,6 @@
 - Releases (decision 0063): `npm run publish-release` hasn't been run for real yet, nor on
   Windows. v1.0.0 has no GitHub release: publish it on Linux and on Windows, so the website's
   download buttons work.
-- `npm run release` still points the Flathub manifest at each tag (needs flatpak-builder-tools
-  and makes a commit) though Flathub refused Comilito; drop that step if Flathub won't be tried again.
 
 ### Docs out of date
 

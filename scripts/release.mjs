@@ -5,11 +5,12 @@
 //   1. sets the version in package.json (and its lock file), src-tauri/Cargo.toml (and
 //      Cargo.lock) and tauri.conf.json, adds a <release> to the metainfo, and starts the
 //      version's section in CHANGELOG.md (everything under Unreleased goes into it);
-//   2. builds this computer's packages: the AppImage and the Flatpak on Linux, the MSI on
-//      Windows. If that fails, the version changes are undone and nothing is committed;
+//   2. builds this computer's package: the AppImage on Linux, the MSI on Windows. If that
+//      fails, the version changes are undone and nothing is committed;
 //   3. commits ("Release v1.1.0") and tags the commit v1.1.0;
-//   4. on Linux: regenerates the Flathub sources (cargo-sources.json, node-sources.json), points
-//      the Flathub manifest at the tag and its commit, and commits that.
+//   4. with --flatpak, on Linux: builds the Flatpak too, regenerates the Flathub sources
+//      (cargo-sources.json, node-sources.json), points the Flathub manifest at the tag and its
+//      commit, and commits that. Flatpak was dropped (decision 0064); this keeps it working.
 //
 // A released version (the tag exists): a tag never moves, so nothing is re-tagged. If this
 // working copy is the tagged one (apart from the Flathub manifest and sources, which are
@@ -19,6 +20,8 @@
 //
 // It never pushes: check the commits, then `git push origin HEAD v1.1.0`, and put the packages
 // on the GitHub release with `npm run publish-release -- v1.1.0` (decision 0063).
+//
+//   npm run release -- v1.1.0 --flatpak    the Flatpak and the Flathub manifest too (Linux)
 //
 //   npm run release -- v1.1.0 --dry-run    says what it would do, changes nothing
 import { spawnSync } from "node:child_process";
@@ -30,6 +33,8 @@ import { APP_ID, generateSources } from "./flatpak.mjs";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
+// Flatpak was dropped (decision 0064), but kept working for whenever it comes back.
+const withFlatpak = args.includes("--flatpak") && process.platform === "linux";
 const input = args.find((a) => !a.startsWith("--"));
 
 const match = /^v?(\d+\.\d+\.\d+)$/.exec(input ?? "");
@@ -100,7 +105,7 @@ if (!released) {
 }
 
 // Whether the Flathub manifest ends up naming this tag (Linux only).
-const flathubReady = linux && pointFlathubAtTag();
+const flathubReady = withFlatpak && pointFlathubAtTag();
 
 console.log(dryRun ? "\nDry run: nothing was changed." : `\n${summary()}`);
 
@@ -140,13 +145,13 @@ function setVersion() {
 /** This computer's package, through the same scripts as `npm run package`. Returns an exit code. */
 function buildPackage() {
   const node = process.execPath;
-  // On Linux the AppImage (in the Ubuntu 22.04 container when Docker runs, decision 0046) and
-  // the Flatpak, both published on the GitHub release (decision 0063). On Windows, the MSI.
-  return run(node, [join(root, "scripts", "package.mjs")]);
+  // On Linux the AppImage (in the Ubuntu 22.04 container when Docker runs, decision 0046), and
+  // the Flatpak with --flatpak. On Windows, the MSI.
+  return run(node, [join(root, "scripts", "package.mjs"), ...(withFlatpak ? ["--flatpak"] : [])]);
 }
 
 function packageName() {
-  return linux ? "AppImage and Flatpak" : windows ? "MSI installer" : "packages";
+  return linux ? (withFlatpak ? "AppImage and Flatpak" : "AppImage") : windows ? "MSI installer" : "packages";
 }
 
 /** Step 4 (Linux): the Flathub manifest names the tag and its commit, with fresh sources.
@@ -179,15 +184,15 @@ function pointFlathubAtTag() {
 
 function summary() {
   const out = linux
-    ? "src-tauri/target/release/bundle/appimage/ and …/flatpak/"
+    ? `src-tauri/target/release/bundle/appimage/${withFlatpak ? " and …/flatpak/" : ""}`
     : "src-tauri/target/release/bundle/msi/";
   const lines = [`${released ? "Built" : "Released"} ${tag}. The ${packageName()}: ${out}`];
   if (!released) lines.push(`Check the commits (git log -p), then: git push origin HEAD ${tag}`);
-  lines.push(`Then put the ${packageName()} on the GitHub release: npm run publish-release -- ${tag}`);
+  lines.push(`Then put the ${packageName()} on the GitHub release: npm run publish-release -- ${tag}${withFlatpak ? " --flatpak" : ""}`);
   if (flathubReady) {
     lines.push(`For Flathub, copy ${flathubFiles.join(", ")} to the Flathub repository.`);
   } else if (!linux) {
-    lines.push(`On Linux, run \`npm run release -- ${tag}\` too: it builds the AppImage and the Flatpak.`);
+    lines.push(`On Linux, run \`npm run release -- ${tag}\` too: it builds the AppImage.`);
   }
   return lines.join("\n");
 }

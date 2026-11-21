@@ -1,9 +1,13 @@
 # Flatpak
 
+> **Not published for now** ([decision 0064](decisions/0064-drop-flatpak-for-now.md)). Flathub
+> refused Comilito, so Linux gets the AppImage only. Everything here is kept, and still works,
+> for when the Flatpak comes back: the release scripts build and upload it with `--flatpak`.
+
 Comilito is packaged as a Flatpak with the app ID `me.colorcrow.comilito`
-([decision 0059](decisions/0059-flatpak-on-flathub.md)). Flathub refused it, so each release
-publishes a single `.flatpak` file on its GitHub page, next to the AppImage and the MSI
-([decision 0063](decisions/0063-flatpak-on-github-releases.md)). This page covers building it,
+([decision 0059](decisions/0059-flatpak-on-flathub.md)). After Flathub refused it, each release
+published a single `.flatpak` file on its GitHub page, next to the AppImage and the MSI
+([decision 0063](decisions/0063-flatpak-on-github-releases.md)), until decision 0064. This page covers building it,
 trying it, releasing a version and publishing it
 ([decision 0061](decisions/0061-flatpak-builds-and-releases.md)).
 
@@ -60,8 +64,8 @@ npm run flatpak -- --install     # …and installs it for your user
 flatpak run me.colorcrow.comilito
 ```
 
-`npm run package` does the same build after the AppImage (`--no-flatpak` skips it,
-`--no-appimage` builds only the Flatpak). Either way the result is also a single file,
+`npm run package -- --flatpak` does the same build after the AppImage (`--flatpak
+--no-appimage` builds only the Flatpak). Either way the result is also a single file,
 `src-tauri/target/release/bundle/flatpak/Comilito_<version>_x86_64.flatpak`, which installs with
 `flatpak install Comilito_….flatpak` (the runtime comes from Flathub). The script
 (`scripts/flatpak.mjs`) uses Flathub's flatpak-builder, and installs the runtime, the SDK and its
@@ -91,35 +95,26 @@ npm run flatpak -- sources
 It runs flatpak-builder-tools from `~/src/flatpak-builder-tools` (set `FLATPAK_BUILDER_TOOLS` if
 they're elsewhere).
 
-## Releasing a version
+## Releases with the Flatpak
+
+Releases leave the Flatpak out (decision 0064); [releasing.md](releasing.md) describes them. To
+bring it back for a release, add `--flatpak` on Linux:
 
 ```bash
-npm run release -- v1.1.0 --dry-run   # what it would do
-npm run release -- v1.1.0
+npm run release -- v1.1.0 --flatpak          # also builds the Flatpak, and points the Flathub manifest at the tag
+npm run publish-release -- v1.1.0 --flatpak  # also uploads Comilito_x86_64.flatpak
 ```
 
-`scripts/release.mjs` refuses to start if tracked files have uncommitted changes. For a new
-version (no tag `v1.1.0` yet, and newer than the current one) it:
+With `--flatpak`, `npm run release` (on Linux) builds the Flatpak after the AppImage, then
+regenerates `cargo-sources.json` and `node-sources.json`, points the Flathub manifest at the tag
+and its commit, and commits that ("Point the Flathub manifest at v1.1.0"). On a tag that's
+already released it does the same if the manifest doesn't name the tag yet. Those three files
+may differ from the tag, since they're committed after it.
 
-1. sets the version in `package.json` and `package-lock.json`, `src-tauri/Cargo.toml` and
-   `Cargo.lock`, and `tauri.conf.json`; adds a `<release>` to the metainfo; and turns what's
-   under **Unreleased** in CHANGELOG.md into the version's section;
-2. builds this computer's packages: the **AppImage** and the **Flatpak** on Linux (as
-   `npm run package`, the AppImage in Docker when it runs), the **MSI** on Windows. If the build
-   fails, the version changes are undone and nothing is committed;
-3. commits ("Release v1.1.0") and tags it `v1.1.0`;
-4. on Linux, regenerates the sources, points the Flathub manifest at the tag and its commit,
-   and commits that ("Point the Flathub manifest at v1.1.0").
-
-If the tag already exists, the version is released: a tag never moves, so it only builds this
-computer's package for it (and on Linux points the Flathub manifest at it, if it doesn't yet).
-The working copy must be the tagged one, apart from the Flathub manifest and sources; otherwise
-it says to `git checkout v1.1.0` first. That's how both packages get made:
-
-- release on Linux (AppImage, Flathub manifest), pull on Windows and run the same command (MSI);
-- or release on Windows (MSI), pull on Linux and run the same command (AppImage, Flathub manifest).
-
-It never pushes. Check the commits, push (`git push origin HEAD v1.1.0`), then publish.
+Users install the uploaded file by opening it in a software centre that takes `.flatpak` files
+(GNOME Software, KDE Discover; many others only open `.flatpakref`), or with
+`flatpak install --user Comilito_x86_64.flatpak`; the GNOME runtime comes from Flathub. It
+doesn't update itself: they install the next version's file over it.
 
 ## Checking it
 
@@ -130,30 +125,6 @@ flatpak run --command=desktop-file-validate org.flatpak.Builder flatpak/me.color
 ```
 
 The linter's rules are Flathub's; see <https://docs.flathub.org/linter>.
-
-## Publishing a release
-
-```bash
-npm run publish-release -- v1.1.0 --dry-run   # which files it would upload
-npm run publish-release -- v1.1.0
-```
-
-`scripts/publish-release.mjs` puts this computer's packages for the version on its GitHub
-release, with the [GitHub CLI](https://cli.github.com) (`gh`, logged in with `gh auth login`).
-Run it on Linux (AppImage, Flatpak) and on Windows (MSI); the first run creates the release,
-with the version's CHANGELOG section as its notes, and the other adds its files to it.
-
-- The tag must be pushed first, and be the same commit on GitHub as here; otherwise it stops.
-- It uploads the files without their version (`Comilito_amd64.AppImage`,
-  `Comilito_x86_64.flatpak`, `Comilito_x64_en-US.msi`), so the website's buttons can link to
-  `…/releases/latest/download/<name>`, the newest release's file. Don't rename them.
-- Running it again replaces the files of the same name (a rebuilt package).
-- Until both OSes have published, the newest release lacks one OS's file and its website
-  button gives "Not Found"; publish both close together.
-
-Users install the Flatpak by opening the file in their software centre, or with
-`flatpak install --user Comilito_x86_64.flatpak`; the GNOME runtime comes from Flathub. It
-doesn't update itself: they install the next version's file over it.
 
 ## Flathub (refused)
 

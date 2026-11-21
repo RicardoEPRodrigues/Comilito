@@ -1,6 +1,6 @@
 # 0063. Publish the Flatpak ourselves, on GitHub releases
 
-- Status: Accepted
+- Status: The Flatpak superseded by [0064](0064-drop-flatpak-for-now.md) (GitHub releases and their file names still apply)
 - Date: 2026-11-20
 
 ## Context

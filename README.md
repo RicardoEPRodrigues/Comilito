@@ -62,7 +62,8 @@ See [docs/save-format.md](docs/save-format.md).
 
 ## Platforms
 
-- Linux (primary): an AppImage and a Flatpak (a file from the releases page; not on Flathub)
+- Linux (primary): an AppImage. There's no Flatpak for now: Flathub refused Comilito
+  ([decision 0064](docs/decisions/0064-drop-flatpak-for-now.md))
 - Windows
 - macOS and Android (planned, not yet supported)
 
@@ -145,10 +146,10 @@ Other commands:
 | Command | What it does |
 |---------|--------------|
 | `npm run check` | Type-check the Svelte/TypeScript code |
-| `npm run package` | Build the release packages. On Linux, an AppImage in `src-tauri/target/release/bundle/appimage/`, built in an Ubuntu 22.04 container when Docker is running (see below), then a Flatpak in `…/bundle/flatpak/`. On Windows, the MSI installer in `…/bundle/msi/` |
+| `npm run package` | Build the release packages. On Linux, an AppImage in `src-tauri/target/release/bundle/appimage/`, built in an Ubuntu 22.04 container when Docker is running (see below); `-- --flatpak` also builds a Flatpak in `…/bundle/flatpak/`. On Windows, the MSI installer in `…/bundle/msi/` |
 | `npm run flatpak` | Build only the Flatpak (`-- --install` installs it, `-- uninstall` removes it); see [docs/flatpak.md](docs/flatpak.md) |
-| `npm run release -- v1.1.0` | Release a version: set it everywhere, build this OS's packages (AppImage and Flatpak, or MSI), commit, tag, and point the Flathub manifest at the tag (doesn't push). For a version already tagged, only builds this OS's packages; see [docs/flatpak.md](docs/flatpak.md) |
-| `npm run publish-release -- v1.1.0` | Upload this OS's packages to the version's GitHub release (creating it the first time), with the GitHub CLI; needs the tag pushed. See [docs/flatpak.md](docs/flatpak.md#publishing-a-release) |
+| `npm run release -- v1.1.0` | Release a version: set it everywhere, build this OS's package (AppImage or MSI), commit and tag (doesn't push). `--flatpak` also builds the Flatpak and points the Flathub manifest at the tag. For a version already tagged, only builds this OS's package; see [docs/releasing.md](docs/releasing.md) |
+| `npm run publish-release -- v1.1.0` | Upload this OS's package to the version's GitHub release (creating it the first time), with the GitHub CLI; needs the tag pushed. `--flatpak` uploads the Flatpak too. See [docs/releasing.md](docs/releasing.md#publishing-a-release) |
 | `cargo test --manifest-path src-tauri/Cargo.toml` | Run the Rust tests |
 | `python3 scripts/build-website.py` | Build the website into `build/website/`; preview it with `python3 -m http.server -d build/website` |
 
@@ -163,8 +164,8 @@ that changes it, the extra themes or the screenshot. See
 
 Use `npm run package` rather than `npm run tauri build` for anything you'll give to others.
 
-On Linux it makes an **AppImage** and then a **Flatpak** of this folder (there's no `.deb` or
-`.rpm`; for the Flatpak see [docs/flatpak.md](docs/flatpak.md)). An app built
+On Linux it makes an **AppImage** (there's no `.deb` or `.rpm`; `-- --flatpak` adds a
+**Flatpak**, which isn't published for now: see [docs/flatpak.md](docs/flatpak.md)). An app built
 on Linux only runs where glibc is at least as new as on the computer that built it, and glibc
 can't be bundled. So when [Docker](https://docs.docker.com/engine/install/) is running, the build
 happens in an Ubuntu 22.04 container and the AppImage runs on Ubuntu 22.04 and newer, whatever

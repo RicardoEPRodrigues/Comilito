@@ -313,6 +313,47 @@ main {
   margin: 0.35rem 0 0;
 }
 
+/* A button that reads as a link (it opens a popover, it doesn't go anywhere). */
+.link-button {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.875rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.link-button:hover {
+  color: var(--accent);
+}
+
+/* A note over the page (the Popover API: Escape or a click outside closes it, no script). */
+.note-popover {
+  width: min(32rem, calc(100% - 2rem));
+  padding: 1.25rem 1.4rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 0.3);
+}
+.note-popover::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+.note-popover .button {
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+.note-popover h3 {
+  margin-top: 0;
+}
+.note-popover p {
+  margin: 0 0 1rem;
+  overflow-wrap: anywhere; /* the long link */
+}
+
 /* A decorated capital, like a scene's in the Tapestry. */
 .capital {
   flex: none;

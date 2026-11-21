@@ -1,7 +1,8 @@
-// `npm run package`: builds Comilito's release packages (decisions 0046, 0061).
+// `npm run package`: builds Comilito's release packages (decisions 0046, 0061, 0064).
 //
-// On Linux it makes an AppImage, then a Flatpak of this folder (scripts/flatpak.mjs, the local
-// manifest). For the AppImage: glibc can't be bundled, and a program only runs where glibc is
+// On Linux it makes an AppImage; with --flatpak, also a Flatpak of this folder
+// (scripts/flatpak.mjs, the local manifest), which isn't published any more (decision 0064).
+// For the AppImage: glibc can't be bundled, and a program only runs where glibc is
 // at least as new as the one it was built against, so when Docker is available the build runs
 // in an Ubuntu 22.04 container (scripts/package/Dockerfile) and the AppImage runs on 22.04 and
 // anything newer. Without Docker it builds on this computer, and the AppImage then needs this
@@ -10,8 +11,8 @@
 //   npm run package            Docker if it's running, otherwise this computer
 //   npm run package -- --local always this computer
 //   npm run package -- --docker always Docker (fails if it isn't running)
-//   npm run package -- --no-flatpak     only the AppImage
-//   npm run package -- --no-appimage    only the Flatpak
+//   npm run package -- --flatpak        the Flatpak too
+//   npm run package -- --flatpak --no-appimage    only the Flatpak
 //
 // On Windows it builds the MSI installer only; on other OSes it runs `tauri build`.
 import { spawnSync } from "node:child_process";
@@ -33,8 +34,8 @@ if (!args.includes("--no-appimage")) {
   const code = buildAppImage();
   if (code !== 0) process.exit(code);
 }
-if (!args.includes("--no-flatpak")) {
-  // Optional: without Flatpak set up, the AppImage is still made.
+if (args.includes("--flatpak")) {
+  // Without Flatpak set up, the AppImage is still made.
   if (spawnSync("flatpak", ["--version"], { stdio: "ignore" }).status !== 0) {
     console.warn("warning: Flatpak isn't installed, so no Flatpak was built (docs/flatpak.md).");
   } else {

@@ -1,6 +1,7 @@
 // `npm run publish-release -- v1.1.0`: puts this computer's packages for a version on its
-// GitHub release (decision 0063), with the GitHub CLI (`gh`). Run it on Linux (the AppImage and
-// the Flatpak) and on Windows (the MSI), after `npm run release` built them and the tag is pushed.
+// GitHub release (decision 0063), with the GitHub CLI (`gh`). Run it on Linux (the AppImage) and
+// on Windows (the MSI), after `npm run release` built them and the tag is pushed. The Flatpak
+// isn't published any more (decision 0064); --flatpak uploads it too, if one was built.
 //
 // The first run creates the release, with the version's CHANGELOG section as its notes; later
 // runs (the other OS, or a rebuilt package) add their files to it, replacing any of the same name.
@@ -11,6 +12,7 @@
 // newest release's file.
 //
 //   npm run publish-release -- v1.1.0 --dry-run    says what it would do, changes nothing
+//   npm run publish-release -- v1.1.0 --flatpak    the Flatpak too
 import { spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -20,6 +22,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const bundle = join(root, "src-tauri", "target", "release", "bundle");
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
+const withFlatpak = args.includes("--flatpak");
 const input = args.find((a) => !a.startsWith("--"));
 
 const match = /^v?(\d+\.\d+\.\d+)$/.exec(input ?? "");
@@ -82,7 +85,7 @@ console.log(`\nPublished: https://github.com/${repoName()}/releases/tag/${tag}`)
 function findPackages() {
   const kinds = [
     { folder: "appimage", ext: ".AppImage" },
-    { folder: "flatpak", ext: ".flatpak" },
+    ...(withFlatpak ? [{ folder: "flatpak", ext: ".flatpak" }] : []),
     { folder: "msi", ext: ".msi" },
   ];
   const found = [];
@@ -117,8 +120,12 @@ function releaseNotes() {
     "## Downloads",
     "",
     "- **Linux, AppImage** (`Comilito_amd64.AppImage`): make it executable and run it. Ubuntu 22.04 and newer.",
-    "- **Linux, Flatpak** (`Comilito_x86_64.flatpak`): open it with your software centre, or " +
-      "`flatpak install --user Comilito_x86_64.flatpak`. It doesn't update itself: install a newer file over it.",
+    ...(withFlatpak
+      ? [
+          "- **Linux, Flatpak** (`Comilito_x86_64.flatpak`): `flatpak install --user Comilito_x86_64.flatpak`. " +
+            "It doesn't update itself: install a newer file over it.",
+        ]
+      : []),
     "- **Windows** (`Comilito_x64_en-US.msi`): the installer, for Windows 10 and 11.",
     "",
     section ? `## What changed\n\n${section}` : "",

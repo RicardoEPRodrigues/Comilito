@@ -121,22 +121,29 @@
 
     <section id="download" class="section">
       <h2 class="display">Download</h2>
-      <div class="cards three">
+      <div class="cards two">
         <article class="card plain">
-          <h3 class="caps">Linux · AppImage</h3>
-          <p>One file: make it executable and run it. For Ubuntu 22.04 and newer, and most other distributions.</p>
+          <h3 class="caps">Linux</h3>
+          <p>An AppImage: one file, make it executable and run it. For Ubuntu 22.04 and newer, and most other distributions.</p>
+          <button type="button" class="link-button muted small" popovertarget="flatpak-note">Flatpak is currently not available</button>
           <a class="button primary" href="https://github.com/RicardoEPRodrigues/Comilito/releases/latest/download/Comilito_amd64.AppImage">Get the AppImage</a>
-        </article>
-        <article class="card plain">
-          <h3 class="caps">Linux · Flatpak</h3>
-          <p>Open it with your software centre to install it, sandboxed. Install a newer file over it to update.</p>
-          <a class="button primary" href="https://github.com/RicardoEPRodrigues/Comilito/releases/latest/download/Comilito_x86_64.flatpak">Get the Flatpak</a>
         </article>
         <article class="card plain">
           <h3 class="caps">Windows</h3>
           <p>An installer for Windows 10 and 11.</p>
           <a class="button primary" href="https://github.com/RicardoEPRodrigues/Comilito/releases/latest/download/Comilito_x64_en-US.msi">Get the installer</a>
         </article>
+      </div>
+      <div id="flatpak-note" class="note-popover" popover>
+        <h3 class="caps">Flatpak</h3>
+        <p>
+          Unfortunately, due to the nature of this project (being developed mostly with AI), the
+          submission to be added to the Flathub repository was rejected (see
+          <a href="https://github.com/flathub/flathub/pull/11289">https://github.com/flathub/flathub/pull/11289</a>). This is
+          disappointing, but not entirely surprising. No fixes and solutions were provided to make
+          the submission valid, so I decided to drop Flatpak as a packaging solution (hopefully for now).
+        </p>
+        <button type="button" class="button" popovertarget="flatpak-note" popovertargetaction="hide">Close</button>
       </div>
       <p class="muted small">
         The buttons download the latest version, for 64-bit PCs (x86_64). Every version is on the
