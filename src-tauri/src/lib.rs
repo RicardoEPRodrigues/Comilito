@@ -20,6 +20,7 @@ mod state;
 mod storage;
 mod themes;
 mod trash_bin;
+mod updates;
 mod tools;
 mod video;
 mod video_convert;
@@ -325,6 +326,7 @@ pub fn run() {
             app_menu::app_menu_status,
             app_menu::add_to_app_menu,
             app_menu::remove_from_app_menu,
+            updates::check_for_update,
             gpu_decode,
             mini_player::mini_player,
             mini_player::set_mini_player,

@@ -87,6 +87,8 @@ export interface Question {
 export interface Notice {
   id: number;
   message: string;
+  /** A button that opens a web page. */
+  link?: { label: string; url: string };
 }
 
 function remembered<T>(key: string, fallback: T): T {
@@ -177,9 +179,11 @@ export const ui = $state({
 
 let nextNoticeId = 1;
 
-export function notify(message: string) {
+/** Shows a message in the corner for a few seconds; `sticky` ones stay until closed. */
+export function notify(message: string, options: { link?: Notice["link"]; sticky?: boolean } = {}) {
   const id = nextNoticeId++;
-  ui.notices.push({ id, message });
+  ui.notices.push({ id, message, link: options.link });
+  if (options.sticky) return;
   setTimeout(() => {
     ui.notices = ui.notices.filter((n) => n.id !== id);
   }, 6000);

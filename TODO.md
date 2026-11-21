@@ -61,6 +61,8 @@
 - App menu (decision 0065): tested only headless with a fake AppImage. Check with a real one on
   GNOME, KDE and COSMIC (X11 and Wayland) that the entry appears, its icon shows, and the dock
   groups the window under it.
+- New version notice (decision 0066): only the "nothing found" path was tried (no release
+  existed). Once one is published, run an older build to see the notice and its button.
 - Releases (decision 0063): `npm run publish-release` hasn't been run for real yet, nor on
   Windows. v1.0.0 has no GitHub release: publish it on Linux and on Windows, so the website's
   download buttons work.

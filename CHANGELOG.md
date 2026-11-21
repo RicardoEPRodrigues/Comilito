@@ -17,6 +17,9 @@ version number and date.
   a new icon), it asks again. *Don't ask again* turns the question off; Preferences › Projects &
   tools › App menu adds, updates or removes the entry at any time. Nothing is changed without
   asking.
+- **New version notice:** at start, Comilito checks GitHub for a newer release and, if there is
+  one, says so with a button to the website's downloads. Nothing is downloaded. Turn it off in
+  Preferences › Behaviour.
 
 ### Changed
 

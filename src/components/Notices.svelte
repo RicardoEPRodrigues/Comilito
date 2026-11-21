@@ -1,5 +1,7 @@
 <script lang="ts">
   // Error and info messages in the corner. They disappear after a few seconds (see notify()).
+  import { ExternalLink } from "@lucide/svelte";
+  import { openUrl } from "@tauri-apps/plugin-opener";
   import { ui } from "../lib/store.svelte";
 </script>
 
@@ -7,6 +9,10 @@
   {#each ui.notices as n (n.id)}
     <div class="notice">
       <span>{n.message}</span>
+      {#if n.link}
+        {@const link = n.link}
+        <button class="primary small" onclick={() => openUrl(link.url)}><ExternalLink size={13} />{link.label}</button>
+      {/if}
       <button class="icon" onclick={() => (ui.notices = ui.notices.filter((x) => x.id !== n.id))}>✕</button>
     </div>
   {/each}
@@ -37,5 +43,11 @@
   }
   span {
     flex: 1;
+    align-self: center;
+  }
+  .small {
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
   }
 </style>

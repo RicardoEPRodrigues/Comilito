@@ -44,6 +44,7 @@ export const api = {
   appMenuStatus: () => invoke<AppMenuStatus>("app_menu_status"),
   addToAppMenu: (moveToApplications: boolean) => invoke<AppMenuStatus>("add_to_app_menu", { moveToApplications }),
   removeFromAppMenu: () => invoke<AppMenuStatus>("remove_from_app_menu"),
+  checkForUpdate: () => invoke<{ version: string; downloadPage: string } | null>("check_for_update"),
   // The mini player (decision 0049): only the window's size and always-on-top live in Rust.
   miniPlayer: () => invoke<MiniPlayer>("mini_player"),
   setMiniPlayer: (on: boolean, resize: boolean) => invoke<MiniPlayer>("set_mini_player", { on, resize }),

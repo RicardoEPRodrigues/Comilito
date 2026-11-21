@@ -165,6 +165,10 @@ pub struct Behaviour {
     /// (decision 0065). Handled by the UI.
     #[serde(default = "yes")]
     pub ask_app_menu: bool,
+    /// At start, ask GitHub whether a newer version was released, and say so (decision 0066).
+    /// Handled by the UI.
+    #[serde(default = "yes")]
+    pub check_for_updates: bool,
 }
 
 fn ask() -> String {
@@ -265,6 +269,7 @@ impl Default for Behaviour {
             replace_unsaved_tapestry: ask(),
             warn_on_quit: true,
             ask_app_menu: true,
+            check_for_updates: true,
         }
     }
 }

@@ -76,6 +76,7 @@ sound / scene value  →  if not set: project default  →  (always set; copied 
 | When loading a preset over an unsaved tapestry | ask (other choice: always replace without saving) |
 | Closing a window with unsaved changes (✕ or Esc) | ask (other choices: save, discard). The window's Cancel button always discards. |
 | Warn when quitting during downloads, fingerprinting or a backup (also while moving the projects folder) | on ([0033](decisions/0033-resuming-downloads-and-quit-warning.md)) |
+| Check for a new version at start (`checkForUpdates`): asks GitHub once per run and, if there's a newer release, shows a notice with a Download button to the website | on ([0066](decisions/0066-checking-for-new-versions.md)) |
 
 ### Video ([0035](decisions/0035-video.md))
 
@@ -133,7 +134,8 @@ App `preferences.json` (`src-tauri/src/prefs.rs`), with its defaults:
     "unsavedChanges": "ask",
     "replaceUnsavedTapestry": "ask",
     "warnOnQuit": true,
-    "askAppMenu": true
+    "askAppMenu": true,
+    "checkForUpdates": true
   },
   "shortcuts": { "removeTopScene": "Backspace", "restartInterface": "F5" },
   "appearance": {

@@ -489,6 +489,10 @@
               <input type="checkbox" bind:checked={draft.behaviour.warnOnQuit} />
               <span>Warn when quitting during downloads, fingerprinting or a backup</span>
             </label>
+            <label class="switch">
+              <input type="checkbox" bind:checked={draft.behaviour.checkForUpdates} />
+              <span>Check for a new version at start (asks GitHub; nothing is downloaded)</span>
+            </label>
           </section>
           <section class="form">
             <div class="section-head"><span class="caps">Shortcuts</span><span class="hint">Click, then press a key</span></div>

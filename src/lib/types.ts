@@ -373,6 +373,8 @@ export interface Preferences {
     warnOnQuit: boolean;
     /** At start, offer to add the AppImage to the app menu or update its entry (decision 0065). */
     askAppMenu: boolean;
+    /** At start, ask GitHub whether a newer version was released (decision 0066). */
+    checkForUpdates: boolean;
   };
   /** `KeyboardEvent.key` values; "" means the shortcut is off. */
   shortcuts: { removeTopScene: string; restartInterface: string };

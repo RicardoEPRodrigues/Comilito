@@ -24,7 +24,10 @@
     init()
       .then(openLastProject)
       .then(() => (ready = true))
-      .then(offerAppMenu);
+      .then(() => {
+        offerAppMenu();
+        checkForUpdate();
+      });
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => systemScheme++;
     media.addEventListener("change", onChange);
@@ -103,6 +106,23 @@
     }
     const asks = ["missing", "moved", "otherCopy", "changed"].includes(ui.appMenu.state);
     if (asks && ui.prefs?.behaviour.askAppMenu) ui.appMenuOffer = "start";
+  }
+
+  /** Once per run, if allowed: a newer release on GitHub (decision 0066) gets a notice with a
+   *  button to the website's downloads. Offline or any failure: nothing. */
+  async function checkForUpdate() {
+    if (!ui.prefs?.behaviour.checkForUpdates) return;
+    try {
+      const update = await api.checkForUpdate();
+      if (update) {
+        notify(`Comilito ${update.version} is available.`, {
+          sticky: true,
+          link: { label: "Download", url: update.downloadPage },
+        });
+      }
+    } catch (e) {
+      api.logMessage("info", String(e)).catch(() => {});
+    }
   }
 
   /** True if `e` is the key set for `shortcut` (letters match either case). */
