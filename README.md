@@ -3,6 +3,8 @@
 A lightweight desktop soundboard and mixer for game masters of tabletop role-playing games, such
 as Dungeons & Dragons, Pathfinder or Call of Cthulhu.
 
+**Website and downloads: [comilito.colorcrow.me](https://comilito.colorcrow.me)**
+
 Comilito is free and made in spare time. If it livens up your table, you can support its
 development with a donation on Liberapay or Ko-fi:
 
