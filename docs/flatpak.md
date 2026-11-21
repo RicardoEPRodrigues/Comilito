@@ -128,7 +128,7 @@ The linter's rules are Flathub's; see <https://docs.flathub.org/linter>.
 
 ## Flathub (refused)
 
-Flathub refused Comilito: the repository was too new, and much of it was written with AI
+Flathub refused Comilito (see [the GitHub PR](https://github.com/flathub/flathub/pull/11289)): the repository was too new, and much of it was written with AI
 ([decision 0063](decisions/0063-flatpak-on-github-releases.md)). The Flathub manifest and its
 sources are kept, and `npm run release` still points the manifest at each tag, in case it's tried
 again. Flathub's [requirements](https://docs.flathub.org/docs/for-app-authors/requirements) and
