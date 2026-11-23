@@ -6,6 +6,7 @@
 - more shortcuts: double click on sound to add to the active scene; ctrl-click to enable disable
 - have a library/library drawer like experience for scenes and presets.
 - Hotkeys for SFX
+- Touch inputs on desktop
 
 ### v1.1.0
 
