@@ -2,6 +2,11 @@
 
 ## Feature
 
+- expand all, collapse all in the library.
+- more shortcuts: double click on sound to add to the active scene; ctrl-click to enable disable
+- have a library/library drawer like experience for scenes and presets.
+- Hotkeys for SFX
+
 ### v1.1.0
 
 - In-app auto updates.
@@ -20,7 +25,7 @@
 
 ### v1.5.0
 
-- Add ability to have plugins. Ideas: twitch integration; discord integration; video/audio streaming.
+- Add ability to have plugins. Ideas: twitch integration; discord integration; video/audio streaming; spotify integration (play songs or playlists instead of music).
 
 ## Bugs
 
