@@ -30,6 +30,9 @@
 
 ## Bugs
 
+- On Wayland, clicking the miniplayer button does not seem to inform the window manager of the change and when moving it assumes the previous size. Only by ajusting the window size on the corners does the new size is considered.
+- On Wayland always on top does not work.
+
 
 ## Left to do or to check (added by Claude)
 
