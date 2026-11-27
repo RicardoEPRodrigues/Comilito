@@ -7,6 +7,8 @@
 - have a library/library drawer like experience for scenes and presets.
 - Hotkeys for SFX
 - Touch inputs on desktop
+- When switching presets, we should not show the unsaved warning if the only change was enabling/disabling of scenes. It should show up if we added/removed scenes.
+- Expand the sample project.
 
 ### v1.1.0
 
